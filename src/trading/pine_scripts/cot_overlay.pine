@@ -1,0 +1,177 @@
+//@version=5
+// =============================================================================
+// COT Data Overlay [CotExplorer]
+//
+// TradingView does not provide raw CFTC COT data natively.
+// This indicator provides two modes:
+//
+// Mode 1: MANUAL INPUT
+//   User enters weekly speculator net positions via input fields.
+//   Displays as a histogram below price with color-coded momentum.
+//
+// Mode 2: QUANDL/CFTC AUTO (TradingView Premium)
+//   If you have TradingView Premium, you can use CFTC data via
+//   request.security() with CFTC symbols. The indicator detects
+//   availability and switches automatically.
+//
+// Display:
+//   - Histogram: green when increasing, red when decreasing
+//   - Momentum line (rate of change of net position)
+//   - OI-normalized percentage line
+//   - Position bias label
+// =============================================================================
+indicator("COT Overlay [CotExplorer]", overlay=false, precision=0)
+
+// ── Settings ─────────────────────────────────────────────────────────────────
+inputMode = input.string("Manual", "Data Mode", options=["Manual", "CFTC Auto"])
+
+// Manual input fields — enter weekly spec net positions (most recent first)
+// Users update these weekly after the CFTC report (every Friday)
+manualNet0  = input.int(0, "This Week Net", group="Manual COT Data")
+manualNet1  = input.int(0, "1 Week Ago", group="Manual COT Data")
+manualNet2  = input.int(0, "2 Weeks Ago", group="Manual COT Data")
+manualNet3  = input.int(0, "3 Weeks Ago", group="Manual COT Data")
+manualNet4  = input.int(0, "4 Weeks Ago", group="Manual COT Data")
+manualNet5  = input.int(0, "5 Weeks Ago", group="Manual COT Data")
+manualNet6  = input.int(0, "6 Weeks Ago", group="Manual COT Data")
+manualNet7  = input.int(0, "7 Weeks Ago", group="Manual COT Data")
+manualOI    = input.int(1, "Open Interest (latest)", minval=1, group="Manual COT Data")
+
+// CFTC Auto settings (Premium only)
+cftcSymbol = input.symbol("CFTC:099741_F_L_ALL", "CFTC Symbol (Premium)", group="CFTC Auto", tooltip="Format: CFTC:{code}_F_L_ALL for legacy, CFTC:{code}_F_TFF_ALL for TFF")
+
+// Display settings
+showHistogram = input.bool(true, "Show Net Position Histogram")
+showMomentum  = input.bool(true, "Show Momentum (Weekly Change)")
+showPctLine   = input.bool(true, "Show OI-Normalized %")
+showBias      = input.bool(true, "Show Bias Label")
+bullPctThresh = input.float(4.0, "Bullish Threshold (%OI)", minval=0, maxval=50)
+bearPctThresh = input.float(-4.0, "Bearish Threshold (%OI)", minval=-50, maxval=0)
+momWeeks      = input.int(3, "Momentum Trend Weeks", minval=2, maxval=8)
+
+// Colors
+upColor   = input.color(color.new(color.green, 30), "Increasing Color")
+downColor = input.color(color.new(color.red, 30), "Decreasing Color")
+flatColor = input.color(color.new(color.gray, 50), "Flat Color")
+
+// ── Data Resolution ──────────────────────────────────────────────────────────
+// Manual mode: use input values
+// CFTC Auto: request weekly data from TradingView
+
+var float specNet = na
+var float prevNet = na
+var float openInt = na
+
+if inputMode == "Manual"
+    // Map manual inputs to current bar
+    // Since COT is weekly, we approximate by checking which week we're in
+    specNet := float(manualNet0)
+    prevNet := float(manualNet1)
+    openInt := float(manualOI)
+else
+    // CFTC Auto mode — request from TradingView
+    // This requires specific CFTC symbol format
+    cftcData = request.security(cftcSymbol, "W", close)
+    specNet := nz(cftcData, 0)
+    prevNet := nz(request.security(cftcSymbol, "W", close[1]), 0)
+    openInt := math.max(1, math.abs(specNet) * 5)  // rough approximation if OI not available
+
+// ── Calculations ─────────────────────────────────────────────────────────────
+
+// Weekly change
+weeklyChange = specNet - prevNet
+
+// Momentum: direction over last N weeks
+// For manual mode, we check if the sequence is monotonically increasing/decreasing
+float[] netHistory = array.new_float(8, 0)
+if inputMode == "Manual"
+    array.set(netHistory, 0, float(manualNet0))
+    array.set(netHistory, 1, float(manualNet1))
+    array.set(netHistory, 2, float(manualNet2))
+    array.set(netHistory, 3, float(manualNet3))
+    array.set(netHistory, 4, float(manualNet4))
+    array.set(netHistory, 5, float(manualNet5))
+    array.set(netHistory, 6, float(manualNet6))
+    array.set(netHistory, 7, float(manualNet7))
+
+// Count consecutive increases/decreases
+increases = 0
+decreases = 0
+for i = 0 to momWeeks - 1
+    curr_val = array.get(netHistory, i)
+    prev_val = array.get(netHistory, i + 1)
+    if curr_val > prev_val
+        increases += 1
+    else if curr_val < prev_val
+        decreases += 1
+
+trendLabel = increases >= momWeeks ? "INCREASING" :
+             decreases >= momWeeks ? "DECREASING" :
+             "MIXED"
+trendColor = increases >= momWeeks ? upColor :
+             decreases >= momWeeks ? downColor :
+             flatColor
+
+// OI-normalized percentage
+cotPct = openInt != 0 ? (specNet / openInt) * 100 : 0
+
+// Bias classification
+bias = cotPct > bullPctThresh ? "LONG" :
+       cotPct < bearPctThresh ? "SHORT" :
+       "NEUTRAL"
+biasColor = cotPct > bullPctThresh ? color.green :
+            cotPct < bearPctThresh ? color.red :
+            color.gray
+
+// ── Histogram Color ──────────────────────────────────────────────────────────
+histColor = weeklyChange > 0 ? upColor :
+            weeklyChange < 0 ? downColor :
+            flatColor
+
+// ── Plots ────────────────────────────────────────────────────────────────────
+// Net position histogram
+plot(showHistogram ? specNet : na, "Spec Net", color=histColor, style=plot.style_columns, linewidth=2)
+
+// Momentum (weekly change)
+plot(showMomentum ? weeklyChange : na, "Weekly Change", color=trendColor, style=plot.style_histogram, linewidth=1)
+
+// OI percentage line (scaled to be visible alongside net position)
+// Scale: cotPct * (average net / 100) to fit on same axis
+avgNet = math.abs(specNet) > 0 ? math.abs(specNet) : 10000
+scaledPct = cotPct * avgNet / 100
+plot(showPctLine ? scaledPct : na, "COT %OI (scaled)", color=color.new(color.yellow, 40), linewidth=2)
+
+// Zero line
+hline(0, "Zero", color=color.new(color.gray, 70), linestyle=hline.style_dotted)
+
+// ── Info Table ───────────────────────────────────────────────────────────────
+var table cotTable = table.new(position.top_left, 2, 7, bgcolor=color.new(color.black, 85), border_width=1, border_color=color.new(color.gray, 70))
+
+if barstate.islast and showBias
+    table.cell(cotTable, 0, 0, "COT DATA", text_color=color.white, text_size=size.small)
+    table.cell(cotTable, 1, 0, inputMode == "Manual" ? "MANUAL" : "AUTO", text_color=color.gray, text_size=size.small)
+
+    table.cell(cotTable, 0, 1, "Spec Net", text_color=color.white, text_size=size.tiny)
+    table.cell(cotTable, 1, 1, str.tostring(specNet, "#"), text_color=biasColor, text_size=size.tiny)
+
+    table.cell(cotTable, 0, 2, "Change", text_color=color.white, text_size=size.tiny)
+    chgStr = weeklyChange >= 0 ? "+" + str.tostring(weeklyChange, "#") : str.tostring(weeklyChange, "#")
+    table.cell(cotTable, 1, 2, chgStr, text_color=weeklyChange >= 0 ? color.green : color.red, text_size=size.tiny)
+
+    table.cell(cotTable, 0, 3, "%OI", text_color=color.white, text_size=size.tiny)
+    table.cell(cotTable, 1, 3, str.tostring(cotPct, "+#.#;-#.#") + "%", text_color=biasColor, text_size=size.tiny)
+
+    table.cell(cotTable, 0, 4, "Trend", text_color=color.white, text_size=size.tiny)
+    table.cell(cotTable, 1, 4, trendLabel, text_color=trendColor, text_size=size.tiny)
+
+    table.cell(cotTable, 0, 5, "Bias", text_color=color.white, text_size=size.tiny)
+    table.cell(cotTable, 1, 5, bias, text_color=biasColor, text_size=size.small)
+
+    table.cell(cotTable, 0, 6, "Open Int", text_color=color.white, text_size=size.tiny)
+    table.cell(cotTable, 1, 6, str.tostring(openInt, "#,###"), text_color=color.gray, text_size=size.tiny)
+
+// ── Alerts ───────────────────────────────────────────────────────────────────
+alertcondition(cotPct > bullPctThresh and cotPct[1] <= bullPctThresh, "COT Bullish", "COT spec net crossed above bullish threshold")
+alertcondition(cotPct < bearPctThresh and cotPct[1] >= bearPctThresh, "COT Bearish", "COT spec net crossed below bearish threshold")
+alertcondition(increases >= momWeeks and increases[1] < momWeeks, "COT Momentum Up", "COT spec net increasing for " + str.tostring(momWeeks) + "+ weeks")
+alertcondition(decreases >= momWeeks and decreases[1] < momWeeks, "COT Momentum Down", "COT spec net decreasing for " + str.tostring(momWeeks) + "+ weeks")

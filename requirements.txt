@@ -1,0 +1,4 @@
+# Core trading engine has ZERO dependencies (stdlib only)
+# Optional dependencies for enhanced features:
+# pandas>=2.0  # For backtesting dataframes
+# matplotlib>=3.7  # For equity curve visualization

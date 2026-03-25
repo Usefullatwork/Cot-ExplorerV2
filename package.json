@@ -1,0 +1,19 @@
+{
+  "name": "cot-explorer-v2",
+  "version": "2.0.0",
+  "description": "CFTC COT analysis + SMC trading + 310+ agent prompts + security framework",
+  "scripts": {
+    "security:red-team": "npx promptfoo eval -c src/security/promptfoo/configs/red-team.yaml",
+    "security:injection": "npx promptfoo eval -c src/security/promptfoo/configs/injection.yaml",
+    "validate:agents": "python scripts/validate-agents.py",
+    "build:index": "python scripts/build-agent-index.py"
+  },
+  "dependencies": {
+    "promptfoo": "^0.97.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Usefullatwork/Cot-ExplorerV2.git"
+  },
+  "license": "MIT"
+}
