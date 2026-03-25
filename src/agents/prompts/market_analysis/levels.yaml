@@ -1,0 +1,99 @@
+prompts:
+  - id: key_level_identification
+    name: "Key Level Identification"
+    category: market_analysis
+    subcategory: levels
+    instrument: null
+    model: sonnet
+    schedule: every_run
+    input_schema:
+      - daily_ohlc_all
+      - weekly_ohlc_all
+      - pivot_points_all
+      - volume_profile_all
+      - round_numbers
+    output_schema:
+      levels_by_instrument: "dict[str, list[dict]]"
+      strongest_levels: "list[dict]"
+      confidence: "0.0-1.0"
+    prompt: |
+      Identify key support and resistance levels for all 12 instruments using
+      swing highs/lows, pivot points, volume profile POC/VAH/VAL, and
+      psychological round numbers. Rank levels by touch count, recency, and
+      timeframe (weekly > daily > intraday). Mark each level as support,
+      resistance, or pivot. Flag levels within 0.5 ATR of current price as
+      immediate. Output JSON only. Never fabricate data.
+
+  - id: level_confluence
+    name: "Level Confluence Analysis"
+    category: market_analysis
+    subcategory: levels
+    instrument: null
+    model: sonnet
+    schedule: every_run
+    input_schema:
+      - key_levels_all
+      - fibonacci_levels_all
+      - moving_averages_all
+      - order_blocks_all
+    output_schema:
+      confluence_zones: "list[dict]"
+      highest_confluence: "dict"
+      confidence: "0.0-1.0"
+    prompt: |
+      Find confluence zones where multiple technical factors align within a tight
+      price range. Confluence sources: swing S/R, Fibonacci retracements (38.2%,
+      50%, 61.8%), key moving averages (50/100/200 SMA), and SMC order blocks.
+      A zone with 3+ confluent factors is high-probability. Rank zones by number
+      of confluent factors and proximity to current price.
+      Output JSON only. Never fabricate data.
+
+  - id: broken_level_retest
+    name: "Broken Level Retest Scanner"
+    category: market_analysis
+    subcategory: levels
+    instrument: null
+    model: haiku
+    schedule: every_run
+    input_schema:
+      - daily_ohlc_all
+      - recently_broken_levels
+      - current_prices
+      - atr_all
+    output_schema:
+      retest_setups: "list[dict]"
+      active_retests: "list[dict]"
+      confidence: "0.0-1.0"
+    prompt: |
+      Scan all 12 instruments for broken support/resistance levels that price is
+      retesting. A broken resistance becoming support (or vice versa) is a
+      high-probability setup when aligned with the trend. Filter for levels broken
+      within the last 5-20 candles and currently within 0.3 ATR of the broken
+      level. Rate each retest by trend alignment and level significance.
+      Output JSON only. Never fabricate data.
+
+  - id: weekly_outlook
+    name: "Weekly Technical Outlook"
+    category: market_analysis
+    subcategory: levels
+    instrument: null
+    model: sonnet
+    schedule: weekly
+    input_schema:
+      - weekly_ohlc_all
+      - weekly_close_vs_open
+      - key_levels_all
+      - trend_data_all
+      - economic_calendar_week
+    output_schema:
+      outlook_by_instrument: "dict[str, dict]"
+      top_setups: "list[dict]"
+      key_events: "list[dict]"
+      confidence: "0.0-1.0"
+    prompt: |
+      Produce the weekly technical outlook for all 12 instruments. Analyze the
+      prior week candle (bullish/bearish/doji), position relative to key levels,
+      and upcoming economic events. Identify the 3-5 highest-probability setups
+      for the coming week with entry zones, stop levels, and targets. Flag any
+      instruments where the weekly close changed the structural bias.
+      Output JSON only. Never fabricate data.

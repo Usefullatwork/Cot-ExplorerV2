@@ -1,0 +1,106 @@
+prompts:
+  - id: score_threshold
+    name: "Confluence Score Threshold Optimizer"
+    category: backtesting
+    subcategory: optimization
+    instrument: null
+    model: sonnet
+    schedule: weekly
+    input_schema:
+      - all_trades_with_scores
+      - win_rate_by_score
+      - rr_by_score
+      - score_distribution
+    output_schema:
+      optimal_threshold: "int"
+      current_threshold_performance: "dict"
+      threshold_comparison: "list[dict]"
+      recommended_change: "str"
+      confidence: "0.0-1.0"
+    prompt: |
+      Optimize the 12-point confluence score threshold. Analyze win rate and R:R
+      at each threshold (7/12, 8/12, 9/12, 10/12). The optimal threshold balances
+      trade frequency with quality — too high means missed opportunities, too low
+      means noise. Grade-A (9+/12) should have >65% win rate. If 8/12 also exceeds
+      60%, consider lowering threshold to capture more trades. Test on rolling
+      3-month windows to avoid overfitting.
+      Output JSON only. Never fabricate data.
+
+  - id: sl_placement
+    name: "Stop Loss Placement Optimizer"
+    category: backtesting
+    subcategory: optimization
+    instrument: null
+    model: sonnet
+    schedule: weekly
+    input_schema:
+      - all_trades_with_sl
+      - sl_hit_before_target
+      - max_adverse_excursion
+      - atr_at_entry
+    output_schema:
+      optimal_sl_atr_multiple: "float"
+      current_sl_performance: "dict"
+      premature_stop_rate: "float"
+      recommended_change: "str"
+      confidence: "0.0-1.0"
+    prompt: |
+      Optimize stop loss placement using Maximum Adverse Excursion (MAE) analysis.
+      For each trade, calculate how far price moved against before reaching target.
+      If >30% of winning trades had MAE >1.5 ATR, stops at 1.5 ATR are too tight.
+      Calculate the optimal ATR multiple that minimizes premature stops while
+      keeping risk acceptable. Typical range: 1.0-2.5 ATR. Different instruments
+      may need different multiples. Output JSON only. Never fabricate data.
+
+  - id: target_placement
+    name: "Target Placement Optimizer"
+    category: backtesting
+    subcategory: optimization
+    instrument: null
+    model: sonnet
+    schedule: weekly
+    input_schema:
+      - all_trades_with_targets
+      - max_favorable_excursion
+      - target_hit_rate
+      - partial_exit_data
+    output_schema:
+      optimal_target_atr_multiple: "float"
+      current_target_performance: "dict"
+      unrealized_profit_left: "float"
+      trailing_stop_analysis: "dict"
+      confidence: "0.0-1.0"
+    prompt: |
+      Optimize target placement using Maximum Favorable Excursion (MFE) analysis.
+      For each trade, calculate how far price moved favorably. If MFE consistently
+      exceeds target by >1 ATR, targets are too conservative. If target hit rate
+      is <40%, targets are too aggressive. Analyze if partial exits (50% at T1,
+      25% at T2, trail rest) improve total R:R. Compare fixed targets vs trailing
+      stops. Output JSON only. Never fabricate data.
+
+  - id: session_filter
+    name: "Session Filter Optimizer"
+    category: backtesting
+    subcategory: optimization
+    instrument: null
+    model: sonnet
+    schedule: weekly
+    input_schema:
+      - all_trades_by_session
+      - session_win_rates
+      - session_rr
+      - spread_by_session
+    output_schema:
+      best_session: "str"
+      worst_session: "str"
+      session_filters: "dict[str, bool]"
+      estimated_improvement: "float"
+      confidence: "0.0-1.0"
+    prompt: |
+      Optimize trading sessions for each instrument. Compare performance across
+      Asian (00:00-08:00 GMT), London (08:00-16:00), and NY (13:00-21:00)
+      sessions. Factor in spread costs (wider in Asian). If a session has <45%
+      win rate for an instrument, recommend filtering it out. London-NY overlap
+      (13:00-16:00) is typically the best window. Calculate estimated improvement
+      from implementing session filters.
+      Output JSON only. Never fabricate data.

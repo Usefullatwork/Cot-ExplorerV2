@@ -1,0 +1,81 @@
+prompts:
+  - id: purchasing_power_parity
+    name: "Purchasing Power Parity Analysis"
+    category: fundamental
+    subcategory: valuation
+    instrument: null
+    model: sonnet
+    schedule: weekly
+    input_schema:
+      - ppp_rates_all
+      - current_spot_rates
+      - inflation_differentials
+      - cpi_data_all
+    output_schema:
+      ppp_valuations: "dict[str, dict]"
+      most_overvalued: "str"
+      most_undervalued: "str"
+      convergence_signals: "list[dict]"
+      confidence: "0.0-1.0"
+    prompt: |
+      Calculate PPP-based fair values for all FX pairs. PPP adjusts for inflation
+      differentials between countries. Currencies >15% above PPP are overvalued
+      (long-term bearish); >15% below are undervalued (long-term bullish). PPP
+      convergence happens over years, not weeks — use as a directional bias filter,
+      not a timing tool. Flag currencies with extreme misvaluations (>25%) as
+      these eventually mean-revert violently.
+      Output JSON only. Never fabricate data.
+
+  - id: real_yield_differential
+    name: "Real Yield Differential Analysis"
+    category: fundamental
+    subcategory: valuation
+    instrument: null
+    model: sonnet
+    schedule: weekly
+    input_schema:
+      - us_real_yield
+      - eu_real_yield
+      - uk_real_yield
+      - japan_real_yield
+      - australia_real_yield
+      - fx_rates
+    output_schema:
+      yield_diffs: "dict[str, float]"
+      fair_value_signals: "dict[str, str]"
+      carry_attractiveness: "dict[str, float]"
+      confidence: "0.0-1.0"
+    prompt: |
+      Analyze real yield differentials for FX valuation. Real yield = nominal
+      yield minus inflation expectations. The currency with the higher real yield
+      attracts capital inflows. US-EU real yield differential is the primary
+      EUR/USD driver. US-Japan differential drives USD/JPY. When real yield
+      differential shifts by >50bps, the currency pair typically moves 3-5%
+      over 3-6 months. Calculate carry attractiveness for each pair.
+      Output JSON only. Never fabricate data.
+
+  - id: terms_of_trade
+    name: "Terms of Trade Analysis"
+    category: fundamental
+    subcategory: valuation
+    instrument: null
+    model: sonnet
+    schedule: weekly
+    input_schema:
+      - commodity_prices
+      - export_import_data
+      - trade_balances
+      - currency_rates
+    output_schema:
+      tot_changes: "dict[str, float]"
+      commodity_fx_impact: "dict[str, str]"
+      trade_balance_signals: "dict[str, str]"
+      confidence: "0.0-1.0"
+    prompt: |
+      Analyze terms of trade impact on currencies. Rising commodity prices improve
+      Australia's terms of trade (AUD bullish), worsen Japan's (JPY bearish).
+      Oil price spikes hurt oil importers (EUR, JPY) and help exporters (CAD,
+      NOK). Gold price rise benefits AUD (gold exporter). Calculate terms of trade
+      shifts from commodity price changes and map to currency implications.
+      Large terms of trade shifts (>5%) signal multi-month currency trends.
+      Output JSON only. Never fabricate data.

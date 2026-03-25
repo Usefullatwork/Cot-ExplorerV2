@@ -1,0 +1,137 @@
+// =============================================================================
+// Level-to-Level (L2L) Setup Overlay
+// Viser entry, SL, T1, T2 med R:R-beregning.
+// Manuelle inputs fra Python-analysen + auto PDH/PDL/PWH/PWL.
+// =============================================================================
+//@version=5
+indicator("COT Explorer: L2L Levels", shorttitle="L2L", overlay=true, max_lines_count=30, max_labels_count=20)
+
+// ── Fargepalett (mork tema) ─────────────────────────────────────────────────
+var color C_GREEN  = #3fb950
+var color C_RED    = #f85149
+var color C_YELLOW = #d29922
+var color C_BLUE   = #58a6ff
+var color C_BG     = #161b22
+var color C_TEXT   = #c9d1d9
+
+// ── Manuelle inputs fra Python-analyse ──────────────────────────────────────
+entry_price  = input.float(0.0,    "Entry-pris",         step=0.0001)
+sl_price     = input.float(0.0,    "Stop Loss-pris",     step=0.0001)
+t1_price     = input.float(0.0,    "Target 1-pris",      step=0.0001)
+t2_price     = input.float(0.0,    "Target 2-pris",      step=0.0001)
+dir_input    = input.string("LONG","Retning",             options=["LONG", "SHORT"])
+entry_source = input.string("PDL", "Entry-kilde",         options=["PDL", "PDH", "PWL", "PWH", "D1_swing", "4H_swing", "SMC_demand", "SMC_supply"])
+t1_source    = input.string("PDH", "T1-kilde",            options=["PDL", "PDH", "PWL", "PWH", "D1_swing", "4H_swing", "SMC_demand", "SMC_supply"])
+weight_str   = input.string("4-5", "Niva-vekter (entry-target)", options=["1-1", "1-2", "2-3", "3-4", "3-5", "4-5", "5-5"])
+
+// ── Visningsvalg ────────────────────────────────────────────────────────────
+show_pdh_pdl = input.bool(true, "Vis PDH/PDL")
+show_pwh_pwl = input.bool(true, "Vis PWH/PWL")
+show_risk    = input.bool(true, "Vis risikosone (fyll)")
+show_setup   = input.bool(true, "Vis L2L setup-linjer")
+show_table   = input.bool(true, "Vis R:R-tabell")
+
+is_long = dir_input == "LONG"
+
+// ── Auto-detektering: PDH/PDL fra daglig ────────────────────────────────────
+pdh = request.security(syminfo.tickerid, "D", high[1], lookahead=barmerge.lookahead_on)
+pdl = request.security(syminfo.tickerid, "D", low[1],  lookahead=barmerge.lookahead_on)
+pdc = request.security(syminfo.tickerid, "D", close[1], lookahead=barmerge.lookahead_on)
+
+// ── Auto-detektering: PWH/PWL fra ukentlig ──────────────────────────────────
+pwh = request.security(syminfo.tickerid, "W", high[1], lookahead=barmerge.lookahead_on)
+pwl = request.security(syminfo.tickerid, "W", low[1],  lookahead=barmerge.lookahead_on)
+
+// ── R:R-beregning ───────────────────────────────────────────────────────────
+has_setup = entry_price != 0.0 and sl_price != 0.0 and t1_price != 0.0
+
+risk = math.abs(entry_price - sl_price)
+rr_t1 = risk != 0 ? math.abs(t1_price - entry_price) / risk : 0.0
+rr_t2 = (risk != 0 and t2_price != 0.0) ? math.abs(t2_price - entry_price) / risk : 0.0
+
+// ── Tegn PDH/PDL-linjer ────────────────────────────────────────────────────
+if show_pdh_pdl and barstate.islast
+    var line pdh_line = na, var line pdl_line = na
+    var label pdh_lbl = na, var label pdl_lbl = na
+    line.delete(pdh_line), line.delete(pdl_line)
+    label.delete(pdh_lbl), label.delete(pdl_lbl)
+
+    pdh_line := line.new(bar_index - 50, pdh, bar_index + 10, pdh, color=color.new(C_YELLOW, 40), style=line.style_dashed, width=1)
+    pdl_line := line.new(bar_index - 50, pdl, bar_index + 10, pdl, color=color.new(C_YELLOW, 40), style=line.style_dashed, width=1)
+    pdh_lbl := label.new(bar_index + 12, pdh, "PDH " + str.tostring(pdh, format.mintick), color=na, textcolor=C_YELLOW, style=label.style_label_left, size=size.tiny)
+    pdl_lbl := label.new(bar_index + 12, pdl, "PDL " + str.tostring(pdl, format.mintick), color=na, textcolor=C_YELLOW, style=label.style_label_left, size=size.tiny)
+
+// ── Tegn PWH/PWL-linjer ────────────────────────────────────────────────────
+if show_pwh_pwl and barstate.islast
+    var line pwh_line = na, var line pwl_line = na
+    var label pwh_lbl = na, var label pwl_lbl = na
+    line.delete(pwh_line), line.delete(pwl_line)
+    label.delete(pwh_lbl), label.delete(pwl_lbl)
+
+    pwh_line := line.new(bar_index - 50, pwh, bar_index + 10, pwh, color=color.new(C_BLUE, 40), style=line.style_dashed, width=1)
+    pwl_line := line.new(bar_index - 50, pwl, bar_index + 10, pwl, color=color.new(C_BLUE, 40), style=line.style_dashed, width=1)
+    pwh_lbl := label.new(bar_index + 12, pwh, "PWH " + str.tostring(pwh, format.mintick), color=na, textcolor=C_BLUE, style=label.style_label_left, size=size.tiny)
+    pwl_lbl := label.new(bar_index + 12, pwl, "PWL " + str.tostring(pwl, format.mintick), color=na, textcolor=C_BLUE, style=label.style_label_left, size=size.tiny)
+
+// ── Tegn L2L setup ─────────────────────────────────────────────────────────
+if show_setup and has_setup and barstate.islast
+    // Entry-linje
+    var line entry_ln = na
+    var label entry_lbl = na
+    line.delete(entry_ln), label.delete(entry_lbl)
+    entry_col = is_long ? C_GREEN : C_RED
+    entry_ln := line.new(bar_index - 30, entry_price, bar_index + 15, entry_price, color=entry_col, style=line.style_solid, width=2)
+    entry_lbl := label.new(bar_index + 16, entry_price, "ENTRY " + str.tostring(entry_price, format.mintick) + " [" + entry_source + "]", color=na, textcolor=entry_col, style=label.style_label_left, size=size.small)
+
+    // SL-linje
+    var line sl_ln = na
+    var label sl_lbl = na
+    line.delete(sl_ln), label.delete(sl_lbl)
+    sl_ln := line.new(bar_index - 30, sl_price, bar_index + 15, sl_price, color=C_RED, style=line.style_dotted, width=2)
+    sl_lbl := label.new(bar_index + 16, sl_price, "SL " + str.tostring(sl_price, format.mintick), color=na, textcolor=C_RED, style=label.style_label_left, size=size.small)
+
+    // T1-linje
+    var line t1_ln = na
+    var label t1_lbl = na
+    line.delete(t1_ln), label.delete(t1_lbl)
+    t1_ln := line.new(bar_index - 30, t1_price, bar_index + 15, t1_price, color=C_GREEN, style=line.style_dashed, width=1)
+    t1_lbl := label.new(bar_index + 16, t1_price, "T1 " + str.tostring(t1_price, format.mintick) + "  R:R " + str.tostring(rr_t1, "#0.0"), color=na, textcolor=C_GREEN, style=label.style_label_left, size=size.small)
+
+    // T2-linje (om satt)
+    if t2_price != 0.0
+        var line t2_ln = na
+        var label t2_lbl = na
+        line.delete(t2_ln), label.delete(t2_lbl)
+        t2_ln := line.new(bar_index - 30, t2_price, bar_index + 15, t2_price, color=C_BLUE, style=line.style_dashed, width=1)
+        t2_lbl := label.new(bar_index + 16, t2_price, "T2 " + str.tostring(t2_price, format.mintick) + "  R:R " + str.tostring(rr_t2, "#0.0"), color=na, textcolor=C_BLUE, style=label.style_label_left, size=size.small)
+
+    // Risikosone-fyll mellom entry og SL
+    if show_risk
+        var box risk_box = na
+        box.delete(risk_box)
+        risk_top = math.max(entry_price, sl_price)
+        risk_bot = math.min(entry_price, sl_price)
+        risk_box := box.new(bar_index - 30, risk_top, bar_index + 15, risk_bot, bgcolor=color.new(C_RED, 88), border_color=na)
+
+// ── R:R-tabell ──────────────────────────────────────────────────────────────
+if show_table and has_setup and barstate.islast
+    var table rt = table.new(position.top_right, 2, 6, bgcolor=C_BG, border_width=1, border_color=color.new(C_TEXT, 70))
+
+    table.cell(rt, 0, 0, "L2L Setup", text_color=C_BLUE, text_size=size.small, text_halign=text.align_left)
+    table.cell(rt, 1, 0, dir_input,   text_color=is_long ? C_GREEN : C_RED, text_size=size.small)
+
+    table.cell(rt, 0, 1, "Entry",  text_color=C_TEXT, text_size=size.tiny, text_halign=text.align_left)
+    table.cell(rt, 1, 1, str.tostring(entry_price, format.mintick) + " [" + entry_source + "]", text_color=is_long ? C_GREEN : C_RED, text_size=size.tiny)
+
+    table.cell(rt, 0, 2, "SL",     text_color=C_TEXT, text_size=size.tiny, text_halign=text.align_left)
+    table.cell(rt, 1, 2, str.tostring(sl_price, format.mintick), text_color=C_RED, text_size=size.tiny)
+
+    table.cell(rt, 0, 3, "T1",     text_color=C_TEXT, text_size=size.tiny, text_halign=text.align_left)
+    table.cell(rt, 1, 3, str.tostring(t1_price, format.mintick) + "  (R:R " + str.tostring(rr_t1, "#0.0") + ")", text_color=C_GREEN, text_size=size.tiny)
+
+    t2_str = t2_price != 0.0 ? str.tostring(t2_price, format.mintick) + "  (R:R " + str.tostring(rr_t2, "#0.0") + ")" : "---"
+    table.cell(rt, 0, 4, "T2",     text_color=C_TEXT, text_size=size.tiny, text_halign=text.align_left)
+    table.cell(rt, 1, 4, t2_str,   text_color=C_BLUE, text_size=size.tiny)
+
+    table.cell(rt, 0, 5, "Vekter", text_color=C_TEXT, text_size=size.tiny, text_halign=text.align_left)
+    table.cell(rt, 1, 5, weight_str, text_color=C_YELLOW, text_size=size.tiny)

@@ -1,0 +1,226 @@
+//@version=5
+// =============================================================================
+// Confluence Score Dashboard [CotExplorer]
+//
+// 12-point scoring system matching Cot-ExplorerV2 fetch_all.py logic.
+// Each component scores -1 (bearish), 0 (neutral), or +1 (bullish).
+// Total range: -12 to +12.
+//
+// Components:
+//   1.  Price vs SMA200 (long-term trend)
+//   2.  Price vs SMA50 (medium-term trend)
+//   3.  RSI regime (overbought/oversold)
+//   4.  MACD signal (momentum)
+//   5.  Volume trend (participation)
+//   6.  ATR regime (volatility filter)
+//   7.  Higher timeframe trend (MTF alignment)
+//   8.  20-bar momentum
+//   9.  Key level proximity (pivot distance)
+//  10.  BOS direction (structure breaks)
+//  11.  Zone quality (supply/demand proximity)
+//  12.  EMA9 alignment (short-term regime)
+//
+// Display: histogram + table with per-component breakdown.
+// =============================================================================
+indicator("Confluence Score [CotExplorer]", overlay=false, precision=0)
+
+// ── Settings ─────────────────────────────────────────────────────────────────
+sma200Len  = input.int(200, "SMA200 Length")
+sma50Len   = input.int(50, "SMA50 Length")
+ema9Len    = input.int(9, "EMA9 Length")
+rsiLen     = input.int(14, "RSI Length")
+macdFast   = input.int(12, "MACD Fast")
+macdSlow   = input.int(26, "MACD Slow")
+macdSig    = input.int(9, "MACD Signal")
+atrLen     = input.int(14, "ATR Length")
+volLen     = input.int(20, "Volume MA Length")
+pivotLen   = input.int(10, "Pivot Length for Zones")
+momLen     = input.int(20, "Momentum Lookback")
+htfTF      = input.timeframe("W", "Higher Timeframe")
+showTable  = input.bool(true, "Show Component Table")
+
+// Score thresholds
+bullThresh = input.int(6, "Bullish Threshold", minval=1, maxval=12)
+bearThresh = input.int(-6, "Bearish Threshold", minval=-12, maxval=-1)
+
+// ── Indicator Calculations ───────────────────────────────────────────────────
+sma200  = ta.sma(close, sma200Len)
+sma50   = ta.sma(close, sma50Len)
+ema9    = ta.ema(close, ema9Len)
+rsiVal  = ta.rsi(close, rsiLen)
+[macdLine, signalLine, histLine] = ta.macd(close, macdFast, macdSlow, macdSig)
+atrVal  = ta.atr(atrLen)
+volMA   = ta.sma(volume, volLen)
+
+// HTF data
+htfClose = request.security(syminfo.tickerid, htfTF, close)
+htfSMA50 = request.security(syminfo.tickerid, htfTF, ta.sma(close, 50))
+
+// Pivots for zone detection
+pivotHigh = ta.pivothigh(high, pivotLen, pivotLen)
+pivotLow  = ta.pivotlow(low, pivotLen, pivotLen)
+
+// Track nearest supply/demand
+var float nearestSupply = na
+var float nearestDemand = na
+
+if not na(pivotHigh)
+    nearestSupply := pivotHigh
+
+if not na(pivotLow)
+    nearestDemand := pivotLow
+
+// BOS detection (simplified)
+var int lastBOSDir = 0
+if not na(nearestSupply) and close > nearestSupply
+    lastBOSDir := 1   // bullish BOS
+if not na(nearestDemand) and close < nearestDemand
+    lastBOSDir := -1  // bearish BOS
+
+// ── Score Components ─────────────────────────────────────────────────────────
+// 1. Price vs SMA200
+score1 = na(sma200) ? 0 : (close > sma200 ? 1 : -1)
+label1 = "SMA200 Trend"
+
+// 2. Price vs SMA50
+score2 = na(sma50) ? 0 : (close > sma50 ? 1 : -1)
+label2 = "SMA50 Trend"
+
+// 3. RSI regime
+score3 = na(rsiVal) ? 0 : (rsiVal > 60 ? 1 : rsiVal < 40 ? -1 : 0)
+label3 = "RSI Regime"
+
+// 4. MACD signal
+score4 = na(histLine) ? 0 : (histLine > 0 ? 1 : -1)
+label4 = "MACD Signal"
+
+// 5. Volume trend
+score5 = (na(volMA) or volMA == 0) ? 0 : (volume > volMA * 1.2 ? (close > open ? 1 : -1) : 0)
+label5 = "Volume Trend"
+
+// 6. ATR regime (low vol = cleaner setups = +1 for trend direction)
+atrSMA = ta.sma(atrVal, 50)
+score6 = (na(atrSMA) or atrSMA == 0) ? 0 : (atrVal < atrSMA ? (close > open ? 1 : -1) : 0)
+label6 = "ATR Regime"
+
+// 7. Higher timeframe trend
+score7 = (na(htfClose) or na(htfSMA50)) ? 0 : (htfClose > htfSMA50 ? 1 : -1)
+label7 = "HTF Trend"
+
+// 8. 20-bar momentum
+chg20 = momLen > 0 and bar_index >= momLen ? (close / close[momLen] - 1) : 0
+score8 = chg20 > 0.01 ? 1 : chg20 < -0.01 ? -1 : 0
+label8 = "Momentum " + str.tostring(momLen) + "bar"
+
+// 9. Key level proximity (near pivot = actionable)
+distToSupply = na(nearestSupply) ? 999.0 : math.abs(close - nearestSupply) / nz(atrVal, 1)
+distToDemand = na(nearestDemand) ? 999.0 : math.abs(close - nearestDemand) / nz(atrVal, 1)
+score9 = distToSupply < 2.0 ? -1 : distToDemand < 2.0 ? 1 : 0
+label9 = "Key Level"
+
+// 10. BOS direction
+score10 = lastBOSDir
+label10 = "BOS Direction"
+
+// 11. Zone quality (price in demand zone = +1, supply zone = -1)
+inDemandZone = not na(nearestDemand) and close <= nearestDemand + nz(atrVal) * 0.25 and close >= nearestDemand
+inSupplyZone = not na(nearestSupply) and close >= nearestSupply - nz(atrVal) * 0.25 and close <= nearestSupply
+score11 = inDemandZone ? 1 : inSupplyZone ? -1 : 0
+label11 = "Zone Quality"
+
+// 12. EMA9 alignment
+score12 = na(ema9) ? 0 : (close > ema9 ? 1 : -1)
+label12 = "EMA9 Align"
+
+// ── Total Score ──────────────────────────────────────────────────────────────
+totalScore = score1 + score2 + score3 + score4 + score5 + score6 + score7 + score8 + score9 + score10 + score11 + score12
+
+// ── Visualization ────────────────────────────────────────────────────────────
+// Histogram color based on score
+histColor = totalScore >= bullThresh ? color.new(color.green, 20) :
+            totalScore <= bearThresh ? color.new(color.red, 20) :
+            totalScore > 0 ? color.new(color.green, 60) :
+            totalScore < 0 ? color.new(color.red, 60) :
+            color.new(color.gray, 50)
+
+plot(totalScore, "Confluence Score", color=histColor, style=plot.style_columns, linewidth=3)
+
+// Threshold lines
+hline(bullThresh, "Bull Threshold", color=color.new(color.green, 70), linestyle=hline.style_dashed)
+hline(bearThresh, "Bear Threshold", color=color.new(color.red, 70), linestyle=hline.style_dashed)
+hline(0, "Zero", color=color.new(color.gray, 80), linestyle=hline.style_dotted)
+
+// ── Component Table ──────────────────────────────────────────────────────────
+if showTable and barstate.islast
+    var table scoreTable = table.new(position.bottom_right, 3, 14, bgcolor=color.new(color.black, 85), border_width=1, border_color=color.new(color.gray, 70))
+
+    // Header
+    table.cell(scoreTable, 0, 0, "#", text_color=color.white, text_size=size.tiny)
+    table.cell(scoreTable, 1, 0, "Component", text_color=color.white, text_size=size.tiny)
+    table.cell(scoreTable, 2, 0, "Score", text_color=color.white, text_size=size.tiny)
+
+    f_scoreColor(s) =>
+        s > 0 ? color.green : s < 0 ? color.red : color.gray
+
+    f_scoreText(s) =>
+        s > 0 ? "+1" : s < 0 ? "-1" : "0"
+
+    // Rows
+    table.cell(scoreTable, 0, 1, "1", text_color=color.gray, text_size=size.tiny)
+    table.cell(scoreTable, 1, 1, label1, text_color=color.white, text_size=size.tiny)
+    table.cell(scoreTable, 2, 1, f_scoreText(score1), text_color=f_scoreColor(score1), text_size=size.tiny)
+
+    table.cell(scoreTable, 0, 2, "2", text_color=color.gray, text_size=size.tiny)
+    table.cell(scoreTable, 1, 2, label2, text_color=color.white, text_size=size.tiny)
+    table.cell(scoreTable, 2, 2, f_scoreText(score2), text_color=f_scoreColor(score2), text_size=size.tiny)
+
+    table.cell(scoreTable, 0, 3, "3", text_color=color.gray, text_size=size.tiny)
+    table.cell(scoreTable, 1, 3, label3, text_color=color.white, text_size=size.tiny)
+    table.cell(scoreTable, 2, 3, f_scoreText(score3), text_color=f_scoreColor(score3), text_size=size.tiny)
+
+    table.cell(scoreTable, 0, 4, "4", text_color=color.gray, text_size=size.tiny)
+    table.cell(scoreTable, 1, 4, label4, text_color=color.white, text_size=size.tiny)
+    table.cell(scoreTable, 2, 4, f_scoreText(score4), text_color=f_scoreColor(score4), text_size=size.tiny)
+
+    table.cell(scoreTable, 0, 5, "5", text_color=color.gray, text_size=size.tiny)
+    table.cell(scoreTable, 1, 5, label5, text_color=color.white, text_size=size.tiny)
+    table.cell(scoreTable, 2, 5, f_scoreText(score5), text_color=f_scoreColor(score5), text_size=size.tiny)
+
+    table.cell(scoreTable, 0, 6, "6", text_color=color.gray, text_size=size.tiny)
+    table.cell(scoreTable, 1, 6, label6, text_color=color.white, text_size=size.tiny)
+    table.cell(scoreTable, 2, 6, f_scoreText(score6), text_color=f_scoreColor(score6), text_size=size.tiny)
+
+    table.cell(scoreTable, 0, 7, "7", text_color=color.gray, text_size=size.tiny)
+    table.cell(scoreTable, 1, 7, label7, text_color=color.white, text_size=size.tiny)
+    table.cell(scoreTable, 2, 7, f_scoreText(score7), text_color=f_scoreColor(score7), text_size=size.tiny)
+
+    table.cell(scoreTable, 0, 8, "8", text_color=color.gray, text_size=size.tiny)
+    table.cell(scoreTable, 1, 8, label8, text_color=color.white, text_size=size.tiny)
+    table.cell(scoreTable, 2, 8, f_scoreText(score8), text_color=f_scoreColor(score8), text_size=size.tiny)
+
+    table.cell(scoreTable, 0, 9, "9", text_color=color.gray, text_size=size.tiny)
+    table.cell(scoreTable, 1, 9, label9, text_color=color.white, text_size=size.tiny)
+    table.cell(scoreTable, 2, 9, f_scoreText(score9), text_color=f_scoreColor(score9), text_size=size.tiny)
+
+    table.cell(scoreTable, 0, 10, "10", text_color=color.gray, text_size=size.tiny)
+    table.cell(scoreTable, 1, 10, label10, text_color=color.white, text_size=size.tiny)
+    table.cell(scoreTable, 2, 10, f_scoreText(score10), text_color=f_scoreColor(score10), text_size=size.tiny)
+
+    table.cell(scoreTable, 0, 11, "11", text_color=color.gray, text_size=size.tiny)
+    table.cell(scoreTable, 1, 11, label11, text_color=color.white, text_size=size.tiny)
+    table.cell(scoreTable, 2, 11, f_scoreText(score11), text_color=f_scoreColor(score11), text_size=size.tiny)
+
+    table.cell(scoreTable, 0, 12, "12", text_color=color.gray, text_size=size.tiny)
+    table.cell(scoreTable, 1, 12, label12, text_color=color.white, text_size=size.tiny)
+    table.cell(scoreTable, 2, 12, f_scoreText(score12), text_color=f_scoreColor(score12), text_size=size.tiny)
+
+    // Total row
+    totalColor = totalScore >= bullThresh ? color.green : totalScore <= bearThresh ? color.red : color.yellow
+    grade = totalScore >= 11 ? "A+" : totalScore >= 9 ? "A" : totalScore >= 6 ? "B" : totalScore >= 3 ? "C" : totalScore >= 0 ? "D" : totalScore >= -6 ? "D-" : "F"
+    table.cell(scoreTable, 0, 13, "", text_color=color.white, text_size=size.tiny)
+    table.cell(scoreTable, 1, 13, "TOTAL (" + grade + ")", text_color=totalColor, text_size=size.small)
+    table.cell(scoreTable, 2, 13, str.tostring(totalScore) + "/12", text_color=totalColor, text_size=size.small)
+
+// ── Alerts ───────────────────────────────────────────────────────────────────
+alertcondition(totalScore >= bullThresh and totalScore[1] < bullThresh, "Bullish Confluence", "Confluence score crossed above bullish threshold")
+alertcondition(totalScore <= bearThresh and totalScore[1] > bearThresh, "Bearish Confluence", "Confluence score crossed below bearish threshold")

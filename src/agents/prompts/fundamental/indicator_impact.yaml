@@ -1,0 +1,416 @@
+prompts:
+  # ── NFP Impact per instrument (12) ─────────────────────────────────
+  - id: nfp_impact_eurusd
+    name: "NFP Impact Assessment - EUR/USD"
+    category: fundamental
+    subcategory: indicator_impact
+    instrument: EURUSD
+    model: haiku
+    schedule: daily
+    input_schema:
+      - nfp_actual
+      - nfp_forecast
+      - nfp_previous
+      - eurusd_pre_nfp_level
+      - historical_nfp_eurusd_moves
+    output_schema:
+      surprise: "float"
+      expected_move: "float"
+      direction: "BULLISH | BEARISH | NEUTRAL"
+      confidence: "0.0-1.0"
+    prompt: |
+      Assess NFP impact on EUR/USD. NFP above forecast = USD strong = EUR/USD
+      bearish. Historical average EUR/USD NFP move: 50-80 pips. Magnitude depends
+      on surprise size (actual minus forecast) relative to ADP and ISM previews.
+      A miss by >50K is a significant surprise. Pre-positioned EUR/USD often
+      reverses in the first hour after NFP. Output directional impact and
+      expected magnitude. Output JSON only. Never fabricate data.
+
+  - id: nfp_impact_usdjpy
+    name: "NFP Impact Assessment - USD/JPY"
+    category: fundamental
+    subcategory: indicator_impact
+    instrument: USDJPY
+    model: haiku
+    schedule: daily
+    input_schema:
+      - nfp_actual
+      - nfp_forecast
+      - nfp_previous
+      - usdjpy_pre_nfp_level
+      - historical_nfp_usdjpy_moves
+    output_schema:
+      surprise: "float"
+      expected_move: "float"
+      direction: "BULLISH | BEARISH | NEUTRAL"
+      confidence: "0.0-1.0"
+    prompt: |
+      Assess NFP impact on USD/JPY. Strong NFP = higher yields = USD/JPY bullish.
+      USD/JPY has larger NFP moves than EUR/USD (80-120 pips average) due to
+      yield sensitivity. Wage growth component is especially important for USD/JPY
+      as it affects rate expectations. If USD/JPY is near intervention zones,
+      strong NFP can trigger BoJ concern about pace of yen weakness.
+      Output JSON only. Never fabricate data.
+
+  - id: nfp_impact_gbpusd
+    name: "NFP Impact Assessment - GBP/USD"
+    category: fundamental
+    subcategory: indicator_impact
+    instrument: GBPUSD
+    model: haiku
+    schedule: daily
+    input_schema:
+      - nfp_actual
+      - nfp_forecast
+      - nfp_previous
+      - gbpusd_pre_nfp_level
+      - historical_nfp_gbpusd_moves
+    output_schema:
+      surprise: "float"
+      expected_move: "float"
+      direction: "BULLISH | BEARISH | NEUTRAL"
+      confidence: "0.0-1.0"
+    prompt: |
+      Assess NFP impact on GBP/USD. Cable reacts to NFP similarly to EUR/USD
+      but with slightly larger moves (60-90 pips) due to higher volatility.
+      If UK data released same week conflicts with NFP direction, GBP/USD may
+      have a mixed reaction. GBP/USD NFP reaction is often cleaner during
+      London-NY overlap. Output JSON only. Never fabricate data.
+
+  - id: nfp_impact_audusd
+    name: "NFP Impact Assessment - AUD/USD"
+    category: fundamental
+    subcategory: indicator_impact
+    instrument: AUDUSD
+    model: haiku
+    schedule: daily
+    input_schema:
+      - nfp_actual
+      - nfp_forecast
+      - nfp_previous
+      - audusd_pre_nfp_level
+      - historical_nfp_audusd_moves
+    output_schema:
+      surprise: "float"
+      expected_move: "float"
+      direction: "BULLISH | BEARISH | NEUTRAL"
+      confidence: "0.0-1.0"
+    prompt: |
+      Assess NFP impact on AUD/USD. AUD/USD reacts to NFP through both the USD
+      channel and the risk sentiment channel. Strong NFP = USD strong (bearish
+      AUD) but also = risk-on (bullish AUD). Net effect depends on which channel
+      dominates, typically USD channel wins initially. Average move: 40-60 pips.
+      AUD/USD tends to reverse the initial spike more often than EUR/USD.
+      Output JSON only. Never fabricate data.
+
+  - id: nfp_impact_gold
+    name: "NFP Impact Assessment - Gold"
+    category: fundamental
+    subcategory: indicator_impact
+    instrument: Gold
+    model: haiku
+    schedule: daily
+    input_schema:
+      - nfp_actual
+      - nfp_forecast
+      - nfp_previous
+      - gold_pre_nfp_level
+      - historical_nfp_gold_moves
+    output_schema:
+      surprise: "float"
+      expected_move: "float"
+      direction: "BULLISH | BEARISH | NEUTRAL"
+      confidence: "0.0-1.0"
+    prompt: |
+      Assess NFP impact on Gold. Strong NFP = higher yields = stronger USD =
+      bearish gold. Average gold NFP move: $15-25. However, the wage growth
+      component matters separately — high wages = inflation fears = can be gold
+      positive despite strong headline. Gold often has an initial spike/dump
+      followed by reversal after 30-60 minutes. Focus on 2-hour close direction.
+      Output JSON only. Never fabricate data.
+
+  - id: nfp_impact_silver
+    name: "NFP Impact Assessment - Silver"
+    category: fundamental
+    subcategory: indicator_impact
+    instrument: Silver
+    model: haiku
+    schedule: daily
+    input_schema:
+      - nfp_actual
+      - nfp_forecast
+      - nfp_previous
+      - silver_pre_nfp_level
+      - historical_nfp_silver_moves
+    output_schema:
+      surprise: "float"
+      expected_move: "float"
+      direction: "BULLISH | BEARISH | NEUTRAL"
+      confidence: "0.0-1.0"
+    prompt: |
+      Assess NFP impact on Silver. Silver moves 1.5-2x gold on NFP. Average move:
+      $0.30-$0.60. Silver has wider spreads during NFP, making entries risky.
+      Silver's industrial component adds complexity — strong NFP supports industrial
+      demand but also strengthens USD. Net effect usually follows gold direction
+      with higher magnitude. Recommend avoiding silver entries during NFP release.
+      Output JSON only. Never fabricate data.
+
+  - id: nfp_impact_brent
+    name: "NFP Impact Assessment - Brent Crude"
+    category: fundamental
+    subcategory: indicator_impact
+    instrument: Brent
+    model: haiku
+    schedule: daily
+    input_schema:
+      - nfp_actual
+      - nfp_forecast
+      - nfp_previous
+      - brent_pre_nfp_level
+      - historical_nfp_brent_moves
+    output_schema:
+      surprise: "float"
+      expected_move: "float"
+      direction: "BULLISH | BEARISH | NEUTRAL"
+      confidence: "0.0-1.0"
+    prompt: |
+      Assess NFP impact on Brent Crude. Strong NFP = economic strength = oil
+      demand positive, but also = USD strength = oil nominally bearish. Net effect
+      is usually muted for oil ($0.50-$1.00). Oil reacts more to the employment
+      trend implications (recession fear vs growth) than the single print. Very
+      weak NFP (<100K) triggers recession fears and is clearly oil-negative.
+      Output JSON only. Never fabricate data.
+
+  - id: nfp_impact_wti
+    name: "NFP Impact Assessment - WTI Crude"
+    category: fundamental
+    subcategory: indicator_impact
+    instrument: WTI
+    model: haiku
+    schedule: daily
+    input_schema:
+      - nfp_actual
+      - nfp_forecast
+      - nfp_previous
+      - wti_pre_nfp_level
+      - historical_nfp_wti_moves
+    output_schema:
+      surprise: "float"
+      expected_move: "float"
+      direction: "BULLISH | BEARISH | NEUTRAL"
+      confidence: "0.0-1.0"
+    prompt: |
+      Assess NFP impact on WTI Crude. WTI reacts similarly to Brent on NFP with
+      slightly more sensitivity to US domestic demand implications. Strong US
+      employment = more driving = more gasoline demand = marginally WTI positive.
+      Average move: $0.50-$1.00. WTI is more sensitive to NFP when price is near
+      key support/resistance. Output JSON only. Never fabricate data.
+
+  - id: nfp_impact_spx
+    name: "NFP Impact Assessment - S&P 500"
+    category: fundamental
+    subcategory: indicator_impact
+    instrument: SPX
+    model: haiku
+    schedule: daily
+    input_schema:
+      - nfp_actual
+      - nfp_forecast
+      - nfp_previous
+      - spx_pre_nfp_level
+      - historical_nfp_spx_moves
+    output_schema:
+      surprise: "float"
+      expected_move: "float"
+      direction: "BULLISH | BEARISH | NEUTRAL"
+      confidence: "0.0-1.0"
+    prompt: |
+      Assess NFP impact on S&P 500. SPX NFP reaction depends on the macro regime.
+      In tightening cycles: strong NFP = more hikes expected = bearish SPX. In
+      easing cycles: strong NFP = soft landing = bullish SPX. The "goldilocks"
+      print (moderate growth, low wages) is the most bullish for equities.
+      Average SPX NFP move: 0.5-1.0%. Very strong NFP in tightening cycle can
+      trigger a same-day reversal. Output JSON only. Never fabricate data.
+
+  - id: nfp_impact_nas100
+    name: "NFP Impact Assessment - NASDAQ 100"
+    category: fundamental
+    subcategory: indicator_impact
+    instrument: NAS100
+    model: haiku
+    schedule: daily
+    input_schema:
+      - nfp_actual
+      - nfp_forecast
+      - nfp_previous
+      - nas100_pre_nfp_level
+      - historical_nfp_nas100_moves
+    output_schema:
+      surprise: "float"
+      expected_move: "float"
+      direction: "BULLISH | BEARISH | NEUTRAL"
+      confidence: "0.0-1.0"
+    prompt: |
+      Assess NFP impact on NASDAQ 100. NAS100 has ~1.3x SPX beta on NFP.
+      NAS100 is more sensitive to the rate implications of NFP (higher rates
+      hurt growth/tech valuations more). Strong NFP in hiking cycle: NAS100
+      drops 1.3-1.5x SPX. Goldilocks NFP: NAS100 rallies 1.3x SPX. NAS100
+      tends to lead the reversal if NFP direction changes intraday.
+      Output JSON only. Never fabricate data.
+
+  - id: nfp_impact_dxy
+    name: "NFP Impact Assessment - DXY"
+    category: fundamental
+    subcategory: indicator_impact
+    instrument: DXY
+    model: haiku
+    schedule: daily
+    input_schema:
+      - nfp_actual
+      - nfp_forecast
+      - nfp_previous
+      - dxy_pre_nfp_level
+      - historical_nfp_dxy_moves
+    output_schema:
+      surprise: "float"
+      expected_move: "float"
+      direction: "BULLISH | BEARISH | NEUTRAL"
+      confidence: "0.0-1.0"
+    prompt: |
+      Assess NFP impact on DXY. DXY is the purest play on NFP — strong jobs =
+      higher rates = stronger USD. Average DXY NFP move: 0.3-0.7%. The
+      unemployment rate and wage growth components can override headline payrolls.
+      If headline is strong but unemployment rises, DXY reaction is mixed. DXY
+      direction in the first 30 minutes after NFP predicts the daily direction
+      70% of the time. Output JSON only. Never fabricate data.
+
+  - id: nfp_impact_vix
+    name: "NFP Impact Assessment - VIX"
+    category: fundamental
+    subcategory: indicator_impact
+    instrument: VIX
+    model: haiku
+    schedule: daily
+    input_schema:
+      - nfp_actual
+      - nfp_forecast
+      - nfp_previous
+      - vix_pre_nfp_level
+      - historical_nfp_vix_moves
+    output_schema:
+      surprise: "float"
+      expected_move: "float"
+      direction: "BULLISH | BEARISH | NEUTRAL"
+      confidence: "0.0-1.0"
+    prompt: |
+      Assess NFP impact on VIX. VIX typically drops after NFP regardless of
+      direction (uncertainty resolution). Average VIX NFP move: -0.5 to -2.0
+      points. Exception: very surprising NFP (>2 std dev from forecast) can
+      spike VIX if it changes the rate path narrative significantly. VIX pre-NFP
+      premium usually deflates within 1 hour. Very weak NFP (<50K) is the
+      scenario most likely to spike VIX (+3-5 points).
+      Output JSON only. Never fabricate data.
+
+  # ── Other indicator impacts ────────────────────────────────────────
+  - id: cpi_impact
+    name: "CPI Impact Assessment"
+    category: fundamental
+    subcategory: indicator_impact
+    instrument: null
+    model: sonnet
+    schedule: daily
+    input_schema:
+      - cpi_actual
+      - cpi_forecast
+      - core_cpi
+      - cpi_trend_6m
+      - fed_target
+    output_schema:
+      surprise: "float"
+      impact_by_instrument: "dict[str, dict]"
+      rate_path_impact: "str"
+      confidence: "0.0-1.0"
+    prompt: |
+      Assess CPI data impact across all instruments. CPI is the most market-moving
+      regular data release. Core CPI matters more than headline. Hot CPI (above
+      forecast): DXY bullish, gold bearish, equities bearish, yields higher. Cool
+      CPI: opposite. A 0.1% surprise in core CPI can move SPX 1-2%, DXY 0.5-1%.
+      The trend direction (accelerating vs decelerating) matters more than the
+      level for rate path implications. Output JSON only. Never fabricate data.
+
+  - id: pmi_impact
+    name: "PMI Impact Assessment"
+    category: fundamental
+    subcategory: indicator_impact
+    instrument: null
+    model: haiku
+    schedule: daily
+    input_schema:
+      - pmi_manufacturing
+      - pmi_services
+      - pmi_composite
+      - pmi_forecast
+      - regional_pmis
+    output_schema:
+      surprise: "float"
+      growth_signal: "EXPANSION | CONTRACTION | TURNING"
+      impact_by_instrument: "dict[str, str]"
+      confidence: "0.0-1.0"
+    prompt: |
+      Assess PMI impact across instruments. PMI >50 = expansion, <50 = contraction.
+      Direction of change matters more than absolute level. ISM Manufacturing
+      crossing 50 in either direction is a major signal. Services PMI is larger
+      (70% of economy) but manufacturing leads the cycle. Compare US vs Eurozone
+      PMI for EUR/USD direction. China PMI impacts AUD/USD and commodities.
+      Output JSON only. Never fabricate data.
+
+  - id: gdp_impact
+    name: "GDP Impact Assessment"
+    category: fundamental
+    subcategory: indicator_impact
+    instrument: null
+    model: haiku
+    schedule: daily
+    input_schema:
+      - gdp_actual
+      - gdp_forecast
+      - gdp_components
+      - revision_direction
+    output_schema:
+      surprise: "float"
+      recession_signal: "bool"
+      impact_by_instrument: "dict[str, str]"
+      confidence: "0.0-1.0"
+    prompt: |
+      Assess GDP data impact. GDP is backward-looking but sets the narrative.
+      Negative GDP (especially 2 consecutive quarters) triggers recession fears:
+      USD bullish (safety), equities bearish, gold bullish, oil bearish.
+      Strong GDP above 3%: risk-on, equities bullish, USD mixed (growth vs rate
+      sensitivity). GDP components (consumption, investment, trade) indicate
+      sustainability. Revisions can be as impactful as initial prints.
+      Output JSON only. Never fabricate data.
+
+  - id: retail_sales_impact
+    name: "Retail Sales Impact Assessment"
+    category: fundamental
+    subcategory: indicator_impact
+    instrument: null
+    model: haiku
+    schedule: daily
+    input_schema:
+      - retail_sales_actual
+      - retail_sales_forecast
+      - consumer_confidence
+      - credit_card_spending
+    output_schema:
+      surprise: "float"
+      consumer_health: "STRONG | MODERATE | WEAK"
+      impact_by_instrument: "dict[str, str]"
+      confidence: "0.0-1.0"
+    prompt: |
+      Assess retail sales impact. Retail sales reflect consumer spending (70% of
+      US GDP). Strong retail = strong economy = USD bullish, equities bullish.
+      Weak retail = consumer stress = recession risk. Core retail (ex-auto, ex-gas)
+      is the key measure. Compare with consumer confidence and credit card data
+      for forward-looking signals. Very weak retail sales (negative MoM) can
+      trigger risk-off across all assets. Output JSON only. Never fabricate data.

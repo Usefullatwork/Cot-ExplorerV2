@@ -1,0 +1,128 @@
+prompts:
+  - id: volume_profile
+    name: "Volume Profile Analysis"
+    category: pattern_recognition
+    subcategory: volume
+    instrument: null
+    model: sonnet
+    schedule: daily
+    input_schema:
+      - ohlcv_daily_all_30
+      - volume_at_price_all
+      - poc_all
+      - vah_val_all
+    output_schema:
+      volume_profiles: "dict[str, dict]"
+      high_volume_nodes: "list[dict]"
+      low_volume_nodes: "list[dict]"
+      confidence: "0.0-1.0"
+    prompt: |
+      Analyze volume profile for all 12 instruments over 30 days. Identify Point
+      of Control (POC), Value Area High (VAH), and Value Area Low (VAL). High
+      Volume Nodes (HVN) act as support/resistance; Low Volume Nodes (LVN) are
+      areas price moves through quickly. Price trading below POC suggests
+      distribution; above POC suggests accumulation. Flag instruments where price
+      has moved away from POC by >1 ATR as potential mean-reversion candidates.
+      Output JSON only. Never fabricate data.
+
+  - id: accumulation_distribution
+    name: "Accumulation/Distribution Analysis"
+    category: pattern_recognition
+    subcategory: volume
+    instrument: null
+    model: sonnet
+    schedule: daily
+    input_schema:
+      - daily_ohlcv_all_30
+      - ad_line_all
+      - obv_all
+      - price_trend_all
+    output_schema:
+      accumulation_instruments: "list[str]"
+      distribution_instruments: "list[str]"
+      ad_divergences: "list[dict]"
+      confidence: "0.0-1.0"
+    prompt: |
+      Analyze accumulation/distribution patterns for all 12 instruments using
+      A/D line and On-Balance Volume (OBV). When price is flat but A/D line is
+      rising, smart money is accumulating (bullish). When price is rising but A/D
+      is falling, distribution is occurring (bearish). Divergences between price
+      and A/D line precede trend changes by 5-15 days. Rank instruments by
+      accumulation/distribution strength.
+      Output JSON only. Never fabricate data.
+
+  - id: volume_breakout
+    name: "Volume Breakout Confirmation"
+    category: pattern_recognition
+    subcategory: volume
+    instrument: null
+    model: haiku
+    schedule: every_run
+    input_schema:
+      - latest_ohlcv_all
+      - volume_20d_avg_all
+      - price_breakouts_all
+      - atr_all
+    output_schema:
+      confirmed_breakouts: "list[dict]"
+      unconfirmed_breakouts: "list[dict]"
+      volume_ratio: "dict[str, float]"
+      confidence: "0.0-1.0"
+    prompt: |
+      Validate price breakouts with volume confirmation across all 12 instruments.
+      A confirmed breakout has volume >1.5x the 20-day average. An unconfirmed
+      breakout (price breaks level but volume is average or below) has 60% failure
+      rate. Volume should expand in the breakout direction and contract on pullbacks.
+      Rank confirmed breakouts by volume ratio (current/average).
+      Output JSON only. Never fabricate data.
+
+  - id: volume_divergence
+    name: "Volume-Price Divergence Scanner"
+    category: pattern_recognition
+    subcategory: volume
+    instrument: null
+    model: haiku
+    schedule: daily
+    input_schema:
+      - daily_ohlcv_all_20
+      - obv_all
+      - price_trend_all
+    output_schema:
+      divergences: "list[dict]"
+      bearish_vp_divergences: "list[str]"
+      bullish_vp_divergences: "list[str]"
+      confidence: "0.0-1.0"
+    prompt: |
+      Scan all 12 instruments for volume-price divergences. Bearish volume
+      divergence: price making higher highs with declining volume (exhaustion).
+      Bullish volume divergence: price making lower lows with declining volume
+      (selling exhaustion). Compare OBV trend direction with price trend direction.
+      Volume-price divergences precede reversals by 3-10 days on average. Higher
+      timeframe divergences (daily > 4H) are more reliable.
+      Output JSON only. Never fabricate data.
+
+  - id: climax_volume
+    name: "Climax Volume Detector"
+    category: pattern_recognition
+    subcategory: volume
+    instrument: null
+    model: haiku
+    schedule: every_run
+    input_schema:
+      - latest_ohlcv_all
+      - volume_20d_avg_all
+      - volume_percentile_all
+      - price_position_all
+    output_schema:
+      climax_events: "list[dict]"
+      climax_type: "dict[str, str]"
+      reversal_probability: "dict[str, float]"
+      confidence: "0.0-1.0"
+    prompt: |
+      Detect climax volume events across all 12 instruments. Climax volume is
+      defined as volume >3x the 20-day average (>95th percentile). Selling climax:
+      high volume + wide range + close near low after extended downtrend — signals
+      capitulation and potential bottom. Buying climax: high volume + wide range +
+      close near high at resistance — signals blow-off top. Climax volumes are
+      the strongest reversal signals available.
+      Output JSON only. Never fabricate data.

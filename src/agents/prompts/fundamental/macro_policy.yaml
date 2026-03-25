@@ -1,0 +1,192 @@
+prompts:
+  - id: dollar_smile
+    name: "Dollar Smile Framework"
+    category: fundamental
+    subcategory: macro_policy
+    instrument: null
+    model: sonnet
+    schedule: weekly
+    input_schema:
+      - us_gdp_growth
+      - global_gdp_growth
+      - us_vs_global_growth_diff
+      - vix_level
+      - risk_sentiment
+    output_schema:
+      smile_phase: "LEFT_CRISIS | BOTTOM_CARRY | RIGHT_GROWTH"
+      dxy_bias: "BULLISH | BEARISH | NEUTRAL"
+      fx_implications: "dict[str, str]"
+      confidence: "0.0-1.0"
+    prompt: |
+      Apply the Dollar Smile framework. The USD strengthens in two scenarios:
+      (1) Left side: global crisis/risk-off (flight to safety), (2) Right side:
+      US growth outperformance (capital inflows). USD weakens at the bottom:
+      synchronized global growth, carry trade favored. Determine current phase
+      from growth differentials and risk sentiment. Map implications to all FX
+      pairs. This is the primary macro framework for dollar direction.
+      Output JSON only. Never fabricate data.
+
+  - id: yield_curve
+    name: "Yield Curve Analysis"
+    category: fundamental
+    subcategory: macro_policy
+    instrument: null
+    model: sonnet
+    schedule: daily
+    input_schema:
+      - us_2y_yield
+      - us_5y_yield
+      - us_10y_yield
+      - us_30y_yield
+      - yield_curve_slope
+      - historical_inversions
+    output_schema:
+      curve_shape: "NORMAL | FLAT | INVERTED | BEAR_STEEPENING | BULL_STEEPENING"
+      recession_probability: "0.0-1.0"
+      asset_implications: "dict[str, str]"
+      confidence: "0.0-1.0"
+    prompt: |
+      Analyze the US yield curve shape and implications. Normal (2s10s positive):
+      growth expected, risk-on. Inverted (2s10s negative): recession signal (12-18
+      month lead). Bear steepening (long rates rising faster): inflation fears.
+      Bull steepening (short rates falling faster): Fed easing expected. The yield
+      curve is the most reliable recession predictor. Map current shape to asset
+      class implications. Output JSON only. Never fabricate data.
+
+  - id: fed_outlook
+    name: "Federal Reserve Policy Outlook"
+    category: fundamental
+    subcategory: macro_policy
+    instrument: null
+    model: sonnet
+    schedule: weekly
+    input_schema:
+      - fed_funds_rate
+      - fed_funds_futures
+      - dot_plot_median
+      - recent_fed_speeches
+      - cpi_trend
+      - employment_data
+    output_schema:
+      next_move: "HIKE | CUT | HOLD"
+      probability: "float"
+      terminal_rate_estimate: "float"
+      market_pricing_vs_guidance: "str"
+      confidence: "0.0-1.0"
+    prompt: |
+      Assess the Federal Reserve policy outlook. Compare market pricing (fed funds
+      futures) to Fed's own guidance (dot plot). When market prices more cuts than
+      the dot plot, the dollar is vulnerable to hawkish repricing. Core CPI trend,
+      labor market tightness, and financial conditions inform the Fed's reaction
+      function. The Fed's actual move vs market expectations drives the biggest
+      USD and equity moves. Output JSON only. Never fabricate data.
+
+  - id: ecb_outlook
+    name: "ECB Policy Outlook"
+    category: fundamental
+    subcategory: macro_policy
+    instrument: null
+    model: sonnet
+    schedule: weekly
+    input_schema:
+      - ecb_rate
+      - eurozone_cpi
+      - eurozone_pmi
+      - ecb_speeches
+      - eurusd_rate_diff
+    output_schema:
+      next_move: "HIKE | CUT | HOLD"
+      probability: "float"
+      divergence_from_fed: "str"
+      eurusd_impact: "str"
+      confidence: "0.0-1.0"
+    prompt: |
+      Assess ECB policy outlook and divergence from Fed. ECB-Fed rate differential
+      is the primary EUR/USD driver. When ECB is hawkish relative to Fed, EUR/USD
+      rallies. Eurozone CPI and PMI inform ECB decisions. Fragmentation risk
+      (peripheral spreads) constrains ECB hiking. Output policy direction, rate
+      differential impact on EUR/USD, and compare market vs ECB guidance.
+      Output JSON only. Never fabricate data.
+
+  - id: boj_outlook
+    name: "Bank of Japan Policy Outlook"
+    category: fundamental
+    subcategory: macro_policy
+    instrument: null
+    model: sonnet
+    schedule: weekly
+    input_schema:
+      - boj_rate
+      - japan_cpi
+      - japan_wage_growth
+      - boj_speeches
+      - usdjpy_level
+    output_schema:
+      next_move: "HIKE | CUT | HOLD | YCC_ADJUST"
+      probability: "float"
+      intervention_risk: "LOW | MEDIUM | HIGH"
+      usdjpy_impact: "str"
+      confidence: "0.0-1.0"
+    prompt: |
+      Assess Bank of Japan policy outlook. BoJ policy normalization (exiting NIRP/
+      YCC) is the key USD/JPY driver. Watch for: CPI sustainability above 2%,
+      wage growth (shunto results), and BoJ communication shifts. MoF intervention
+      risk increases when USD/JPY approaches 155-160. BoJ surprises create the
+      largest single-day JPY moves (300-500 pips). Assess intervention probability.
+      Output JSON only. Never fabricate data.
+
+  - id: rba_outlook
+    name: "Reserve Bank of Australia Policy Outlook"
+    category: fundamental
+    subcategory: macro_policy
+    instrument: null
+    model: sonnet
+    schedule: weekly
+    input_schema:
+      - rba_rate
+      - australia_cpi
+      - australia_employment
+      - rba_speeches
+      - iron_ore_price
+    output_schema:
+      next_move: "HIKE | CUT | HOLD"
+      probability: "float"
+      audusd_impact: "str"
+      china_sensitivity: "str"
+      confidence: "0.0-1.0"
+    prompt: |
+      Assess RBA policy outlook. RBA rate decisions impact AUD/USD directly.
+      Australian CPI, employment, and housing data inform RBA decisions. AUD also
+      has a China channel — China stimulus/slowdown impacts iron ore prices and
+      Australian export revenues. If RBA is hawkish relative to Fed, AUD/USD
+      benefits from carry differential. Output policy direction and AUD/USD impact.
+      Output JSON only. Never fabricate data.
+
+  - id: global_growth
+    name: "Global Growth Assessment"
+    category: fundamental
+    subcategory: macro_policy
+    instrument: null
+    model: sonnet
+    schedule: weekly
+    input_schema:
+      - global_pmi_composite
+      - us_pmi
+      - eurozone_pmi
+      - china_pmi
+      - imf_growth_forecasts
+      - trade_data
+    output_schema:
+      growth_regime: "EXPANSION | SLOWDOWN | CONTRACTION | RECOVERY"
+      regional_rankings: "list[dict]"
+      risk_asset_bias: "BULLISH | BEARISH | NEUTRAL"
+      fx_implications: "dict[str, str]"
+      confidence: "0.0-1.0"
+    prompt: |
+      Assess global growth conditions using PMI data as the primary real-time
+      indicator. PMI >50 = expansion, <50 = contraction, direction of change
+      matters more than level. Compare US vs Eurozone vs China growth momentum.
+      US outperformance = DXY bullish. Synchronized expansion = DXY bearish
+      (bottom of dollar smile). Rank regions by growth momentum and map to
+      currency and commodity implications.
+      Output JSON only. Never fabricate data.

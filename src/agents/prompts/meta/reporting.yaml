@@ -1,0 +1,115 @@
+prompts:
+  - id: daily_summary
+    name: "Daily Market Summary"
+    category: meta
+    subcategory: reporting
+    instrument: null
+    model: sonnet
+    schedule: daily
+    input_schema:
+      - all_agent_outputs
+      - daily_pnl
+      - open_positions
+      - key_events_today
+    output_schema:
+      market_narrative: "str"
+      top_signals: "list[dict]"
+      open_positions_status: "list[dict]"
+      tomorrow_watchlist: "list[dict]"
+      risk_flags: "list[str]"
+      confidence: "0.0-1.0"
+    prompt: |
+      Produce the daily market summary. Synthesize all agent outputs into a
+      coherent narrative: what happened today, why, and what it means for tomorrow.
+      Highlight the top 3 signals for tomorrow. Report P&L and open position
+      status. Flag any risk events in the next 24 hours. The summary should be
+      actionable — a trader reading only this report should know what to do
+      tomorrow. Keep narrative to 200 words max.
+      Output JSON only. Never fabricate data.
+
+  - id: weekly_review
+    name: "Weekly Performance Review"
+    category: meta
+    subcategory: reporting
+    instrument: null
+    model: sonnet
+    schedule: weekly
+    input_schema:
+      - weekly_trades_all
+      - weekly_pnl
+      - signal_accuracy_weekly
+      - regime_changes
+    output_schema:
+      weekly_return: "float"
+      trades_taken: "int"
+      win_rate: "float"
+      best_trade: "dict"
+      worst_trade: "dict"
+      lessons_learned: "list[str]"
+      next_week_outlook: "str"
+      confidence: "0.0-1.0"
+    prompt: |
+      Produce the weekly performance review. Analyze: total return, number of
+      trades, win rate, best and worst trades, and lessons learned. Compare
+      signal accuracy to baseline expectations. Identify what worked and what
+      did not. Provide next week outlook based on weekly technical closes,
+      upcoming events, and COT positioning. Recommend adjustments for the
+      coming week. This is the primary improvement feedback loop.
+      Output JSON only. Never fabricate data.
+
+  - id: performance_reporter
+    name: "Performance Metrics Reporter"
+    category: meta
+    subcategory: reporting
+    instrument: null
+    model: haiku
+    schedule: daily
+    input_schema:
+      - equity_curve
+      - trade_log
+      - benchmark_returns
+    output_schema:
+      total_return: "float"
+      sharpe_ratio: "float"
+      sortino_ratio: "float"
+      max_drawdown: "float"
+      win_rate: "float"
+      profit_factor: "float"
+      expectancy: "float"
+      confidence: "0.0-1.0"
+    prompt: |
+      Calculate and report key performance metrics. Required metrics: total return,
+      Sharpe ratio (annualized), Sortino ratio, max drawdown, win rate, profit
+      factor (gross profit / gross loss), and expectancy (avg win * win% - avg
+      loss * loss%). Compare Sharpe to benchmark (SPX buy-and-hold). Flag if any
+      metric has degraded >20% from the 30-day average. Healthy system: Sharpe
+      >1.0, win rate >55%, profit factor >1.5, drawdown <10%.
+      Output JSON only. Never fabricate data.
+
+  - id: market_outlook
+    name: "Market Outlook Report"
+    category: meta
+    subcategory: reporting
+    instrument: null
+    model: sonnet
+    schedule: weekly
+    input_schema:
+      - weekly_closes_all
+      - cot_positioning_all
+      - macro_outlook
+      - event_calendar_next_week
+      - seasonal_factors
+    output_schema:
+      overall_bias: "RISK_ON | RISK_OFF | NEUTRAL"
+      instrument_outlooks: "dict[str, dict]"
+      key_levels_next_week: "dict[str, list[float]]"
+      event_risk_calendar: "list[dict]"
+      confidence: "0.0-1.0"
+    prompt: |
+      Produce the weekly market outlook for the coming week. For each of the 12
+      instruments, provide directional bias (bullish/bearish/neutral), key levels
+      to watch, and primary catalysts. Identify the 3-5 highest-conviction setups
+      for the week. Map the event calendar to instrument risk. Assess overall
+      risk appetite (risk-on/risk-off). This report sets the strategic framework
+      for the coming week's trading decisions.
+      Output JSON only. Never fabricate data.

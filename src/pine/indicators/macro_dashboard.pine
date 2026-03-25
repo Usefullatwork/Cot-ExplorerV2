@@ -1,0 +1,147 @@
+// =============================================================================
+// Macro Dashboard — Tabell med makroindikatorer og Dollar Smile
+// Henter VIX, DXY, TNX, IRX, HYG, TIP, Kobber, EEM
+// =============================================================================
+//@version=5
+indicator("COT Explorer: Macro Dashboard", shorttitle="Macro", overlay=true)
+
+// ── Fargepalett (mork tema) ─────────────────────────────────────────────────
+var color C_GREEN  = #3fb950
+var color C_RED    = #f85149
+var color C_YELLOW = #d29922
+var color C_BLUE   = #58a6ff
+var color C_BG     = #161b22
+var color C_TEXT   = #c9d1d9
+
+// ── Inputs ──────────────────────────────────────────────────────────────────
+show_table = input.bool(true, "Vis makrotabell")
+
+// ── Hent daglige data ───────────────────────────────────────────────────────
+f_daily(sym) =>
+    request.security(sym, "D", close, lookahead=barmerge.lookahead_on)
+
+f_daily_prev(sym) =>
+    request.security(sym, "D", close[5], lookahead=barmerge.lookahead_on)
+
+// Hoved-symboler
+vix     = f_daily("CBOE:VIX")
+dxy     = f_daily("TVC:DXY")
+tnx     = f_daily("TVC:TNX")           // 10-ars rente
+irx     = f_daily("TVC:IRX")           // 3-maneders rente
+hyg     = f_daily("AMEX:HYG")          // High Yield
+tip     = f_daily("AMEX:TIP")          // TIPS
+copper  = f_daily("COMEX:HG1!")        // Kobber
+eem     = f_daily("AMEX:EEM")          // Fremvoksende markeder
+
+// 5-dagers endring
+vix_5d    = f_daily_prev("CBOE:VIX")
+dxy_5d    = f_daily_prev("TVC:DXY")
+hyg_5d    = f_daily_prev("AMEX:HYG")
+copper_5d = f_daily_prev("COMEX:HG1!")
+eem_5d    = f_daily_prev("AMEX:EEM")
+
+// ── Beregnede verdier ───────────────────────────────────────────────────────
+// Rentekurve (10Y - 3M) — invertert kurve = resesjonsrisiko
+yield_curve = tnx - irx
+
+// HY credit stress — negativ 5d endring i HYG signaliserer kreditt-stress
+hy_chg_pct = hyg_5d != 0 ? (hyg / hyg_5d - 1) * 100 : 0.0
+hy_stress  = hy_chg_pct < -1.0
+
+// ── Dollar Smile posisjon ───────────────────────────────────────────────────
+// VENSTRE: Risk-off, sterk USD (hoy VIX)
+// MIDTEN: Goldilocks, svak USD (lav VIX, stabil okonomi)
+// HOYRE: Sterk vekst/inflasjon, moderat sterk USD
+smile_pos = vix > 30 ? "VENSTRE" : vix < 18 ? "MIDTEN" : "HOYRE"
+
+smile_usd_bias() =>
+    if vix > 30
+        "STERK USD"
+    else if vix < 18
+        "SVAK USD"
+    else
+        "MODERAT USD"
+
+smile_desc() =>
+    if vix > 30
+        "Risk-off: trygg havn"
+    else if vix < 18
+        "Goldilocks: risikovilje"
+    else
+        "Vekst driver USD"
+
+// ── Makrotabell (nedre venstre) ─────────────────────────────────────────────
+chg_color(val) =>
+    val > 0.5 ? C_GREEN : val < -0.5 ? C_RED : C_TEXT
+
+pct_chg(now, prev) =>
+    prev != 0 ? (now / prev - 1) * 100 : 0.0
+
+if show_table and barstate.islast
+    var table mt = table.new(position.bottom_left, 3, 11, bgcolor=C_BG, border_width=1, border_color=color.new(C_TEXT, 70))
+
+    // Overskrift
+    table.cell(mt, 0, 0, "Indikator",   text_color=C_BLUE, text_size=size.tiny, text_halign=text.align_left)
+    table.cell(mt, 1, 0, "Verdi",       text_color=C_BLUE, text_size=size.tiny)
+    table.cell(mt, 2, 0, "5d Chg",      text_color=C_BLUE, text_size=size.tiny)
+
+    // VIX
+    vix_col = vix > 30 ? C_RED : vix > 20 ? C_YELLOW : C_GREEN
+    vix_chg = pct_chg(vix, vix_5d)
+    table.cell(mt, 0, 1, "VIX",         text_color=C_TEXT, text_size=size.tiny, text_halign=text.align_left)
+    table.cell(mt, 1, 1, str.tostring(vix, "#0.1"),  text_color=vix_col, text_size=size.tiny)
+    table.cell(mt, 2, 1, str.tostring(vix_chg, "+#0.1") + "%", text_color=chg_color(vix_chg), text_size=size.tiny)
+
+    // DXY
+    dxy_chg = pct_chg(dxy, dxy_5d)
+    table.cell(mt, 0, 2, "DXY",         text_color=C_TEXT, text_size=size.tiny, text_halign=text.align_left)
+    table.cell(mt, 1, 2, str.tostring(dxy, "#0.00"), text_color=C_TEXT, text_size=size.tiny)
+    table.cell(mt, 2, 2, str.tostring(dxy_chg, "+#0.1") + "%", text_color=chg_color(dxy_chg), text_size=size.tiny)
+
+    // 10Y Yield (TNX)
+    tnx_col = tnx > 4.5 ? C_RED : tnx > 3.5 ? C_YELLOW : C_GREEN
+    table.cell(mt, 0, 3, "10Y Yield",   text_color=C_TEXT, text_size=size.tiny, text_halign=text.align_left)
+    table.cell(mt, 1, 3, str.tostring(tnx, "#0.00") + "%", text_color=tnx_col, text_size=size.tiny)
+    table.cell(mt, 2, 3, "", text_color=C_TEXT, text_size=size.tiny)
+
+    // Yield Curve (10Y - 3M)
+    yc_col = yield_curve < 0 ? C_RED : yield_curve < 0.5 ? C_YELLOW : C_GREEN
+    table.cell(mt, 0, 4, "Rentekurve",  text_color=C_TEXT, text_size=size.tiny, text_halign=text.align_left)
+    table.cell(mt, 1, 4, str.tostring(yield_curve, "+#0.00") + "%", text_color=yc_col, text_size=size.tiny)
+    table.cell(mt, 2, 4, yield_curve < 0 ? "INVERTERT" : "NORMAL", text_color=yc_col, text_size=size.tiny)
+
+    // HYG (High Yield)
+    hyg_chg = pct_chg(hyg, hyg_5d)
+    stress_col = hy_stress ? C_RED : C_GREEN
+    table.cell(mt, 0, 5, "HYG",         text_color=C_TEXT, text_size=size.tiny, text_halign=text.align_left)
+    table.cell(mt, 1, 5, str.tostring(hyg, "#0.00"), text_color=stress_col, text_size=size.tiny)
+    table.cell(mt, 2, 5, hy_stress ? "STRESS" : "OK", text_color=stress_col, text_size=size.tiny)
+
+    // TIP (Inflasjonsforventninger)
+    table.cell(mt, 0, 6, "TIP",         text_color=C_TEXT, text_size=size.tiny, text_halign=text.align_left)
+    table.cell(mt, 1, 6, str.tostring(tip, "#0.00"), text_color=C_TEXT, text_size=size.tiny)
+    table.cell(mt, 2, 6, "", text_color=C_TEXT, text_size=size.tiny)
+
+    // Kobber (global vekstindikator)
+    cu_chg = pct_chg(copper, copper_5d)
+    cu_col = cu_chg > 1 ? C_GREEN : cu_chg < -1 ? C_RED : C_TEXT
+    table.cell(mt, 0, 7, "Kobber",      text_color=C_TEXT, text_size=size.tiny, text_halign=text.align_left)
+    table.cell(mt, 1, 7, str.tostring(copper, "#0.000"), text_color=cu_col, text_size=size.tiny)
+    table.cell(mt, 2, 7, str.tostring(cu_chg, "+#0.1") + "%", text_color=chg_color(cu_chg), text_size=size.tiny)
+
+    // EEM (Fremvoksende markeder)
+    eem_chg = pct_chg(eem, eem_5d)
+    table.cell(mt, 0, 8, "EEM",         text_color=C_TEXT, text_size=size.tiny, text_halign=text.align_left)
+    table.cell(mt, 1, 8, str.tostring(eem, "#0.00"), text_color=C_TEXT, text_size=size.tiny)
+    table.cell(mt, 2, 8, str.tostring(eem_chg, "+#0.1") + "%", text_color=chg_color(eem_chg), text_size=size.tiny)
+
+    // Separator
+    table.cell(mt, 0, 9, "", text_color=C_TEXT, text_size=size.tiny)
+    table.cell(mt, 1, 9, "", text_color=C_TEXT, text_size=size.tiny)
+    table.cell(mt, 2, 9, "", text_color=C_TEXT, text_size=size.tiny)
+
+    // Dollar Smile
+    smile_col = smile_pos == "VENSTRE" ? C_RED : smile_pos == "MIDTEN" ? C_GREEN : C_YELLOW
+    table.cell(mt, 0, 10, "Dollar Smile", text_color=C_BLUE, text_size=size.tiny, text_halign=text.align_left)
+    table.cell(mt, 1, 10, smile_pos,      text_color=smile_col, text_size=size.tiny)
+    table.cell(mt, 2, 10, smile_usd_bias(), text_color=smile_col, text_size=size.tiny)

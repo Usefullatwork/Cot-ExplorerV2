@@ -1,0 +1,656 @@
+prompts:
+  # ── Reversal patterns per instrument (12) ──────────────────────────
+  - id: reversal_eurusd
+    name: "Candlestick Reversal Patterns - EUR/USD"
+    category: pattern_recognition
+    subcategory: candlestick
+    instrument: EURUSD
+    model: haiku
+    schedule: every_run
+    input_schema:
+      - daily_ohlc_20
+      - h4_ohlc_50
+      - key_levels_eurusd
+      - atr_14
+      - current_trend
+    output_schema:
+      reversals_found: "list[dict]"
+      highest_probability: "dict"
+      timeframe: "str"
+      confidence: "0.0-1.0"
+    prompt: |
+      Scan EUR/USD for candlestick reversal patterns on daily and 4H timeframes.
+      Look for: hammer, inverted hammer, engulfing, evening/morning star, doji
+      at extremes, pin bar. EUR/USD reversal patterns are most reliable at key
+      S/R levels and SMA200. Filter by location — only report reversals occurring
+      within 0.5 ATR of a key level. Rate each by historical win rate and
+      current context. Output JSON only. Never fabricate data.
+
+  - id: reversal_usdjpy
+    name: "Candlestick Reversal Patterns - USD/JPY"
+    category: pattern_recognition
+    subcategory: candlestick
+    instrument: USDJPY
+    model: haiku
+    schedule: every_run
+    input_schema:
+      - daily_ohlc_20
+      - h4_ohlc_50
+      - key_levels_usdjpy
+      - atr_14
+      - current_trend
+    output_schema:
+      reversals_found: "list[dict]"
+      highest_probability: "dict"
+      timeframe: "str"
+      confidence: "0.0-1.0"
+    prompt: |
+      Scan USD/JPY for candlestick reversal patterns. USD/JPY produces strong pin
+      bars at intervention zones (150, 155, 160) and century levels. Bearish
+      engulfing at these levels has 70%+ historical accuracy. Also watch for doji
+      after extended trends (>5 consecutive directional days). Filter by key level
+      proximity (within 0.5 ATR). Rate each pattern.
+      Output JSON only. Never fabricate data.
+
+  - id: reversal_gbpusd
+    name: "Candlestick Reversal Patterns - GBP/USD"
+    category: pattern_recognition
+    subcategory: candlestick
+    instrument: GBPUSD
+    model: haiku
+    schedule: every_run
+    input_schema:
+      - daily_ohlc_20
+      - h4_ohlc_50
+      - key_levels_gbpusd
+      - atr_14
+      - current_trend
+    output_schema:
+      reversals_found: "list[dict]"
+      highest_probability: "dict"
+      timeframe: "str"
+      confidence: "0.0-1.0"
+    prompt: |
+      Scan GBP/USD for candlestick reversal patterns. Cable has larger candle
+      bodies than most FX pairs; engulfing patterns require the body to fully
+      engulf (not just shadows). Pin bars at the 1.20, 1.25, 1.30 handles are
+      historically significant. Filter patterns by key level proximity (within
+      0.5 ATR). Rate each by context quality.
+      Output JSON only. Never fabricate data.
+
+  - id: reversal_audusd
+    name: "Candlestick Reversal Patterns - AUD/USD"
+    category: pattern_recognition
+    subcategory: candlestick
+    instrument: AUDUSD
+    model: haiku
+    schedule: every_run
+    input_schema:
+      - daily_ohlc_20
+      - h4_ohlc_50
+      - key_levels_audusd
+      - atr_14
+      - current_trend
+    output_schema:
+      reversals_found: "list[dict]"
+      highest_probability: "dict"
+      timeframe: "str"
+      confidence: "0.0-1.0"
+    prompt: |
+      Scan AUD/USD for candlestick reversal patterns. AUD/USD often forms
+      reversal patterns during Asian session ahead of Australia/China data.
+      Hammer patterns at 0.60, 0.65, 0.70 handles have strong historical
+      significance. Watch for evening stars on daily when commodity prices
+      diverge. Filter by key level proximity.
+      Output JSON only. Never fabricate data.
+
+  - id: reversal_gold
+    name: "Candlestick Reversal Patterns - Gold"
+    category: pattern_recognition
+    subcategory: candlestick
+    instrument: Gold
+    model: haiku
+    schedule: every_run
+    input_schema:
+      - daily_ohlc_20
+      - h4_ohlc_50
+      - key_levels_gold
+      - atr_14
+      - current_trend
+    output_schema:
+      reversals_found: "list[dict]"
+      highest_probability: "dict"
+      timeframe: "str"
+      confidence: "0.0-1.0"
+    prompt: |
+      Scan Gold for candlestick reversal patterns. Gold forms textbook reversal
+      patterns at century levels ($2000, $2100, $2200, $2300). Bearish engulfing
+      after touching a new century level is a classic distribution signal. Daily
+      hammer at SMA50 during uptrends has 70%+ follow-through. Shooting star
+      after $50+ rally is a strong short signal.
+      Output JSON only. Never fabricate data.
+
+  - id: reversal_silver
+    name: "Candlestick Reversal Patterns - Silver"
+    category: pattern_recognition
+    subcategory: candlestick
+    instrument: Silver
+    model: haiku
+    schedule: every_run
+    input_schema:
+      - daily_ohlc_20
+      - h4_ohlc_50
+      - key_levels_silver
+      - atr_14
+      - current_trend
+    output_schema:
+      reversals_found: "list[dict]"
+      highest_probability: "dict"
+      timeframe: "str"
+      confidence: "0.0-1.0"
+    prompt: |
+      Scan Silver for candlestick reversal patterns. Silver reversal patterns are
+      noisier than gold due to lower liquidity; require larger candle bodies for
+      confirmation. Whole-dollar levels ($25, $26, $27, $30) create reversal zones.
+      Silver doji patterns are less reliable than gold — require next-candle
+      confirmation. Focus on daily timeframe for higher accuracy.
+      Output JSON only. Never fabricate data.
+
+  - id: reversal_brent
+    name: "Candlestick Reversal Patterns - Brent Crude"
+    category: pattern_recognition
+    subcategory: candlestick
+    instrument: Brent
+    model: haiku
+    schedule: every_run
+    input_schema:
+      - daily_ohlc_20
+      - h4_ohlc_50
+      - key_levels_brent
+      - atr_14
+      - current_trend
+    output_schema:
+      reversals_found: "list[dict]"
+      highest_probability: "dict"
+      timeframe: "str"
+      confidence: "0.0-1.0"
+    prompt: |
+      Scan Brent Crude for candlestick reversal patterns. Oil reversal patterns
+      are often news-driven (OPEC, geopolitical). Hammer at $70 support (OPEC+
+      defense zone) has been highly reliable. Bearish engulfing at $90+ signals
+      demand destruction. Exclude reversal patterns formed on single news candles
+      (EIA days) — these are unreliable. Output JSON only. Never fabricate data.
+
+  - id: reversal_wti
+    name: "Candlestick Reversal Patterns - WTI Crude"
+    category: pattern_recognition
+    subcategory: candlestick
+    instrument: WTI
+    model: haiku
+    schedule: every_run
+    input_schema:
+      - daily_ohlc_20
+      - h4_ohlc_50
+      - key_levels_wti
+      - atr_14
+      - current_trend
+    output_schema:
+      reversals_found: "list[dict]"
+      highest_probability: "dict"
+      timeframe: "str"
+      confidence: "0.0-1.0"
+    prompt: |
+      Scan WTI Crude for candlestick reversal patterns. WTI forms reversal
+      patterns similar to Brent but with tighter price ranges. Watch for pin bars
+      on EIA inventory day (Wednesday) — post-EIA reversal candles on 4H are
+      the most actionable oil setups. $5 round levels ($65, $70, $75, $80) are
+      key reversal zones. Output JSON only. Never fabricate data.
+
+  - id: reversal_spx
+    name: "Candlestick Reversal Patterns - S&P 500"
+    category: pattern_recognition
+    subcategory: candlestick
+    instrument: SPX
+    model: haiku
+    schedule: every_run
+    input_schema:
+      - daily_ohlc_20
+      - h4_ohlc_50
+      - key_levels_spx
+      - atr_14
+      - current_trend
+    output_schema:
+      reversals_found: "list[dict]"
+      highest_probability: "dict"
+      timeframe: "str"
+      confidence: "0.0-1.0"
+    prompt: |
+      Scan S&P 500 for candlestick reversal patterns. SPX daily hammer at SMA200
+      is one of the highest-probability long setups in all markets. Bearish
+      engulfing at all-time highs with rising VIX is a reliable distribution
+      signal. Century levels (5000, 5500, 6000) create psychological reversal
+      zones. Confirm with VIX direction for higher accuracy.
+      Output JSON only. Never fabricate data.
+
+  - id: reversal_nas100
+    name: "Candlestick Reversal Patterns - NASDAQ 100"
+    category: pattern_recognition
+    subcategory: candlestick
+    instrument: NAS100
+    model: haiku
+    schedule: every_run
+    input_schema:
+      - daily_ohlc_20
+      - h4_ohlc_50
+      - key_levels_nas100
+      - atr_14
+      - current_trend
+    output_schema:
+      reversals_found: "list[dict]"
+      highest_probability: "dict"
+      timeframe: "str"
+      confidence: "0.0-1.0"
+    prompt: |
+      Scan NASDAQ 100 for candlestick reversal patterns. NAS100 has wider
+      candle bodies (higher ATR); patterns require proportional body sizes.
+      Earnings-driven gaps can create gap-and-fill reversal patterns. Daily
+      hammer after 5%+ decline from highs is a high-probability long. Shooting
+      star at all-time highs with narrowing market breadth is a top signal.
+      Output JSON only. Never fabricate data.
+
+  - id: reversal_dxy
+    name: "Candlestick Reversal Patterns - DXY"
+    category: pattern_recognition
+    subcategory: candlestick
+    instrument: DXY
+    model: haiku
+    schedule: every_run
+    input_schema:
+      - daily_ohlc_20
+      - h4_ohlc_50
+      - key_levels_dxy
+      - atr_14
+      - current_trend
+    output_schema:
+      reversals_found: "list[dict]"
+      highest_probability: "dict"
+      timeframe: "str"
+      confidence: "0.0-1.0"
+    prompt: |
+      Scan DXY for candlestick reversal patterns. DXY reversal patterns at the
+      100 level (major psychological pivot) are the most significant cross-asset
+      signals. A DXY weekly bearish engulfing at 105+ signals USD weakness cycle.
+      DXY daily hammer at 100 signals USD strength resumption. DXY reversals
+      should be cross-referenced with all FX pairs for confirmation.
+      Output JSON only. Never fabricate data.
+
+  - id: reversal_vix
+    name: "Candlestick Reversal Patterns - VIX"
+    category: pattern_recognition
+    subcategory: candlestick
+    instrument: VIX
+    model: haiku
+    schedule: every_run
+    input_schema:
+      - daily_ohlc_20
+      - h4_ohlc_50
+      - key_levels_vix
+      - atr_14
+      - current_trend
+    output_schema:
+      reversals_found: "list[dict]"
+      highest_probability: "dict"
+      timeframe: "str"
+      confidence: "0.0-1.0"
+    prompt: |
+      Scan VIX for candlestick reversal patterns. VIX is mean-reverting; bearish
+      engulfing after spike above 30 is a high-probability short vol setup. VIX
+      hammer at 12-13 (complacency floor) warns of coming volatility expansion.
+      VIX candlestick patterns are inverted from normal — bearish VIX patterns
+      are bullish for equities. Focus on daily for cleaner signals.
+      Output JSON only. Never fabricate data.
+
+  # ── Continuation patterns per instrument (12) ──────────────────────
+  - id: continuation_eurusd
+    name: "Candlestick Continuation Patterns - EUR/USD"
+    category: pattern_recognition
+    subcategory: candlestick
+    instrument: EURUSD
+    model: haiku
+    schedule: every_run
+    input_schema:
+      - daily_ohlc_20
+      - h4_ohlc_50
+      - current_trend
+      - atr_14
+    output_schema:
+      continuations_found: "list[dict]"
+      highest_probability: "dict"
+      trend_quality: "0.0-1.0"
+      confidence: "0.0-1.0"
+    prompt: |
+      Scan EUR/USD for candlestick continuation patterns that confirm the
+      existing trend. Look for: three white soldiers/black crows, rising/falling
+      three methods, bullish/bearish marubozu, gap continuations. EUR/USD
+      continuation patterns are most reliable during London-NY overlap. Filter
+      for patterns aligned with the 4H and daily trend direction.
+      Output JSON only. Never fabricate data.
+
+  - id: continuation_usdjpy
+    name: "Candlestick Continuation Patterns - USD/JPY"
+    category: pattern_recognition
+    subcategory: candlestick
+    instrument: USDJPY
+    model: haiku
+    schedule: every_run
+    input_schema:
+      - daily_ohlc_20
+      - h4_ohlc_50
+      - current_trend
+      - atr_14
+    output_schema:
+      continuations_found: "list[dict]"
+      highest_probability: "dict"
+      trend_quality: "0.0-1.0"
+      confidence: "0.0-1.0"
+    prompt: |
+      Scan USD/JPY for continuation patterns. USD/JPY trends tend to be persistent
+      due to carry trade dynamics; rising three methods in an uptrend confirms
+      carry accumulation. Marubozu candles (no shadows) signal strong institutional
+      conviction. Watch for continuation after Tokyo session consolidation into
+      London breakout. Output JSON only. Never fabricate data.
+
+  - id: continuation_gbpusd
+    name: "Candlestick Continuation Patterns - GBP/USD"
+    category: pattern_recognition
+    subcategory: candlestick
+    instrument: GBPUSD
+    model: haiku
+    schedule: every_run
+    input_schema:
+      - daily_ohlc_20
+      - h4_ohlc_50
+      - current_trend
+      - atr_14
+    output_schema:
+      continuations_found: "list[dict]"
+      highest_probability: "dict"
+      trend_quality: "0.0-1.0"
+      confidence: "0.0-1.0"
+    prompt: |
+      Scan GBP/USD for continuation patterns. Cable continuation patterns are
+      most reliable during London session (08:00-12:00 GMT). Three white soldiers
+      after pullback to SMA20 is a strong continuation signal. Cable has strong
+      trending tendencies on weekly charts — weekly continuation candles confirm
+      multi-week moves. Output JSON only. Never fabricate data.
+
+  - id: continuation_audusd
+    name: "Candlestick Continuation Patterns - AUD/USD"
+    category: pattern_recognition
+    subcategory: candlestick
+    instrument: AUDUSD
+    model: haiku
+    schedule: every_run
+    input_schema:
+      - daily_ohlc_20
+      - h4_ohlc_50
+      - current_trend
+      - atr_14
+    output_schema:
+      continuations_found: "list[dict]"
+      highest_probability: "dict"
+      trend_quality: "0.0-1.0"
+      confidence: "0.0-1.0"
+    prompt: |
+      Scan AUD/USD for continuation patterns. AUD/USD continuation is strongest
+      when aligned with risk sentiment and commodity prices. Three black crows
+      during risk-off events have high follow-through. Marubozu candles after
+      China data confirm directional momentum. Filter for commodity price
+      alignment for higher accuracy. Output JSON only. Never fabricate data.
+
+  - id: continuation_gold
+    name: "Candlestick Continuation Patterns - Gold"
+    category: pattern_recognition
+    subcategory: candlestick
+    instrument: Gold
+    model: haiku
+    schedule: every_run
+    input_schema:
+      - daily_ohlc_20
+      - h4_ohlc_50
+      - current_trend
+      - atr_14
+    output_schema:
+      continuations_found: "list[dict]"
+      highest_probability: "dict"
+      trend_quality: "0.0-1.0"
+      confidence: "0.0-1.0"
+    prompt: |
+      Scan Gold for continuation patterns. Gold in bull trends produces long
+      series of rising three methods. A bullish marubozu after testing a century
+      level ($2100, $2200 etc.) confirms breakout. Gold continuation patterns
+      aligned with falling real yields and weakening DXY are highest conviction.
+      Ignore continuation signals in gold when DXY is also rising (conflict).
+      Output JSON only. Never fabricate data.
+
+  - id: continuation_silver
+    name: "Candlestick Continuation Patterns - Silver"
+    category: pattern_recognition
+    subcategory: candlestick
+    instrument: Silver
+    model: haiku
+    schedule: every_run
+    input_schema:
+      - daily_ohlc_20
+      - h4_ohlc_50
+      - current_trend
+      - atr_14
+    output_schema:
+      continuations_found: "list[dict]"
+      highest_probability: "dict"
+      trend_quality: "0.0-1.0"
+      confidence: "0.0-1.0"
+    prompt: |
+      Scan Silver for continuation patterns. Silver continuation patterns should
+      be confirmed by gold moving in the same direction. Silver's higher volatility
+      creates noisier patterns; require daily timeframe minimum. Strong marubozu
+      candles (>1.5x ATR body) in silver are rare but highly significant when
+      they appear. Output JSON only. Never fabricate data.
+
+  - id: continuation_brent
+    name: "Candlestick Continuation Patterns - Brent Crude"
+    category: pattern_recognition
+    subcategory: candlestick
+    instrument: Brent
+    model: haiku
+    schedule: every_run
+    input_schema:
+      - daily_ohlc_20
+      - h4_ohlc_50
+      - current_trend
+      - atr_14
+    output_schema:
+      continuations_found: "list[dict]"
+      highest_probability: "dict"
+      trend_quality: "0.0-1.0"
+      confidence: "0.0-1.0"
+    prompt: |
+      Scan Brent Crude for continuation patterns. Oil continuation patterns are
+      valid primarily in trending environments (ADX >25). Three black crows below
+      OPEC+ defense zone ($70) signal accelerating decline. Rising three methods
+      after OPEC+ cut confirmation are high-probability. Ignore continuation
+      patterns formed on low-volume sessions. Output JSON only. Never fabricate data.
+
+  - id: continuation_wti
+    name: "Candlestick Continuation Patterns - WTI Crude"
+    category: pattern_recognition
+    subcategory: candlestick
+    instrument: WTI
+    model: haiku
+    schedule: every_run
+    input_schema:
+      - daily_ohlc_20
+      - h4_ohlc_50
+      - current_trend
+      - atr_14
+    output_schema:
+      continuations_found: "list[dict]"
+      highest_probability: "dict"
+      trend_quality: "0.0-1.0"
+      confidence: "0.0-1.0"
+    prompt: |
+      Scan WTI Crude for continuation patterns. WTI continuation aligned with
+      Brent (same direction) is higher confidence than WTI-only. Wednesday EIA
+      candles that are continuation (same as trend) have 65% follow-through rate.
+      Three white soldiers after inventory drawdown signals sustained rally.
+      Confirm with Brent-WTI spread stability.
+      Output JSON only. Never fabricate data.
+
+  - id: continuation_spx
+    name: "Candlestick Continuation Patterns - S&P 500"
+    category: pattern_recognition
+    subcategory: candlestick
+    instrument: SPX
+    model: haiku
+    schedule: every_run
+    input_schema:
+      - daily_ohlc_20
+      - h4_ohlc_50
+      - current_trend
+      - atr_14
+    output_schema:
+      continuations_found: "list[dict]"
+      highest_probability: "dict"
+      trend_quality: "0.0-1.0"
+      confidence: "0.0-1.0"
+    prompt: |
+      Scan S&P 500 for continuation patterns. SPX has a long-term upward bias;
+      bullish continuation patterns have higher base rates than bearish. Three
+      white soldiers with declining VIX confirm risk-on continuation. Gap-up
+      continuation (opening above prior high) in uptrends has 75%+ follow-through
+      rate. Bearish continuation is only reliable when VIX is rising.
+      Output JSON only. Never fabricate data.
+
+  - id: continuation_nas100
+    name: "Candlestick Continuation Patterns - NASDAQ 100"
+    category: pattern_recognition
+    subcategory: candlestick
+    instrument: NAS100
+    model: haiku
+    schedule: every_run
+    input_schema:
+      - daily_ohlc_20
+      - h4_ohlc_50
+      - current_trend
+      - atr_14
+    output_schema:
+      continuations_found: "list[dict]"
+      highest_probability: "dict"
+      trend_quality: "0.0-1.0"
+      confidence: "0.0-1.0"
+    prompt: |
+      Scan NASDAQ 100 for continuation patterns. NAS100 continuation patterns
+      are strongest during earnings season when mega-cap results align with
+      tech sector momentum. Gap-up marubozu after positive NVDA/AAPL earnings
+      signals multi-day continuation. Confirm with market breadth — narrow
+      continuation (few stocks leading) is fragile.
+      Output JSON only. Never fabricate data.
+
+  - id: continuation_dxy
+    name: "Candlestick Continuation Patterns - DXY"
+    category: pattern_recognition
+    subcategory: candlestick
+    instrument: DXY
+    model: haiku
+    schedule: every_run
+    input_schema:
+      - daily_ohlc_20
+      - h4_ohlc_50
+      - current_trend
+      - atr_14
+    output_schema:
+      continuations_found: "list[dict]"
+      highest_probability: "dict"
+      trend_quality: "0.0-1.0"
+      confidence: "0.0-1.0"
+    prompt: |
+      Scan DXY for continuation patterns. DXY continuation confirms the dominant
+      FX regime. Bullish DXY continuation means stay short EUR/GBP/AUD. DXY
+      three white soldiers after testing the 100 level confirms dollar strength
+      cycle. DXY continuation patterns should align with yield differential
+      direction for highest confidence. Output JSON only. Never fabricate data.
+
+  - id: continuation_vix
+    name: "Candlestick Continuation Patterns - VIX"
+    category: pattern_recognition
+    subcategory: candlestick
+    instrument: VIX
+    model: haiku
+    schedule: every_run
+    input_schema:
+      - daily_ohlc_20
+      - h4_ohlc_50
+      - current_trend
+      - atr_14
+    output_schema:
+      continuations_found: "list[dict]"
+      highest_probability: "dict"
+      trend_quality: "0.0-1.0"
+      confidence: "0.0-1.0"
+    prompt: |
+      Scan VIX for continuation patterns. VIX is mean-reverting so continuation
+      patterns are less common and less reliable than reversals. Three white
+      soldiers in VIX above 25 is a rare but powerful signal — sustained fear
+      that should trigger portfolio-wide risk reduction. Bearish continuation
+      in VIX below 15 confirms complacency — equities can keep grinding higher.
+      Output JSON only. Never fabricate data.
+
+  # ── Special patterns ───────────────────────────────────────────────
+  - id: engulfing_at_level
+    name: "Engulfing at Key Level Scanner"
+    category: pattern_recognition
+    subcategory: candlestick
+    instrument: null
+    model: sonnet
+    schedule: every_run
+    input_schema:
+      - all_daily_ohlc_5
+      - all_key_levels
+      - all_atr_14
+      - all_trends
+    output_schema:
+      setups: "list[dict]"
+      highest_conviction: "dict"
+      confidence: "0.0-1.0"
+    prompt: |
+      Scan all 12 instruments for engulfing candle patterns occurring at key
+      support/resistance levels. An engulfing at a key level is a Grade-A reversal
+      signal. The engulfing body must fully contain the prior candle body and occur
+      within 0.3 ATR of a significant level. Rank by: level significance, trend
+      context (counter-trend at extreme = highest), and candle size relative to
+      ATR. This is one of the highest-probability setups in the system.
+      Output JSON only. Never fabricate data.
+
+  - id: doji_extreme
+    name: "Doji at Extreme Scanner"
+    category: pattern_recognition
+    subcategory: candlestick
+    instrument: null
+    model: haiku
+    schedule: every_run
+    input_schema:
+      - all_daily_ohlc_5
+      - rsi_14_all
+      - bollinger_bands_all
+      - all_key_levels
+    output_schema:
+      setups: "list[dict]"
+      highest_conviction: "dict"
+      confidence: "0.0-1.0"
+    prompt: |
+      Scan all 12 instruments for doji candles at price extremes. A doji at an
+      extreme is defined as: doji (body <10% of range) + RSI >70 or <30 +
+      price at Bollinger Band outer band + near a key S/R level. Triple
+      confirmation doji extremes have 65-70% reversal accuracy. The next candle
+      after the doji confirms direction. Report only doji with 2+ extreme
+      confirmations. Output JSON only. Never fabricate data.

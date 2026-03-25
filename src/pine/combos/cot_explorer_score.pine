@@ -1,0 +1,188 @@
+// =============================================================================
+// COT Explorer Score COMBO — Slot 2 (overlay=false, free account)
+// Kombinerer: Confluence Score histogram + COT netto-posisjon
+// =============================================================================
+//@version=5
+indicator("COT Explorer: Score Combo", shorttitle="CE Score", overlay=false, max_labels_count=10)
+
+// ── Fargepalett (mork tema) ─────────────────────────────────────────────────
+var color C_GREEN  = #3fb950
+var color C_RED    = #f85149
+var color C_YELLOW = #d29922
+var color C_BLUE   = #58a6ff
+var color C_BG     = #161b22
+var color C_TEXT   = #c9d1d9
+
+// ══════════════════════════════════════════════════════════════════════════════
+// FELLES INPUTS
+// ══════════════════════════════════════════════════════════════════════════════
+direction = input.string("LONG", "Retning", options=["LONG", "SHORT"])
+is_long   = direction == "LONG"
+
+// ══════════════════════════════════════════════════════════════════════════════
+// MODUL 1: COT DATA
+// ══════════════════════════════════════════════════════════════════════════════
+grp_cot = "COT Data"
+cftc_code = input.string("099741", "CFTC-kode", group=grp_cot, options=[
+     "099741", "096742", "092741", "088691", "084691",
+     "067651", "13874A", "209742", "098662"])
+show_cot   = input.bool(true, "Vis COT netto-posisjon", group=grp_cot)
+lookback   = input.int(52,    "Persentil-vindu (uker)",  group=grp_cot, minval=10, maxval=260)
+
+// Hent COT
+spec_long  = request.security("COT:LEGACY:" + cftc_code + ":NC:L", "W", close, lookahead=barmerge.lookahead_on)
+spec_short = request.security("COT:LEGACY:" + cftc_code + ":NC:S", "W", close, lookahead=barmerge.lookahead_on)
+comm_long  = request.security("COT:LEGACY:" + cftc_code + ":C:L",  "W", close, lookahead=barmerge.lookahead_on)
+comm_short = request.security("COT:LEGACY:" + cftc_code + ":C:S",  "W", close, lookahead=barmerge.lookahead_on)
+oi_total   = request.security("COT:LEGACY:" + cftc_code + ":OI",   "W", close, lookahead=barmerge.lookahead_on)
+
+spec_net = spec_long - spec_short
+comm_net = comm_long - comm_short
+spec_pct = oi_total != 0 ? (spec_net / oi_total) * 100 : 0.0
+
+// Persentilrangering
+pct_rank(src, len) =>
+    count = 0
+    for i = 1 to len
+        if src[i] <= src
+            count += 1
+    result = (count / len) * 100
+    result
+
+percentile = pct_rank(spec_net, lookback)
+
+// Momentum
+spec_chg_1w = spec_net - nz(spec_net[1])
+mom_str = math.abs(spec_chg_1w) < math.abs(spec_net) * 0.02 ? "STABIL" :
+          (spec_net > 0 and spec_chg_1w > 0) or (spec_net < 0 and spec_chg_1w < 0) ? "OKER" :
+          (spec_net > 0 and spec_chg_1w < 0) or (spec_net < 0 and spec_chg_1w > 0) ? "SNUR" : "STABIL"
+
+// ══════════════════════════════════════════════════════════════════════════════
+// MODUL 2: CONFLUENCE SCORE
+// ══════════════════════════════════════════════════════════════════════════════
+grp_score = "Confluence Score"
+swing_len    = input.int(10,    "Swing-lengde",          group=grp_score, minval=3)
+
+// Manuelle inputs
+in_cot_confirms    = input.bool(false, "COT bekrefter",           group=grp_score)
+in_cot_strong      = input.bool(false, "COT sterk (>10%)",        group=grp_score)
+in_no_event_risk   = input.bool(true,  "Ingen event-risiko",      group=grp_score)
+in_news_confirms   = input.bool(false, "Nyheter bekrefter",       group=grp_score)
+in_fund_confirms   = input.bool(false, "Fundamental bekrefter",   group=grp_score)
+
+// Auto-beregnede kriterier
+atr14 = ta.atr(14)
+
+sma200_d = request.security(syminfo.tickerid, "D", ta.sma(close, 200), lookahead=barmerge.lookahead_off)
+c1 = is_long ? close > sma200_d : close < sma200_d
+
+chg_20d = request.security(syminfo.tickerid, "D", (close - close[20]) / close[20] * 100, lookahead=barmerge.lookahead_off)
+c2 = is_long ? chg_20d > 0 : chg_20d < 0
+
+pdh = request.security(syminfo.tickerid, "D", high[1], lookahead=barmerge.lookahead_on)
+pdl = request.security(syminfo.tickerid, "D", low[1],  lookahead=barmerge.lookahead_on)
+c5 = math.min(math.abs(close - pdh), math.abs(close - pdl)) <= atr14 * 0.45
+
+pwh = request.security(syminfo.tickerid, "W", high[1], lookahead=barmerge.lookahead_on)
+pwl = request.security(syminfo.tickerid, "W", low[1],  lookahead=barmerge.lookahead_on)
+c6 = math.min(math.abs(close - pwh), math.abs(close - pwl)) <= atr14 * 3.0
+
+ema9_d  = request.security(syminfo.tickerid, "D",   ta.ema(close, 9), lookahead=barmerge.lookahead_off)
+ema9_4h = request.security(syminfo.tickerid, "240", ta.ema(close, 9), lookahead=barmerge.lookahead_off)
+c7 = is_long ? (close > ema9_d and close > ema9_4h) : (close < ema9_d and close < ema9_4h)
+
+// BOS 4H
+swing_hi_4h = request.security(syminfo.tickerid, "240", ta.pivothigh(high, swing_len, swing_len), lookahead=barmerge.lookahead_off)
+swing_lo_4h = request.security(syminfo.tickerid, "240", ta.pivotlow(low, swing_len, swing_len),   lookahead=barmerge.lookahead_off)
+var float last_sh4 = na, var float last_sl4 = na
+if not na(swing_hi_4h)
+    last_sh4 := swing_hi_4h
+if not na(swing_lo_4h)
+    last_sl4 := swing_lo_4h
+c11 = is_long ? close > nz(last_sh4) : close < nz(last_sl4)
+
+// SMC 1H
+swing_hi_1h = request.security(syminfo.tickerid, "60", ta.pivothigh(high, swing_len, swing_len), lookahead=barmerge.lookahead_off)
+swing_lo_1h = request.security(syminfo.tickerid, "60", ta.pivotlow(low, swing_len, swing_len),   lookahead=barmerge.lookahead_off)
+var float p_sh1 = na, var float c_sh1 = na, var float p_sl1 = na, var float c_sl1 = na
+if not na(swing_hi_1h)
+    p_sh1 := c_sh1
+    c_sh1 := swing_hi_1h
+if not na(swing_lo_1h)
+    p_sl1 := c_sl1
+    c_sl1 := swing_lo_1h
+hh = not na(c_sh1) and not na(p_sh1) and c_sh1 > p_sh1
+hl = not na(c_sl1) and not na(p_sl1) and c_sl1 > p_sl1
+lh = not na(c_sh1) and not na(p_sh1) and c_sh1 < p_sh1
+ll = not na(c_sl1) and not na(p_sl1) and c_sl1 < p_sl1
+c12 = is_long ? (hh and hl) : (lh and ll)
+
+// Total score
+score = (c1 ? 1 : 0) + (c2 ? 1 : 0) +
+        (in_cot_confirms ? 1 : 0) + (in_cot_strong ? 1 : 0) +
+        (c5 ? 1 : 0) + (c6 ? 1 : 0) + (c7 ? 1 : 0) +
+        (in_no_event_risk ? 1 : 0) + (in_news_confirms ? 1 : 0) + (in_fund_confirms ? 1 : 0) +
+        (c11 ? 1 : 0) + (c12 ? 1 : 0)
+
+grade = score >= 11 ? "A+" : score >= 9 ? "A" : score >= 6 ? "B" : "C"
+grade_col = score >= 11 ? C_GREEN : score >= 9 ? C_YELLOW : score >= 6 ? C_BLUE : C_RED
+
+// ══════════════════════════════════════════════════════════════════════════════
+// PLOTTING
+// ══════════════════════════════════════════════════════════════════════════════
+
+// Vi bruker to y-akser logisk: score 0-12 og COT netto (skalert)
+// Score-histogram (primaer)
+plot(score, "Score", color=grade_col, style=plot.style_histogram, linewidth=4)
+
+// Terskellinjer
+hline(11, "A+",  color=color.new(C_GREEN, 60),  linestyle=hline.style_dotted)
+hline(9,  "A",   color=color.new(C_YELLOW, 60), linestyle=hline.style_dotted)
+hline(6,  "B",   color=color.new(C_BLUE, 60),   linestyle=hline.style_dotted)
+
+// COT netto normalisert til 0-12 skala for visuell sammenligning
+spec_max = ta.highest(math.abs(spec_net), lookback)
+cot_normalized = spec_max != 0 ? (spec_net / spec_max) * 6 + 6 : 6.0
+cot_color = spec_net >= 0 ? color.new(C_GREEN, 60) : color.new(C_RED, 60)
+plot(show_cot ? cot_normalized : na, "COT Netto (normalisert)", color=cot_color, linewidth=1, style=plot.style_line)
+
+// Ekstremer
+bgcolor(percentile > 90 ? color.new(C_GREEN, 90) : percentile < 10 ? color.new(C_RED, 90) : na, title="COT Ekstrem")
+
+// ══════════════════════════════════════════════════════════════════════════════
+// INFOTABELL (ovre hoyre)
+// ══════════════════════════════════════════════════════════════════════════════
+if barstate.islast
+    var table st = table.new(position.top_right, 2, 8, bgcolor=C_BG, border_width=1, border_color=color.new(C_TEXT, 70))
+
+    // Score
+    table.cell(st, 0, 0, "Score",    text_color=C_BLUE, text_size=size.small, text_halign=text.align_left)
+    table.cell(st, 1, 0, grade + " (" + str.tostring(score) + "/12)", text_color=grade_col, text_size=size.small)
+
+    // Retning
+    table.cell(st, 0, 1, "Retning",  text_color=C_TEXT, text_size=size.tiny, text_halign=text.align_left)
+    table.cell(st, 1, 1, direction,  text_color=is_long ? C_GREEN : C_RED, text_size=size.tiny)
+
+    // COT
+    table.cell(st, 0, 2, "Spec Netto", text_color=C_TEXT, text_size=size.tiny, text_halign=text.align_left)
+    table.cell(st, 1, 2, str.tostring(spec_net, "#,##0"), text_color=spec_net >= 0 ? C_GREEN : C_RED, text_size=size.tiny)
+
+    table.cell(st, 0, 3, "Spec % OI",  text_color=C_TEXT, text_size=size.tiny, text_halign=text.align_left)
+    table.cell(st, 1, 3, str.tostring(spec_pct, "#0.1") + "%", text_color=spec_pct > 10 ? C_GREEN : spec_pct < -10 ? C_RED : C_YELLOW, text_size=size.tiny)
+
+    table.cell(st, 0, 4, "Persentil",  text_color=C_TEXT, text_size=size.tiny, text_halign=text.align_left)
+    p_col = percentile > 80 ? C_GREEN : percentile < 20 ? C_RED : C_YELLOW
+    table.cell(st, 1, 4, str.tostring(percentile, "#0") + "%", text_color=p_col, text_size=size.tiny)
+
+    table.cell(st, 0, 5, "Momentum",   text_color=C_TEXT, text_size=size.tiny, text_halign=text.align_left)
+    m_col = mom_str == "OKER" ? C_GREEN : mom_str == "SNUR" ? C_RED : C_YELLOW
+    table.cell(st, 1, 5, mom_str, text_color=m_col, text_size=size.tiny)
+
+    // Kriterier (kompakt)
+    auto_hits = (c1 ? 1 : 0) + (c2 ? 1 : 0) + (c5 ? 1 : 0) + (c6 ? 1 : 0) + (c7 ? 1 : 0) + (c11 ? 1 : 0) + (c12 ? 1 : 0)
+    manual_hits = (in_cot_confirms ? 1 : 0) + (in_cot_strong ? 1 : 0) + (in_no_event_risk ? 1 : 0) + (in_news_confirms ? 1 : 0) + (in_fund_confirms ? 1 : 0)
+    table.cell(st, 0, 6, "Auto",    text_color=C_TEXT, text_size=size.tiny, text_halign=text.align_left)
+    table.cell(st, 1, 6, str.tostring(auto_hits) + "/7", text_color=auto_hits >= 5 ? C_GREEN : auto_hits >= 3 ? C_YELLOW : C_RED, text_size=size.tiny)
+
+    table.cell(st, 0, 7, "Manuell", text_color=C_TEXT, text_size=size.tiny, text_halign=text.align_left)
+    table.cell(st, 1, 7, str.tostring(manual_hits) + "/5", text_color=manual_hits >= 4 ? C_GREEN : manual_hits >= 2 ? C_YELLOW : C_RED, text_size=size.tiny)

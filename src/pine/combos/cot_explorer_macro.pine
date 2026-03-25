@@ -1,0 +1,176 @@
+// =============================================================================
+// COT Explorer Macro COMBO — Slot 3 (overlay=true, free account)
+// Kombinerer: Macro Dashboard tabell + Dollar Smile label
+// =============================================================================
+//@version=5
+indicator("COT Explorer: Macro Combo", shorttitle="CE Macro", overlay=true)
+
+// ── Fargepalett (mork tema) ─────────────────────────────────────────────────
+var color C_GREEN  = #3fb950
+var color C_RED    = #f85149
+var color C_YELLOW = #d29922
+var color C_BLUE   = #58a6ff
+var color C_BG     = #161b22
+var color C_TEXT   = #c9d1d9
+
+// ── Inputs ──────────────────────────────────────────────────────────────────
+show_macro = input.bool(true, "Vis makrotabell")
+show_smile = input.bool(true, "Vis Dollar Smile label")
+
+// ══════════════════════════════════════════════════════════════════════════════
+// DATA — Hent daglige makro-symboler
+// ══════════════════════════════════════════════════════════════════════════════
+f_d(sym)  => request.security(sym, "D", close,    lookahead=barmerge.lookahead_on)
+f_d5(sym) => request.security(sym, "D", close[5], lookahead=barmerge.lookahead_on)
+f_d20(sym)=> request.security(sym, "D", close[20], lookahead=barmerge.lookahead_on)
+
+vix     = f_d("CBOE:VIX")
+dxy     = f_d("TVC:DXY")
+tnx     = f_d("TVC:TNX")
+irx     = f_d("TVC:IRX")
+hyg     = f_d("AMEX:HYG")
+tip     = f_d("AMEX:TIP")
+copper  = f_d("COMEX:HG1!")
+eem     = f_d("AMEX:EEM")
+
+vix_5d    = f_d5("CBOE:VIX")
+dxy_5d    = f_d5("TVC:DXY")
+dxy_20d   = f_d20("TVC:DXY")
+hyg_5d    = f_d5("AMEX:HYG")
+copper_5d = f_d5("COMEX:HG1!")
+eem_5d    = f_d5("AMEX:EEM")
+
+// ── Beregnede verdier ───────────────────────────────────────────────────────
+yield_curve = tnx - irx
+hy_chg_pct  = hyg_5d != 0 ? (hyg / hyg_5d - 1) * 100 : 0.0
+hy_stress   = hy_chg_pct < -1.0
+dxy_mom     = dxy_20d != 0 ? (dxy / dxy_20d - 1) * 100 : 0.0
+
+pct_chg(now, prev) =>
+    prev != 0 ? (now / prev - 1) * 100 : 0.0
+
+chg_color(val) =>
+    val > 0.5 ? C_GREEN : val < -0.5 ? C_RED : C_TEXT
+
+// ══════════════════════════════════════════════════════════════════════════════
+// DOLLAR SMILE BEREGNING
+// ══════════════════════════════════════════════════════════════════════════════
+// VENSTRE: Risk-off (hoy VIX), sterk USD
+// MIDTEN: Goldilocks (lav VIX), svak USD
+// HOYRE: Vekst/inflasjon, moderat USD
+smile_pos = vix > 30 ? "VENSTRE" : vix < 18 ? "MIDTEN" : "HOYRE"
+
+smile_usd() =>
+    if vix > 30
+        "STERK USD"
+    else if vix < 18
+        "SVAK USD"
+    else
+        "MODERAT USD"
+
+smile_desc() =>
+    if vix > 30
+        "Risk-off: trygg havn"
+    else if vix < 18
+        "Goldilocks: risikovilje"
+    else
+        "Vekst driver USD"
+
+// USD-styrke sammensatt (-1 til +1)
+vix_s = vix > 35 ? 1.0 : vix > 30 ? 0.8 : vix > 25 ? 0.3 : vix > 20 ? -0.2 : vix > 15 ? -0.6 : -0.3
+dxy_s = dxy_mom > 2 ? 0.8 : dxy_mom > 0.5 ? 0.4 : dxy_mom > -0.5 ? 0.0 : dxy_mom > -2 ? -0.4 : -0.8
+hyg_s = hy_chg_pct < -2 ? 0.5 : hy_chg_pct < -0.5 ? 0.2 : hy_chg_pct > 1 ? -0.3 : 0.0
+
+usd_strength = math.max(-1.0, math.min(1.0, vix_s * 0.5 + dxy_s * 0.3 + hyg_s * 0.2))
+
+// ── VIX bakgrunn ────────────────────────────────────────────────────────────
+vix_regime = vix >= 30 ? "EXTREME" : vix >= 25 ? "ELEVATED" : vix >= 20 ? "FORHOY" : "NORMAL"
+pos_size   = vix >= 30 ? "QUARTER" : vix >= 20 ? "HALF" : "FULL"
+
+bg_col = vix >= 30 ? color.new(C_RED, 85) : vix >= 25 ? color.new(C_YELLOW, 88) : vix >= 20 ? color.new(C_YELLOW, 93) : na
+bgcolor(bg_col, title="VIX Regime")
+
+// ══════════════════════════════════════════════════════════════════════════════
+// MAKROTABELL (nedre venstre)
+// ══════════════════════════════════════════════════════════════════════════════
+if show_macro and barstate.islast
+    var table mt = table.new(position.bottom_left, 3, 12, bgcolor=C_BG, border_width=1, border_color=color.new(C_TEXT, 70))
+
+    // Overskrift
+    table.cell(mt, 0, 0, "Makro",   text_color=C_BLUE, text_size=size.tiny, text_halign=text.align_left)
+    table.cell(mt, 1, 0, "Verdi",   text_color=C_BLUE, text_size=size.tiny)
+    table.cell(mt, 2, 0, "5d",      text_color=C_BLUE, text_size=size.tiny)
+
+    // VIX
+    vix_c5 = pct_chg(vix, vix_5d)
+    table.cell(mt, 0, 1, "VIX",      text_color=C_TEXT, text_size=size.tiny, text_halign=text.align_left)
+    table.cell(mt, 1, 1, str.tostring(vix, "#0.1"), text_color=vix >= 30 ? C_RED : vix >= 20 ? C_YELLOW : C_GREEN, text_size=size.tiny)
+    table.cell(mt, 2, 1, str.tostring(vix_c5, "+#0.1") + "%", text_color=chg_color(vix_c5), text_size=size.tiny)
+
+    // DXY
+    dxy_c5 = pct_chg(dxy, dxy_5d)
+    table.cell(mt, 0, 2, "DXY",      text_color=C_TEXT, text_size=size.tiny, text_halign=text.align_left)
+    table.cell(mt, 1, 2, str.tostring(dxy, "#0.00"), text_color=C_TEXT, text_size=size.tiny)
+    table.cell(mt, 2, 2, str.tostring(dxy_c5, "+#0.1") + "%", text_color=chg_color(dxy_c5), text_size=size.tiny)
+
+    // 10Y
+    table.cell(mt, 0, 3, "10Y Rente", text_color=C_TEXT, text_size=size.tiny, text_halign=text.align_left)
+    table.cell(mt, 1, 3, str.tostring(tnx, "#0.00") + "%", text_color=tnx > 4.5 ? C_RED : tnx > 3.5 ? C_YELLOW : C_GREEN, text_size=size.tiny)
+    table.cell(mt, 2, 3, "", text_color=C_TEXT, text_size=size.tiny)
+
+    // Rentekurve
+    yc_col = yield_curve < 0 ? C_RED : yield_curve < 0.5 ? C_YELLOW : C_GREEN
+    table.cell(mt, 0, 4, "Kurve",     text_color=C_TEXT, text_size=size.tiny, text_halign=text.align_left)
+    table.cell(mt, 1, 4, str.tostring(yield_curve, "+#0.00"), text_color=yc_col, text_size=size.tiny)
+    table.cell(mt, 2, 4, yield_curve < 0 ? "INV" : "OK", text_color=yc_col, text_size=size.tiny)
+
+    // HYG
+    table.cell(mt, 0, 5, "HYG",      text_color=C_TEXT, text_size=size.tiny, text_halign=text.align_left)
+    table.cell(mt, 1, 5, str.tostring(hyg, "#0.00"), text_color=hy_stress ? C_RED : C_GREEN, text_size=size.tiny)
+    table.cell(mt, 2, 5, hy_stress ? "STRESS" : "OK", text_color=hy_stress ? C_RED : C_GREEN, text_size=size.tiny)
+
+    // TIP
+    table.cell(mt, 0, 6, "TIP",      text_color=C_TEXT, text_size=size.tiny, text_halign=text.align_left)
+    table.cell(mt, 1, 6, str.tostring(tip, "#0.00"), text_color=C_TEXT, text_size=size.tiny)
+    table.cell(mt, 2, 6, "", text_color=C_TEXT, text_size=size.tiny)
+
+    // Kobber
+    cu_c5 = pct_chg(copper, copper_5d)
+    table.cell(mt, 0, 7, "Kobber",   text_color=C_TEXT, text_size=size.tiny, text_halign=text.align_left)
+    table.cell(mt, 1, 7, str.tostring(copper, "#0.000"), text_color=cu_c5 > 1 ? C_GREEN : cu_c5 < -1 ? C_RED : C_TEXT, text_size=size.tiny)
+    table.cell(mt, 2, 7, str.tostring(cu_c5, "+#0.1") + "%", text_color=chg_color(cu_c5), text_size=size.tiny)
+
+    // EEM
+    eem_c5 = pct_chg(eem, eem_5d)
+    table.cell(mt, 0, 8, "EEM",      text_color=C_TEXT, text_size=size.tiny, text_halign=text.align_left)
+    table.cell(mt, 1, 8, str.tostring(eem, "#0.00"), text_color=C_TEXT, text_size=size.tiny)
+    table.cell(mt, 2, 8, str.tostring(eem_c5, "+#0.1") + "%", text_color=chg_color(eem_c5), text_size=size.tiny)
+
+    // Separator
+    table.cell(mt, 0, 9, "",  text_color=C_TEXT, text_size=size.tiny)
+    table.cell(mt, 1, 9, "",  text_color=C_TEXT, text_size=size.tiny)
+    table.cell(mt, 2, 9, "",  text_color=C_TEXT, text_size=size.tiny)
+
+    // Dollar Smile
+    sm_col = smile_pos == "VENSTRE" ? C_RED : smile_pos == "MIDTEN" ? C_GREEN : C_YELLOW
+    table.cell(mt, 0, 10, "$ Smile",  text_color=C_BLUE, text_size=size.tiny, text_halign=text.align_left)
+    table.cell(mt, 1, 10, smile_pos,  text_color=sm_col, text_size=size.tiny)
+    table.cell(mt, 2, 10, smile_usd(), text_color=sm_col, text_size=size.tiny)
+
+    // USD styrke
+    usd_col = usd_strength > 0.3 ? C_GREEN : usd_strength < -0.3 ? C_RED : C_YELLOW
+    table.cell(mt, 0, 11, "USD",      text_color=C_TEXT, text_size=size.tiny, text_halign=text.align_left)
+    table.cell(mt, 1, 11, str.tostring(usd_strength, "+#0.00"), text_color=usd_col, text_size=size.tiny)
+    table.cell(mt, 2, 11, pos_size,   text_color=pos_size == "FULL" ? C_GREEN : pos_size == "HALF" ? C_YELLOW : C_RED, text_size=size.tiny)
+
+// ══════════════════════════════════════════════════════════════════════════════
+// DOLLAR SMILE LABEL (pa chartet)
+// ══════════════════════════════════════════════════════════════════════════════
+if show_smile and barstate.islast
+    sm_col = smile_pos == "VENSTRE" ? C_RED : smile_pos == "MIDTEN" ? C_GREEN : C_YELLOW
+    var label sm_lbl = na
+    label.delete(sm_lbl)
+    sm_lbl := label.new(bar_index + 5, high,
+         "$ " + smile_pos + "\n" + smile_usd() + "\n" + smile_desc(),
+         color=color.new(sm_col, 70), textcolor=sm_col,
+         style=label.style_label_left, size=size.normal)

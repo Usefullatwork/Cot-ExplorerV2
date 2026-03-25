@@ -1,0 +1,104 @@
+prompts:
+  - id: market_phase_classifier
+    name: "Market Phase Classifier"
+    category: market_analysis
+    subcategory: regime
+    instrument: null
+    model: sonnet
+    schedule: daily
+    input_schema:
+      - daily_ohlc_all
+      - adx_all
+      - bollinger_bandwidth_all
+      - sma200_slope_all
+      - vix_level
+    output_schema:
+      phases: "dict[str, str]"
+      dominant_regime: "TRENDING | RANGING | TRANSITIONING"
+      regime_duration_days: "int"
+      confidence: "0.0-1.0"
+    prompt: |
+      Classify the current market phase for each of the 12 instruments into one
+      of: ACCUMULATION, MARKUP, DISTRIBUTION, MARKDOWN, or RANGING. Use ADX for
+      trend strength, Bollinger bandwidth for volatility contraction/expansion,
+      and SMA200 slope for directional bias. Identify the dominant cross-market
+      regime. Flag instruments transitioning between phases as these offer the
+      best early entries. Output JSON only. Never fabricate data.
+
+  - id: volatility_regime
+    name: "Volatility Regime Detector"
+    category: market_analysis
+    subcategory: regime
+    instrument: null
+    model: haiku
+    schedule: daily
+    input_schema:
+      - vix_current
+      - vix_term_structure
+      - atr_percentile_all
+      - realized_vs_implied_vol
+      - bollinger_bandwidth_all
+    output_schema:
+      regime: "LOW_VOL | NORMAL | ELEVATED | CRISIS"
+      vix_percentile: "0-100"
+      vol_expanding: "bool"
+      position_size_multiplier: "0.0-2.0"
+      confidence: "0.0-1.0"
+    prompt: |
+      Determine the current volatility regime across markets. Use VIX level, VIX
+      term structure (contango = calm, backwardation = fear), ATR percentiles,
+      and realized vs implied vol spread. Classify as LOW_VOL (<15 VIX), NORMAL
+      (15-20), ELEVATED (20-30), or CRISIS (>30). Output a position size
+      multiplier: 1.5x in low vol, 1.0x normal, 0.5x elevated, 0.25x crisis.
+      Output JSON only. Never fabricate data.
+
+  - id: correlation_regime
+    name: "Correlation Regime Detector"
+    category: market_analysis
+    subcategory: regime
+    instrument: null
+    model: sonnet
+    schedule: daily
+    input_schema:
+      - correlation_matrix_30d
+      - correlation_matrix_90d
+      - dxy_returns
+      - spx_returns
+      - gold_returns
+    output_schema:
+      regime: "RISK_ON | RISK_OFF | DIVERGENT | TRANSITIONING"
+      correlation_shifts: "list[dict]"
+      broken_correlations: "list[dict]"
+      confidence: "0.0-1.0"
+    prompt: |
+      Analyze the correlation regime across all 12 instruments. Compare 30-day vs
+      90-day correlation matrices to detect regime shifts. In risk-on: equities up,
+      USD down, gold flat, commodities up. In risk-off: equities down, USD up,
+      gold up, commodities down. Flag any broken historical correlations (e.g.,
+      gold rallying with USD) as these signal regime transitions or structural
+      changes. Output JSON only. Never fabricate data.
+
+  - id: seasonal_detector
+    name: "Seasonal Pattern Detector"
+    category: market_analysis
+    subcategory: regime
+    instrument: null
+    model: haiku
+    schedule: weekly
+    input_schema:
+      - current_month
+      - historical_monthly_returns
+      - options_expiry_calendar
+      - quarter_end_dates
+    output_schema:
+      seasonal_biases: "dict[str, dict]"
+      active_patterns: "list[dict]"
+      upcoming_seasonal_shifts: "list[dict]"
+      confidence: "0.0-1.0"
+    prompt: |
+      Identify active seasonal patterns for all 12 instruments. Key patterns:
+      January effect (equities), sell-in-May, summer doldrums (low vol), Q4
+      rally, year-end rebalancing, gold seasonal (Aug-Feb), oil seasonal
+      (driving/heating seasons), VIX pre-FOMC crush. Note options expiry weeks
+      (quad witching) and month/quarter-end rebalancing flows. Rate each seasonal
+      bias by historical win rate. Output JSON only. Never fabricate data.

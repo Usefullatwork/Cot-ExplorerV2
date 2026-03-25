@@ -1,0 +1,112 @@
+# Cot-ExplorerV2 Confluence Scoring Configuration
+# 12-point scoring system — each criterion is a boolean (0 or 1)
+
+criteria:
+  - id: sma200
+    label: "Over SMA200 (D1 trend)"
+    description: "Price is above 200-day simple moving average"
+    weight: 1
+
+  - id: momentum_20d
+    label: "Momentum 20d bekrefter"
+    description: "20-day price change confirms direction"
+    weight: 1
+
+  - id: cot_confirms
+    label: "COT bekrefter retning"
+    description: "CFTC speculator positioning confirms direction"
+    weight: 1
+
+  - id: cot_strong
+    label: "COT sterk posisjonering (>10%)"
+    description: "Speculator net > 10% of open interest"
+    weight: 1
+
+  - id: at_level_now
+    label: "Pris VED HTF-nivå nå"
+    description: "Price is within tight ATR tolerance of a structure level"
+    weight: 1
+
+  - id: htf_level_nearby
+    label: "HTF-nivå D1/Ukentlig"
+    description: "Nearest level has D1/Weekly weight (>= 3)"
+    weight: 1
+
+  - id: trend_congruent
+    label: "D1 + 4H trend kongruent"
+    description: "Daily and 4-hour EMA9 trends align"
+    weight: 1
+
+  - id: no_event_risk
+    label: "Ingen event-risiko (4t)"
+    description: "No high-impact economic events within 4 hours"
+    weight: 1
+
+  - id: news_confirms
+    label: "Nyhetssentiment bekrefter"
+    description: "RSS news sentiment confirms direction"
+    weight: 1
+
+  - id: fund_confirms
+    label: "Fundamental bekrefter"
+    description: "FRED macro indicators confirm direction"
+    weight: 1
+
+  - id: bos_confirms
+    label: "BOS 1H/4H bekrefter retning"
+    description: "Break of Structure on 1H/4H confirms direction"
+    weight: 1
+
+  - id: smc_struct_confirms
+    label: "SMC 1H struktur bekrefter"
+    description: "1H SMC market structure (HH/HL or LH/LL) confirms direction"
+    weight: 1
+
+# Grade thresholds
+grades:
+  "A+": { min_score: 11, color: bull }
+  "A":  { min_score: 9,  color: warn }
+  "B":  { min_score: 6,  color: bear }
+  "C":  { min_score: 0,  color: bear }
+
+# Timeframe bias classification
+timeframe_bias:
+  MAKRO:
+    min_score: 6
+    requires: [cot_confirms, htf_level_nearby]
+    description: "Hold days/weeks"
+  SWING:
+    min_score: 4
+    requires: [htf_level_nearby]
+    description: "Hold hours/days"
+  SCALP:
+    min_score: 2
+    requires: [at_level_now]
+    session_required: true
+    description: "Minutes"
+  WATCHLIST:
+    min_score: 0
+    description: "Not ready yet"
+
+# VIX regime position sizing
+vix_regimes:
+  normal:   { max_vix: 20, size: "Full",  factor: 1.0 }
+  elevated: { max_vix: 30, size: "Halv",  factor: 0.5 }
+  extreme:  { max_vix: 999, size: "Kvart", factor: 0.25 }
+
+# Level weight hierarchy
+level_weights:
+  5: "PWH/PWL (Previous Week High/Low)"
+  4: "PDH/PDL (Previous Day High/Low)"
+  3: "D1 swing / PDC / SMC 1H zones"
+  2: "4H swing / SMC 4H zones"
+  1: "15m pivot / SMC 15m zones"
+
+# is_at_level tolerances (× ATR 15m)
+at_level_tolerance:
+  weight_1: 0.30
+  weight_2: 0.35
+  weight_3_plus: 0.45
+
+# Level merge distance (× ATR)
+merge_distance_atr: 0.5

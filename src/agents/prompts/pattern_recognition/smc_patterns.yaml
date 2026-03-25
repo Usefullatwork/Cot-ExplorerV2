@@ -1,0 +1,127 @@
+prompts:
+  - id: order_block
+    name: "Order Block Pattern Scanner"
+    category: pattern_recognition
+    subcategory: smc_patterns
+    instrument: null
+    model: sonnet
+    schedule: every_run
+    input_schema:
+      - all_ohlc_4h_50
+      - all_ohlc_1h_100
+      - swing_structures_all
+      - volume_all
+    output_schema:
+      active_order_blocks: "list[dict]"
+      mitigated_blocks: "list[dict]"
+      highest_probability: "dict"
+      confidence: "0.0-1.0"
+    prompt: |
+      Scan all 12 instruments for valid order blocks on 1H and 4H. An order block
+      is the last opposing candle before a displacement (impulsive move >1.5 ATR).
+      Bullish OB = last bearish candle before bullish displacement. Valid OBs must
+      not have been revisited (unmitigated). Rank by: displacement strength, HTF
+      trend alignment, and proximity to current price. OBs within 1 ATR of current
+      price are immediately actionable. Output JSON only. Never fabricate data.
+
+  - id: fair_value_gap_pattern
+    name: "Fair Value Gap Pattern Scanner"
+    category: pattern_recognition
+    subcategory: smc_patterns
+    instrument: null
+    model: sonnet
+    schedule: every_run
+    input_schema:
+      - all_ohlc_4h_50
+      - all_ohlc_1h_100
+      - all_ohlc_15m_200
+      - atr_all
+    output_schema:
+      active_fvgs: "list[dict]"
+      fvg_in_premium: "list[dict]"
+      fvg_in_discount: "list[dict]"
+      highest_probability: "dict"
+      confidence: "0.0-1.0"
+    prompt: |
+      Scan all 12 instruments for Fair Value Gaps (FVGs) across 15m, 1H, and 4H.
+      An FVG is a 3-candle pattern where candle 1 high and candle 3 low do not
+      overlap (bullish FVG) or candle 1 low and candle 3 high do not overlap
+      (bearish). FVGs in premium zone (above 50% of dealing range) are bearish
+      entries; in discount zone are bullish entries. Filter out FVGs >20 candles
+      old. Output JSON only. Never fabricate data.
+
+  - id: breaker_block
+    name: "Breaker Block Pattern Scanner"
+    category: pattern_recognition
+    subcategory: smc_patterns
+    instrument: null
+    model: sonnet
+    schedule: every_run
+    input_schema:
+      - all_ohlc_4h_50
+      - all_ohlc_1h_100
+      - failed_order_blocks
+      - structure_breaks
+    output_schema:
+      breaker_blocks: "list[dict]"
+      actionable_breakers: "list[dict]"
+      confidence: "0.0-1.0"
+    prompt: |
+      Scan all 12 instruments for breaker blocks. A breaker block is a failed
+      order block — price broke through the OB and then came back to retest the
+      broken zone from the other side. Bullish breaker: a bearish OB that failed
+      (price broke above) and now acts as support. Breaker blocks are higher
+      probability than regular OBs because they represent trapped traders.
+      Only report breakers aligned with the higher timeframe trend.
+      Output JSON only. Never fabricate data.
+
+  - id: mitigation_block
+    name: "Mitigation Block Pattern Scanner"
+    category: pattern_recognition
+    subcategory: smc_patterns
+    instrument: null
+    model: sonnet
+    schedule: every_run
+    input_schema:
+      - all_ohlc_4h_50
+      - all_ohlc_1h_100
+      - partially_filled_obs
+      - volume_at_obs
+    output_schema:
+      mitigation_blocks: "list[dict]"
+      partially_mitigated: "list[dict]"
+      confidence: "0.0-1.0"
+    prompt: |
+      Scan all 12 instruments for mitigation blocks. A mitigation block occurs
+      when price taps an order block zone but does not fully trade through it.
+      The remaining unmitigated portion becomes a mitigation block. These represent
+      residual institutional interest. Price often returns to fully mitigate these
+      zones. Rank by: remaining gap size, HTF alignment, and number of prior taps
+      (more taps = weaker remaining interest).
+      Output JSON only. Never fabricate data.
+
+  - id: displacement
+    name: "Displacement Detection"
+    category: pattern_recognition
+    subcategory: smc_patterns
+    instrument: null
+    model: haiku
+    schedule: every_run
+    input_schema:
+      - all_ohlc_1h_50
+      - all_ohlc_15m_100
+      - atr_all
+      - volume_all
+    output_schema:
+      recent_displacements: "list[dict]"
+      displacement_direction: "dict[str, str]"
+      fvgs_created: "list[dict]"
+      confidence: "0.0-1.0"
+    prompt: |
+      Detect displacement candles across all 12 instruments on 15m and 1H.
+      A displacement is an impulsive candle with body >1.5x ATR and strong
+      close (closing near high for bullish, near low for bearish). Displacements
+      confirm institutional activity and create valid FVGs and order blocks.
+      Report the direction, magnitude (multiples of ATR), and any FVGs created.
+      Multiple consecutive displacements signal strong conviction.
+      Output JSON only. Never fabricate data.

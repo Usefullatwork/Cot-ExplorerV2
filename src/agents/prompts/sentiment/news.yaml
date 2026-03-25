@@ -1,0 +1,383 @@
+prompts:
+  # ── Headline sentiment per instrument (12) ─────────────────────────
+  - id: headline_sentiment_eurusd
+    name: "Headline Sentiment - EUR/USD"
+    category: sentiment
+    subcategory: news
+    instrument: EURUSD
+    model: haiku
+    schedule: every_run
+    input_schema:
+      - news_headlines_eur
+      - news_headlines_usd
+      - headline_timestamps
+      - source_reliability
+    output_schema:
+      sentiment: "BULLISH | BEARISH | NEUTRAL"
+      sentiment_score: "-1.0 to 1.0"
+      key_headlines: "list[dict]"
+      confidence: "0.0-1.0"
+    prompt: |
+      Analyze news headlines for EUR/USD sentiment. Separate EUR-positive and
+      USD-positive headlines. ECB hawkish rhetoric = EUR bullish. US growth data
+      = USD bullish = EUR/USD bearish. Eurozone political risk = EUR bearish.
+      Weight recent headlines (last 4 hours) higher than older ones. Filter out
+      clickbait and opinion pieces — focus on data-driven news from Reuters,
+      Bloomberg, FT. Score -1.0 (bearish) to +1.0 (bullish).
+      Output JSON only. Never fabricate data.
+
+  - id: headline_sentiment_usdjpy
+    name: "Headline Sentiment - USD/JPY"
+    category: sentiment
+    subcategory: news
+    instrument: USDJPY
+    model: haiku
+    schedule: every_run
+    input_schema:
+      - news_headlines_usd
+      - news_headlines_jpy
+      - headline_timestamps
+      - source_reliability
+    output_schema:
+      sentiment: "BULLISH | BEARISH | NEUTRAL"
+      sentiment_score: "-1.0 to 1.0"
+      key_headlines: "list[dict]"
+      confidence: "0.0-1.0"
+    prompt: |
+      Analyze news headlines for USD/JPY sentiment. BoJ policy shift rumors have
+      outsized impact. MoF intervention warnings = immediate JPY bullish. US
+      yield commentary = USD/JPY directional. Japanese political changes affect
+      BoJ policy independence. Weight Nikkei and NHK sources for Japan news;
+      Reuters/Bloomberg for US. Score -1.0 (bearish) to +1.0 (bullish).
+      Output JSON only. Never fabricate data.
+
+  - id: headline_sentiment_gbpusd
+    name: "Headline Sentiment - GBP/USD"
+    category: sentiment
+    subcategory: news
+    instrument: GBPUSD
+    model: haiku
+    schedule: every_run
+    input_schema:
+      - news_headlines_gbp
+      - news_headlines_usd
+      - headline_timestamps
+      - source_reliability
+    output_schema:
+      sentiment: "BULLISH | BEARISH | NEUTRAL"
+      sentiment_score: "-1.0 to 1.0"
+      key_headlines: "list[dict]"
+      confidence: "0.0-1.0"
+    prompt: |
+      Analyze news headlines for GBP/USD sentiment. BoE hawkish rhetoric = GBP
+      bullish. UK fiscal concerns (budget, debt) = GBP bearish. Post-Brexit
+      trade friction = GBP bearish. UK housing market stress = GBP negative.
+      Weight FT, Guardian Business, and BoE press releases. Cable sentiment
+      shifts quickly on political headlines. Score -1.0 to +1.0.
+      Output JSON only. Never fabricate data.
+
+  - id: headline_sentiment_audusd
+    name: "Headline Sentiment - AUD/USD"
+    category: sentiment
+    subcategory: news
+    instrument: AUDUSD
+    model: haiku
+    schedule: every_run
+    input_schema:
+      - news_headlines_aud
+      - news_headlines_china
+      - headline_timestamps
+      - source_reliability
+    output_schema:
+      sentiment: "BULLISH | BEARISH | NEUTRAL"
+      sentiment_score: "-1.0 to 1.0"
+      key_headlines: "list[dict]"
+      confidence: "0.0-1.0"
+    prompt: |
+      Analyze news headlines for AUD/USD sentiment. China economic headlines are
+      as important as Australian headlines for AUD. China stimulus = AUD bullish.
+      China property crisis = AUD bearish. RBA hawkish = AUD bullish. Iron ore
+      supply disruption = AUD bullish (price up). Include Chinese state media
+      (Xinhua, People's Daily) for policy signals. Score -1.0 to +1.0.
+      Output JSON only. Never fabricate data.
+
+  - id: headline_sentiment_gold
+    name: "Headline Sentiment - Gold"
+    category: sentiment
+    subcategory: news
+    instrument: Gold
+    model: haiku
+    schedule: every_run
+    input_schema:
+      - news_headlines_gold
+      - news_headlines_macro
+      - headline_timestamps
+      - source_reliability
+    output_schema:
+      sentiment: "BULLISH | BEARISH | NEUTRAL"
+      sentiment_score: "-1.0 to 1.0"
+      key_headlines: "list[dict]"
+      confidence: "0.0-1.0"
+    prompt: |
+      Analyze news headlines for Gold sentiment. Central bank buying headlines =
+      bullish. Inflation fears = bullish. Fed hawkish = bearish. Geopolitical
+      escalation = bullish. De-dollarization narrative = bullish. Strong US data
+      = bearish. Crypto competition narrative = slightly bearish. Weight World
+      Gold Council reports and central bank announcements highly. Score -1.0 to
+      +1.0. Output JSON only. Never fabricate data.
+
+  - id: headline_sentiment_silver
+    name: "Headline Sentiment - Silver"
+    category: sentiment
+    subcategory: news
+    instrument: Silver
+    model: haiku
+    schedule: every_run
+    input_schema:
+      - news_headlines_silver
+      - news_headlines_industrial
+      - headline_timestamps
+      - source_reliability
+    output_schema:
+      sentiment: "BULLISH | BEARISH | NEUTRAL"
+      sentiment_score: "-1.0 to 1.0"
+      key_headlines: "list[dict]"
+      confidence: "0.0-1.0"
+    prompt: |
+      Analyze news headlines for Silver sentiment. Silver has dual drivers:
+      precious metal sentiment (follows gold) and industrial demand (solar panels,
+      EVs, electronics). Solar installation growth = bullish. Green energy policy
+      headlines = bullish. Mine supply disruptions = bullish. Strong USD = bearish.
+      Recession fears = bearish (industrial demand decline). Score -1.0 to +1.0.
+      Output JSON only. Never fabricate data.
+
+  - id: headline_sentiment_brent
+    name: "Headline Sentiment - Brent Crude"
+    category: sentiment
+    subcategory: news
+    instrument: Brent
+    model: haiku
+    schedule: every_run
+    input_schema:
+      - news_headlines_oil
+      - news_headlines_opec
+      - headline_timestamps
+      - source_reliability
+    output_schema:
+      sentiment: "BULLISH | BEARISH | NEUTRAL"
+      sentiment_score: "-1.0 to 1.0"
+      key_headlines: "list[dict]"
+      confidence: "0.0-1.0"
+    prompt: |
+      Analyze news headlines for Brent Crude sentiment. OPEC+ cut headlines =
+      bullish. Production increase = bearish. Middle East escalation = bullish.
+      China demand weakness = bearish. US shale production records = bearish.
+      SPR release/fill = direction dependent. IEA demand forecasts weight heavily.
+      OPEC+ compliance reports from platts/argus are key. Score -1.0 to +1.0.
+      Output JSON only. Never fabricate data.
+
+  - id: headline_sentiment_wti
+    name: "Headline Sentiment - WTI Crude"
+    category: sentiment
+    subcategory: news
+    instrument: WTI
+    model: haiku
+    schedule: every_run
+    input_schema:
+      - news_headlines_oil
+      - news_headlines_us_energy
+      - headline_timestamps
+      - source_reliability
+    output_schema:
+      sentiment: "BULLISH | BEARISH | NEUTRAL"
+      sentiment_score: "-1.0 to 1.0"
+      key_headlines: "list[dict]"
+      confidence: "0.0-1.0"
+    prompt: |
+      Analyze news headlines for WTI Crude sentiment. US-specific headlines:
+      EIA inventory builds (bearish) or draws (bullish), US production records
+      (bearish), Cushing storage levels, refinery run rates, gasoline demand.
+      Pipeline/refinery outages = bullish. US export policy = relevant. Include
+      general oil headlines. Score -1.0 to +1.0.
+      Output JSON only. Never fabricate data.
+
+  - id: headline_sentiment_spx
+    name: "Headline Sentiment - S&P 500"
+    category: sentiment
+    subcategory: news
+    instrument: SPX
+    model: haiku
+    schedule: every_run
+    input_schema:
+      - news_headlines_equities
+      - news_headlines_earnings
+      - headline_timestamps
+      - source_reliability
+    output_schema:
+      sentiment: "BULLISH | BEARISH | NEUTRAL"
+      sentiment_score: "-1.0 to 1.0"
+      key_headlines: "list[dict]"
+      confidence: "0.0-1.0"
+    prompt: |
+      Analyze news headlines for S&P 500 sentiment. Earnings beat headlines =
+      bullish. Fed dovish = bullish. Recession fears = bearish. Layoff
+      announcements (leading indicator) = bearish. AI/tech investment = NAS100
+      bullish, SPX muted. Consumer spending strong = bullish. Housing slowdown
+      = bearish. Weight WSJ, Bloomberg, CNBC business headlines.
+      Score -1.0 to +1.0. Output JSON only. Never fabricate data.
+
+  - id: headline_sentiment_nas100
+    name: "Headline Sentiment - NASDAQ 100"
+    category: sentiment
+    subcategory: news
+    instrument: NAS100
+    model: haiku
+    schedule: every_run
+    input_schema:
+      - news_headlines_tech
+      - news_headlines_earnings
+      - headline_timestamps
+      - source_reliability
+    output_schema:
+      sentiment: "BULLISH | BEARISH | NEUTRAL"
+      sentiment_score: "-1.0 to 1.0"
+      key_headlines: "list[dict]"
+      confidence: "0.0-1.0"
+    prompt: |
+      Analyze news headlines for NASDAQ 100 sentiment. Mega-cap earnings headlines
+      dominate. AI investment announcements = bullish. Tech regulation headlines
+      = bearish. Semiconductor supply issues = mixed. Rate-sensitive — Fed hawkish
+      = bearish. Layoffs at tech companies can be bullish (cost cutting) or bearish
+      (demand decline) — context matters. Score -1.0 to +1.0.
+      Output JSON only. Never fabricate data.
+
+  - id: headline_sentiment_dxy
+    name: "Headline Sentiment - DXY"
+    category: sentiment
+    subcategory: news
+    instrument: DXY
+    model: haiku
+    schedule: every_run
+    input_schema:
+      - news_headlines_usd
+      - news_headlines_macro
+      - headline_timestamps
+      - source_reliability
+    output_schema:
+      sentiment: "BULLISH | BEARISH | NEUTRAL"
+      sentiment_score: "-1.0 to 1.0"
+      key_headlines: "list[dict]"
+      confidence: "0.0-1.0"
+    prompt: |
+      Analyze news headlines for DXY/USD sentiment. Fed hawkish = bullish. Strong
+      US data = bullish. Risk-off events = bullish (safe haven). De-dollarization
+      narrative = bearish. Twin deficit concerns = bearish. Global growth recovery
+      = bearish (capital leaves US). Aggregate USD sentiment from all FX-relevant
+      headlines. Score -1.0 to +1.0.
+      Output JSON only. Never fabricate data.
+
+  - id: headline_sentiment_vix
+    name: "Headline Sentiment - VIX"
+    category: sentiment
+    subcategory: news
+    instrument: VIX
+    model: haiku
+    schedule: every_run
+    input_schema:
+      - news_headlines_volatility
+      - news_headlines_risk
+      - headline_timestamps
+      - source_reliability
+    output_schema:
+      sentiment: "BULLISH | BEARISH | NEUTRAL"
+      sentiment_score: "-1.0 to 1.0"
+      key_headlines: "list[dict]"
+      confidence: "0.0-1.0"
+    prompt: |
+      Analyze news headlines for VIX/volatility sentiment. Geopolitical escalation
+      = VIX bullish. Market crash fears = VIX bullish. Fed certainty = VIX bearish.
+      Complacency warnings from analysts = VIX bullish (contrarian). Earnings
+      season starting = VIX neutral-to-bullish. Headlines about "low volatility"
+      or "market complacency" are contrarian VIX-bullish signals. Score -1.0 to
+      +1.0. Output JSON only. Never fabricate data.
+
+  # ── Cross-instrument news agents ───────────────────────────────────
+  - id: risk_classifier
+    name: "News Risk Event Classifier"
+    category: sentiment
+    subcategory: news
+    instrument: null
+    model: sonnet
+    schedule: every_run
+    input_schema:
+      - all_news_headlines
+      - headline_urgency_scores
+      - historical_event_impacts
+    output_schema:
+      risk_events: "list[dict]"
+      risk_level: "LOW | MEDIUM | HIGH | CRITICAL"
+      affected_instruments: "list[str]"
+      recommended_action: "str"
+      confidence: "0.0-1.0"
+    prompt: |
+      Classify incoming news headlines by risk impact. CRITICAL: war escalation,
+      central bank emergency action, sovereign default. HIGH: surprise rate
+      decision, major sanctions, systemic bank stress. MEDIUM: data surprise,
+      political shock, corporate failure. LOW: analyst upgrades, routine policy.
+      Map each risk event to affected instruments with expected direction and
+      magnitude. Recommend portfolio action for HIGH+ events.
+      Output JSON only. Never fabricate data.
+
+  - id: geopolitical_scanner
+    name: "Geopolitical News Scanner"
+    category: sentiment
+    subcategory: news
+    instrument: null
+    model: sonnet
+    schedule: daily
+    input_schema:
+      - geopolitical_news_feed
+      - conflict_monitors
+      - diplomatic_channels
+      - military_movements
+    output_schema:
+      active_risks: "list[dict]"
+      escalation_probability: "dict[str, float]"
+      safe_haven_trigger: "bool"
+      confidence: "0.0-1.0"
+    prompt: |
+      Scan geopolitical news for market-moving developments. Track: Middle East
+      tensions (oil supply), US-China relations (tech, trade), Russia-Ukraine
+      (energy, EUR), Taiwan Strait (semiconductors), North Korea (risk-off).
+      Rate escalation probability for each hotspot. Identify which instruments
+      are most exposed. When escalation probability exceeds 60% for any hotspot,
+      trigger safe haven positioning (long gold, long USD, reduce equities).
+      Output JSON only. Never fabricate data.
+
+  - id: central_bank_speech
+    name: "Central Bank Speech Analyzer"
+    category: sentiment
+    subcategory: news
+    instrument: null
+    model: sonnet
+    schedule: daily
+    input_schema:
+      - fed_speeches
+      - ecb_speeches
+      - boj_speeches
+      - boe_speeches
+      - rba_speeches
+    output_schema:
+      hawkish_dovish_scores: "dict[str, float]"
+      policy_shift_signals: "list[dict]"
+      key_phrases: "list[dict]"
+      market_impact: "dict[str, str]"
+      confidence: "0.0-1.0"
+    prompt: |
+      Analyze central bank speeches for policy signals. Score each bank on a
+      hawkish-dovish scale (-1.0 dovish to +1.0 hawkish). Track key phrases:
+      "data dependent" (neutral), "whatever it takes" (hawkish extreme),
+      "downside risks" (dovish). Compare current speech tone to previous
+      communication for shifts. A shift of >0.3 on the hawk-dove scale signals
+      a potential policy change. Map to currency and rate implications.
+      Output JSON only. Never fabricate data.

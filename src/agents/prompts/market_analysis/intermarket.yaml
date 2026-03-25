@@ -1,0 +1,112 @@
+prompts:
+  - id: dxy_fx_correlation
+    name: "DXY-FX Correlation Monitor"
+    category: market_analysis
+    subcategory: intermarket
+    instrument: null
+    model: sonnet
+    schedule: every_run
+    input_schema:
+      - dxy_daily
+      - eurusd_daily
+      - gbpusd_daily
+      - usdjpy_daily
+      - audusd_daily
+      - correlation_30d
+    output_schema:
+      dxy_direction: "str"
+      fx_alignment: "dict[str, str]"
+      divergences: "list[dict]"
+      strongest_fx_setup: "str"
+      confidence: "0.0-1.0"
+    prompt: |
+      Monitor DXY correlation with all FX pairs. EUR/USD has ~-0.97 correlation
+      with DXY (EUR is 57.6% weight). GBP/USD ~-0.85, USD/JPY ~+0.60, AUD/USD
+      ~-0.70. Flag any pair deviating from its normal DXY correlation by >1.5
+      standard deviations — this indicates pair-specific fundamental driver.
+      Identify the FX pair with the cleanest DXY alignment for highest-conviction
+      trade. Output JSON only. Never fabricate data.
+
+  - id: gold_yields
+    name: "Gold-Yields Relationship"
+    category: market_analysis
+    subcategory: intermarket
+    instrument: null
+    model: sonnet
+    schedule: daily
+    input_schema:
+      - gold_daily
+      - us_10y_yield
+      - us_2y_yield
+      - real_yield_10y
+      - tips_breakeven
+      - dxy_daily
+    output_schema:
+      gold_vs_real_yield: "ALIGNED | DIVERGENT"
+      divergence_magnitude: "float"
+      fair_value_estimate: "float"
+      directional_bias: "BULLISH | BEARISH | NEUTRAL"
+      confidence: "0.0-1.0"
+    prompt: |
+      Analyze Gold's relationship with real yields and the dollar. Gold has a
+      strong inverse correlation with US real yields (TIPS). When gold rallies
+      despite rising real yields, it signals structural demand (central bank buying,
+      de-dollarization). Compare current gold price to fair value derived from
+      real yield model. Flag divergences >$50 as potential mean-reversion or
+      regime-change signals. Output JSON only. Never fabricate data.
+
+  - id: risk_asset_correlation
+    name: "Risk Asset Correlation Monitor"
+    category: market_analysis
+    subcategory: intermarket
+    instrument: null
+    model: sonnet
+    schedule: daily
+    input_schema:
+      - spx_daily
+      - nas100_daily
+      - audusd_daily
+      - brent_daily
+      - vix_daily
+      - high_yield_spread
+    output_schema:
+      risk_appetite: "RISK_ON | RISK_OFF | MIXED"
+      alignment_score: "0.0-1.0"
+      leading_indicator: "str"
+      divergences: "list[dict]"
+      confidence: "0.0-1.0"
+    prompt: |
+      Monitor correlation among risk assets: SPX, NAS100, AUD/USD, Brent oil.
+      In normal risk-on, all rally together with falling VIX. Divergences signal
+      trouble — e.g., equities rising while AUD/USD falls suggests fragile risk
+      appetite. High-yield credit spreads are a leading indicator; widening spreads
+      with flat equities is a warning. Identify the leading risk indicator for the
+      current regime. Output JSON only. Never fabricate data.
+
+  - id: commodity_currency
+    name: "Commodity-Currency Linkage"
+    category: market_analysis
+    subcategory: intermarket
+    instrument: null
+    model: sonnet
+    schedule: daily
+    input_schema:
+      - audusd_daily
+      - iron_ore_price
+      - gold_daily
+      - brent_daily
+      - wti_daily
+      - copper_daily
+    output_schema:
+      aud_commodity_alignment: "str"
+      oil_fx_signal: "str"
+      gold_dxy_signal: "str"
+      trade_opportunities: "list[dict]"
+      confidence: "0.0-1.0"
+    prompt: |
+      Analyze commodity-currency linkages. AUD/USD tracks iron ore and copper
+      prices (China demand proxy). CAD (via USD/CAD) tracks oil. Gold inversely
+      tracks DXY. When commodities lead and the linked currency lags, a convergence
+      trade opportunity exists. Flag commodity-currency divergences >2 standard
+      deviations from the 90-day rolling correlation. Identify the highest-
+      conviction convergence trade. Output JSON only. Never fabricate data.

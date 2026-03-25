@@ -1,0 +1,85 @@
+prompts:
+  - id: monthly_review
+    name: "Monthly Performance Review"
+    category: backtesting
+    subcategory: analysis
+    instrument: null
+    model: sonnet
+    schedule: weekly
+    input_schema:
+      - monthly_trades_all
+      - monthly_pnl
+      - monthly_win_rate
+      - monthly_max_drawdown
+      - benchmark_returns
+    output_schema:
+      total_return: "float"
+      sharpe_ratio: "float"
+      max_drawdown: "float"
+      best_instrument: "str"
+      worst_instrument: "str"
+      key_insights: "list[str]"
+      confidence: "0.0-1.0"
+    prompt: |
+      Produce the monthly performance review. Calculate: total return, Sharpe
+      ratio, Sortino ratio, max drawdown, win rate, average R:R. Compare to
+      benchmark (SPX buy-and-hold). Identify the best and worst performing
+      instruments. Analyze if performance was driven by a few large winners
+      or consistent small gains. Recommend allocation changes for the next
+      month. If Sharpe <0.5, the system needs fundamental review.
+      Output JSON only. Never fabricate data.
+
+  - id: drawdown_analysis
+    name: "Drawdown Pattern Analysis"
+    category: backtesting
+    subcategory: analysis
+    instrument: null
+    model: sonnet
+    schedule: weekly
+    input_schema:
+      - equity_curve_full
+      - drawdown_periods
+      - market_conditions_during_dd
+      - recovery_times
+    output_schema:
+      max_drawdown: "float"
+      avg_drawdown: "float"
+      avg_recovery_days: "int"
+      drawdown_regime_correlation: "str"
+      structural_weaknesses: "list[str]"
+      confidence: "0.0-1.0"
+    prompt: |
+      Analyze drawdown patterns in the equity curve. Identify: max drawdown,
+      average drawdown, longest drawdown duration, and recovery time. Correlate
+      drawdowns with market regimes — if drawdowns consistently occur during
+      ranging markets, trend-following signals in ranges should be filtered.
+      If drawdowns cluster around event dates (FOMC, NFP), pre-event risk
+      management needs improvement. Output structural weaknesses.
+      Output JSON only. Never fabricate data.
+
+  - id: regime_correlation_analysis
+    name: "Strategy-Regime Correlation Analysis"
+    category: backtesting
+    subcategory: analysis
+    instrument: null
+    model: sonnet
+    schedule: weekly
+    input_schema:
+      - trades_by_regime
+      - volatility_regime_history
+      - correlation_regime_history
+      - strategy_returns_by_regime
+    output_schema:
+      best_regime: "str"
+      worst_regime: "str"
+      regime_pnl_breakdown: "dict[str, float]"
+      adaptive_recommendations: "list[str]"
+      confidence: "0.0-1.0"
+    prompt: |
+      Analyze strategy performance by market regime. Regimes: low-vol trending,
+      high-vol trending, low-vol ranging, high-vol ranging, crisis. Most trading
+      systems excel in one regime and suffer in others. Identify which regime
+      produces the best and worst results. Recommend adaptive rules: if in
+      worst-performing regime, reduce size by 50% or switch to regime-appropriate
+      strategies. This is the most important meta-analysis for system improvement.
+      Output JSON only. Never fabricate data.

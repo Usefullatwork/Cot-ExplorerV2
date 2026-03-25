@@ -1,0 +1,182 @@
+prompts:
+  - id: fx_correlation_matrix
+    name: "FX Correlation Matrix"
+    category: risk_assessment
+    subcategory: correlation
+    instrument: null
+    model: haiku
+    schedule: daily
+    input_schema:
+      - eurusd_returns_30d
+      - usdjpy_returns_30d
+      - gbpusd_returns_30d
+      - audusd_returns_30d
+      - dxy_returns_30d
+    output_schema:
+      correlation_matrix: "dict[str, dict[str, float]]"
+      high_correlations: "list[dict]"
+      portfolio_fx_risk: "float"
+      confidence: "0.0-1.0"
+    prompt: |
+      Calculate the 30-day rolling correlation matrix for all FX pairs and DXY.
+      Flag pairs with correlation >0.80 or <-0.80 as highly correlated — holding
+      positions in both is effectively doubling exposure. Calculate net USD
+      directional risk by summing correlation-weighted FX positions. If EUR/USD
+      and GBP/USD correlation exceeds 0.90, treat them as one position for
+      risk purposes. Output JSON only. Never fabricate data.
+
+  - id: commodity_cross_correlation
+    name: "Commodity Cross-Correlation"
+    category: risk_assessment
+    subcategory: correlation
+    instrument: null
+    model: haiku
+    schedule: daily
+    input_schema:
+      - gold_returns_30d
+      - silver_returns_30d
+      - brent_returns_30d
+      - wti_returns_30d
+    output_schema:
+      correlation_matrix: "dict[str, dict[str, float]]"
+      precious_metals_correlation: "float"
+      oil_correlation: "float"
+      cross_commodity: "list[dict]"
+      confidence: "0.0-1.0"
+    prompt: |
+      Calculate commodity cross-correlations. Gold-Silver typically 0.75-0.85;
+      Brent-WTI typically 0.90-0.95. Gold-Oil correlation varies by regime
+      (positive in inflation fears, negative in demand destruction). Flag any
+      correlation deviating >0.15 from its 90-day average as a regime signal.
+      If Brent-WTI spread correlation drops below 0.85, supply-specific factors
+      are at play. Output JSON only. Never fabricate data.
+
+  - id: asset_class_correlation
+    name: "Asset Class Correlation"
+    category: risk_assessment
+    subcategory: correlation
+    instrument: null
+    model: sonnet
+    schedule: daily
+    input_schema:
+      - fx_returns_30d
+      - equity_returns_30d
+      - commodity_returns_30d
+      - bond_returns_30d
+      - vix_returns_30d
+    output_schema:
+      cross_asset_matrix: "dict[str, dict[str, float]]"
+      risk_on_score: "0.0-1.0"
+      diversification_benefit: "float"
+      portfolio_beta: "float"
+      confidence: "0.0-1.0"
+    prompt: |
+      Calculate cross-asset class correlations: FX (DXY proxy), equities (SPX),
+      commodities (Gold, Brent), bonds (10Y yield inverse), volatility (VIX).
+      Calculate portfolio diversification benefit — if all assets are highly
+      correlated, diversification is illusory. Risk-on score = average positive
+      correlation among risk assets. Score >0.7 = highly correlated risk-on
+      environment (dangerous). Output JSON only. Never fabricate data.
+
+  - id: regime_correlation
+    name: "Regime-Dependent Correlation"
+    category: risk_assessment
+    subcategory: correlation
+    instrument: null
+    model: sonnet
+    schedule: weekly
+    input_schema:
+      - correlation_matrix_calm
+      - correlation_matrix_stress
+      - current_vix_regime
+      - historical_regime_correlations
+    output_schema:
+      current_regime: "CALM | TRANSITION | STRESS"
+      expected_correlations: "dict"
+      risk_adjustment: "float"
+      confidence: "0.0-1.0"
+    prompt: |
+      Analyze how correlations shift between calm and stress regimes. In calm
+      markets, diversification works — cross-asset correlations are low. In
+      stress, correlations spike toward +1.0 and diversification fails. Determine
+      current regime from VIX level and recent correlation trends. Apply the
+      stress-regime correlation matrix for risk calculations when VIX >25.
+      This prevents underestimation of portfolio risk during transitions.
+      Output JSON only. Never fabricate data.
+
+  - id: pct_risk_fx_group
+    name: "Percent Risk - FX Group"
+    category: risk_assessment
+    subcategory: correlation
+    instrument: null
+    model: haiku
+    schedule: every_run
+    input_schema:
+      - fx_positions_all
+      - fx_correlations
+      - account_equity
+    output_schema:
+      gross_fx_risk: "float"
+      net_fx_risk: "float"
+      correlation_adjusted_risk: "float"
+      action: "str"
+      confidence: "0.0-1.0"
+    prompt: |
+      Calculate total FX group risk as percentage of equity. Sum all FX position
+      risks, then adjust for correlations. If long EUR/USD and long GBP/USD
+      (correlation 0.85), net risk is approximately 1.85x a single position,
+      not 2.0x. If long EUR/USD and short USD/JPY, these partially offset
+      (both are short USD). Max FX group risk should not exceed 4% of equity.
+      Output JSON only. Never fabricate data.
+
+  - id: pct_risk_commodity_group
+    name: "Percent Risk - Commodity Group"
+    category: risk_assessment
+    subcategory: correlation
+    instrument: null
+    model: haiku
+    schedule: every_run
+    input_schema:
+      - commodity_positions_all
+      - commodity_correlations
+      - account_equity
+    output_schema:
+      gross_commodity_risk: "float"
+      net_commodity_risk: "float"
+      correlation_adjusted_risk: "float"
+      action: "str"
+      confidence: "0.0-1.0"
+    prompt: |
+      Calculate total commodity group risk. Gold + Silver positions are highly
+      correlated (0.80+); Brent + WTI are nearly identical (0.95). If long
+      both gold and silver, correlation-adjusted risk is ~1.8x single position.
+      If long both Brent and WTI, it is effectively 1.95x. Cross-commodity
+      (precious vs energy) has lower correlation (~0.3), providing some
+      diversification. Max commodity group risk: 4% of equity.
+      Output JSON only. Never fabricate data.
+
+  - id: pct_risk_equity_group
+    name: "Percent Risk - Equity Group"
+    category: risk_assessment
+    subcategory: correlation
+    instrument: null
+    model: haiku
+    schedule: every_run
+    input_schema:
+      - equity_positions_all
+      - equity_correlations
+      - vix_positions
+      - account_equity
+    output_schema:
+      gross_equity_risk: "float"
+      net_equity_risk: "float"
+      vix_hedge_offset: "float"
+      action: "str"
+      confidence: "0.0-1.0"
+    prompt: |
+      Calculate total equity group risk. SPX and NAS100 are ~0.90 correlated;
+      holding both longs is nearly doubled exposure. NAS100 has 1.3x beta — adjust
+      its risk contribution accordingly. VIX long positions offset equity risk
+      (inverse correlation ~-0.85). Calculate net equity risk after VIX hedge.
+      Max gross equity risk: 4% of equity. VIX hedges can reduce net to 2%.
+      Output JSON only. Never fabricate data.

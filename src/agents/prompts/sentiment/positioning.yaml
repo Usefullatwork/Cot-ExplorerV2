@@ -1,0 +1,368 @@
+prompts:
+  # ── COT Extreme per instrument (12) ────────────────────────────────
+  - id: cot_extreme_eurusd
+    name: "COT Extreme Analysis - EUR/USD"
+    category: sentiment
+    subcategory: positioning
+    instrument: EURUSD
+    model: haiku
+    schedule: weekly
+    input_schema:
+      - cot_net_speculative_eur
+      - cot_commercial_eur
+      - cot_3y_percentile
+      - eurusd_price
+      - cot_change_1w
+    output_schema:
+      positioning: "EXTREME_LONG | LONG | NEUTRAL | SHORT | EXTREME_SHORT"
+      percentile_rank: "0-100"
+      reversal_signal: "bool"
+      confidence: "0.0-1.0"
+    prompt: |
+      Analyze COT positioning for EUR (CME Euro FX futures). Net speculative
+      positioning above 90th percentile = EXTREME_LONG (contrarian bearish).
+      Below 10th percentile = EXTREME_SHORT (contrarian bullish). EUR spec
+      positioning historically peaks 2-6 weeks before price reversals. Commercial
+      hedger positioning is the smart money — when commercials are heavily short
+      at spec extreme longs, top is near. Report percentile and reversal signal.
+      Output JSON only. Never fabricate data.
+
+  - id: cot_extreme_usdjpy
+    name: "COT Extreme Analysis - USD/JPY"
+    category: sentiment
+    subcategory: positioning
+    instrument: USDJPY
+    model: haiku
+    schedule: weekly
+    input_schema:
+      - cot_net_speculative_jpy
+      - cot_commercial_jpy
+      - cot_3y_percentile
+      - usdjpy_price
+      - cot_change_1w
+    output_schema:
+      positioning: "EXTREME_LONG | LONG | NEUTRAL | SHORT | EXTREME_SHORT"
+      percentile_rank: "0-100"
+      reversal_signal: "bool"
+      confidence: "0.0-1.0"
+    prompt: |
+      Analyze COT positioning for JPY (CME Japanese Yen futures). JPY spec shorts
+      have been extreme during carry trade periods. Net short JPY >100K contracts
+      is historically extreme and precedes BoJ intervention or sharp JPY rallies.
+      Commercial JPY longs at extremes confirm corporate hedging (smart money).
+      JPY COT extremes combined with VIX spikes trigger violent carry unwinds.
+      Output JSON only. Never fabricate data.
+
+  - id: cot_extreme_gbpusd
+    name: "COT Extreme Analysis - GBP/USD"
+    category: sentiment
+    subcategory: positioning
+    instrument: GBPUSD
+    model: haiku
+    schedule: weekly
+    input_schema:
+      - cot_net_speculative_gbp
+      - cot_commercial_gbp
+      - cot_3y_percentile
+      - gbpusd_price
+      - cot_change_1w
+    output_schema:
+      positioning: "EXTREME_LONG | LONG | NEUTRAL | SHORT | EXTREME_SHORT"
+      percentile_rank: "0-100"
+      reversal_signal: "bool"
+      confidence: "0.0-1.0"
+    prompt: |
+      Analyze COT positioning for GBP (CME British Pound futures). GBP spec
+      positioning tends to be more volatile than EUR due to political risk.
+      Extreme long GBP >50K contracts is historically crowded. Short GBP below
+      -80K contracts is capitulation territory (typically near bottoms). GBP
+      COT data has been less reliable post-Brexit due to reduced futures volume.
+      Output JSON only. Never fabricate data.
+
+  - id: cot_extreme_audusd
+    name: "COT Extreme Analysis - AUD/USD"
+    category: sentiment
+    subcategory: positioning
+    instrument: AUDUSD
+    model: haiku
+    schedule: weekly
+    input_schema:
+      - cot_net_speculative_aud
+      - cot_commercial_aud
+      - cot_3y_percentile
+      - audusd_price
+      - cot_change_1w
+    output_schema:
+      positioning: "EXTREME_LONG | LONG | NEUTRAL | SHORT | EXTREME_SHORT"
+      percentile_rank: "0-100"
+      reversal_signal: "bool"
+      confidence: "0.0-1.0"
+    prompt: |
+      Analyze COT positioning for AUD (CME Australian Dollar futures). AUD spec
+      positioning tracks risk sentiment. Extreme short AUD <-70K contracts is
+      historically oversold. AUD positioning tends to flip rapidly during China
+      stimulus announcements. Commercial AUD positioning reflects mining company
+      hedging — increasing commercial shorts signal expected AUD weakness ahead.
+      Output JSON only. Never fabricate data.
+
+  - id: cot_extreme_gold
+    name: "COT Extreme Analysis - Gold"
+    category: sentiment
+    subcategory: positioning
+    instrument: Gold
+    model: haiku
+    schedule: weekly
+    input_schema:
+      - cot_net_speculative_gold
+      - cot_commercial_gold
+      - cot_3y_percentile
+      - gold_price
+      - cot_change_1w
+    output_schema:
+      positioning: "EXTREME_LONG | LONG | NEUTRAL | SHORT | EXTREME_SHORT"
+      percentile_rank: "0-100"
+      reversal_signal: "bool"
+      confidence: "0.0-1.0"
+    prompt: |
+      Analyze COT positioning for Gold (COMEX Gold futures). Gold spec net long
+      above +250K contracts is historically extreme — tops within 2-8 weeks.
+      Gold spec net long below +100K is washed out — bottoms within 2-6 weeks.
+      Commercial gold shorts are the largest smart money signal — record commercial
+      shorts at record prices is the strongest top signal. Central bank buying
+      (not in COT) has shifted the baseline higher in recent years.
+      Output JSON only. Never fabricate data.
+
+  - id: cot_extreme_silver
+    name: "COT Extreme Analysis - Silver"
+    category: sentiment
+    subcategory: positioning
+    instrument: Silver
+    model: haiku
+    schedule: weekly
+    input_schema:
+      - cot_net_speculative_silver
+      - cot_commercial_silver
+      - cot_3y_percentile
+      - silver_price
+      - cot_change_1w
+    output_schema:
+      positioning: "EXTREME_LONG | LONG | NEUTRAL | SHORT | EXTREME_SHORT"
+      percentile_rank: "0-100"
+      reversal_signal: "bool"
+      confidence: "0.0-1.0"
+    prompt: |
+      Analyze COT positioning for Silver (COMEX Silver futures). Silver COT data
+      is complicated by large producer/merchant hedging. Spec net long above +50K
+      contracts is crowded. Silver positioning has a higher noise-to-signal ratio
+      than gold due to lower open interest. The silver managed money category
+      is the best sentiment gauge. Silver COT extremes should be confirmed by
+      gold COT direction. Output JSON only. Never fabricate data.
+
+  - id: cot_extreme_brent
+    name: "COT Extreme Analysis - Brent Crude"
+    category: sentiment
+    subcategory: positioning
+    instrument: Brent
+    model: haiku
+    schedule: weekly
+    input_schema:
+      - cot_net_speculative_brent
+      - cot_commercial_brent
+      - cot_3y_percentile
+      - brent_price
+      - cot_change_1w
+    output_schema:
+      positioning: "EXTREME_LONG | LONG | NEUTRAL | SHORT | EXTREME_SHORT"
+      percentile_rank: "0-100"
+      reversal_signal: "bool"
+      confidence: "0.0-1.0"
+    prompt: |
+      Analyze COT positioning for Brent Crude (ICE Brent futures). Brent spec
+      positioning above +300K contracts is historically extreme long. Below +100K
+      is washed out. Oil commercial positioning is dominated by producer hedging
+      — increasing commercial shorts signal producers locking in prices (bearish).
+      Oil COT combined with OPEC+ compliance data is the best medium-term
+      oil signal. Output JSON only. Never fabricate data.
+
+  - id: cot_extreme_wti
+    name: "COT Extreme Analysis - WTI Crude"
+    category: sentiment
+    subcategory: positioning
+    instrument: WTI
+    model: haiku
+    schedule: weekly
+    input_schema:
+      - cot_net_speculative_wti
+      - cot_commercial_wti
+      - cot_3y_percentile
+      - wti_price
+      - cot_change_1w
+    output_schema:
+      positioning: "EXTREME_LONG | LONG | NEUTRAL | SHORT | EXTREME_SHORT"
+      percentile_rank: "0-100"
+      reversal_signal: "bool"
+      confidence: "0.0-1.0"
+    prompt: |
+      Analyze COT positioning for WTI Crude (NYMEX CL futures). WTI has the
+      deepest oil futures market. Spec net long above +350K contracts is extreme.
+      Managed money long/short ratio is the key metric. WTI commercial positioning
+      includes US shale producer hedging — increasing hedging at higher prices
+      signals producers expect lower prices. Compare WTI vs Brent COT for
+      regional supply signals. Output JSON only. Never fabricate data.
+
+  - id: cot_extreme_spx
+    name: "COT Extreme Analysis - S&P 500"
+    category: sentiment
+    subcategory: positioning
+    instrument: SPX
+    model: haiku
+    schedule: weekly
+    input_schema:
+      - cot_net_speculative_es
+      - cot_commercial_es
+      - cot_3y_percentile
+      - spx_price
+      - cot_change_1w
+    output_schema:
+      positioning: "EXTREME_LONG | LONG | NEUTRAL | SHORT | EXTREME_SHORT"
+      percentile_rank: "0-100"
+      reversal_signal: "bool"
+      confidence: "0.0-1.0"
+    prompt: |
+      Analyze COT positioning for S&P 500 (CME ES futures). Equity COT is
+      complicated — asset manager longs are structural, not speculative. Focus
+      on leveraged funds category — extreme net shorts signal hedging/bearish
+      positioning that often precedes short squeezes. Leveraged fund net short
+      >200K contracts is extreme bearish positioning (contrarian bullish).
+      Asset manager net long is the baseline.
+      Output JSON only. Never fabricate data.
+
+  - id: cot_extreme_nas100
+    name: "COT Extreme Analysis - NASDAQ 100"
+    category: sentiment
+    subcategory: positioning
+    instrument: NAS100
+    model: haiku
+    schedule: weekly
+    input_schema:
+      - cot_net_speculative_nq
+      - cot_commercial_nq
+      - cot_3y_percentile
+      - nas100_price
+      - cot_change_1w
+    output_schema:
+      positioning: "EXTREME_LONG | LONG | NEUTRAL | SHORT | EXTREME_SHORT"
+      percentile_rank: "0-100"
+      reversal_signal: "bool"
+      confidence: "0.0-1.0"
+    prompt: |
+      Analyze COT positioning for NASDAQ 100 (CME NQ futures). NQ spec positioning
+      tends to be more volatile than ES. Extreme spec longs in NQ at all-time
+      highs signal euphoria and potential correction. NQ spec positioning is
+      increasingly driven by retail/algo flows. Compare NQ vs ES positioning
+      divergence — if NQ longs are extreme while ES is neutral, tech-specific
+      risk is elevated. Output JSON only. Never fabricate data.
+
+  - id: cot_extreme_dxy
+    name: "COT Extreme Analysis - DXY"
+    category: sentiment
+    subcategory: positioning
+    instrument: DXY
+    model: haiku
+    schedule: weekly
+    input_schema:
+      - cot_net_usd_aggregate
+      - cot_individual_fx
+      - cot_3y_percentile
+      - dxy_price
+      - cot_change_1w
+    output_schema:
+      positioning: "EXTREME_LONG | LONG | NEUTRAL | SHORT | EXTREME_SHORT"
+      percentile_rank: "0-100"
+      reversal_signal: "bool"
+      confidence: "0.0-1.0"
+    prompt: |
+      Analyze aggregate USD positioning across all FX COT data. Sum inverse of
+      EUR, GBP, JPY, AUD spec positioning for net USD bet. Extreme aggregate
+      USD long (all specs short other currencies) signals crowded dollar trade.
+      Extreme aggregate USD short signals dollar bearish consensus. DXY COT is
+      derived, not directly traded — it reflects cross-currency positioning.
+      Most reliable signal at >90th or <10th percentile.
+      Output JSON only. Never fabricate data.
+
+  - id: cot_extreme_vix
+    name: "COT Extreme Analysis - VIX"
+    category: sentiment
+    subcategory: positioning
+    instrument: VIX
+    model: haiku
+    schedule: weekly
+    input_schema:
+      - cot_net_speculative_vix
+      - vix_futures_curve
+      - cot_3y_percentile
+      - vix_price
+      - cot_change_1w
+    output_schema:
+      positioning: "EXTREME_LONG | LONG | NEUTRAL | SHORT | EXTREME_SHORT"
+      percentile_rank: "0-100"
+      reversal_signal: "bool"
+      confidence: "0.0-1.0"
+    prompt: |
+      Analyze COT positioning for VIX (CBOE VIX futures). Extreme short VIX
+      positioning is the most dangerous crowded trade — when VIX spikes, short
+      squeeze creates violent upside (Volmageddon 2018). Net short VIX >150K
+      contracts is extreme complacency. Net long VIX >100K is extreme fear.
+      VIX COT combined with VIX term structure is the best volatility regime
+      signal. Output JSON only. Never fabricate data.
+
+  # ── Cross-instrument positioning agents ────────────────────────────
+  - id: cot_reversal
+    name: "COT Reversal Signal Aggregator"
+    category: sentiment
+    subcategory: positioning
+    instrument: null
+    model: sonnet
+    schedule: weekly
+    input_schema:
+      - all_cot_extremes
+      - all_cot_changes_4w
+      - historical_reversal_accuracy
+    output_schema:
+      active_reversal_signals: "list[dict]"
+      highest_conviction: "dict"
+      historical_accuracy: "float"
+      confidence: "0.0-1.0"
+    prompt: |
+      Aggregate COT reversal signals across all instruments. A COT reversal signal
+      requires: (1) positioning at >90th or <10th percentile, AND (2) 4-week
+      change reversing (specs reducing extreme). The combination of extreme
+      positioning + unwinding is the most reliable reversal signal (70-75%
+      accuracy over 4-8 weeks). Rank all active reversal signals by conviction.
+      Historical accuracy varies by instrument — gold and oil are most reliable.
+      Output JSON only. Never fabricate data.
+
+  - id: smart_money_flow
+    name: "Smart Money Flow Tracker"
+    category: sentiment
+    subcategory: positioning
+    instrument: null
+    model: sonnet
+    schedule: weekly
+    input_schema:
+      - commercial_positioning_all
+      - commercial_changes_4w
+      - asset_manager_positioning_all
+      - dealer_positioning_all
+    output_schema:
+      smart_money_direction: "dict[str, str]"
+      smart_vs_dumb_divergence: "list[dict]"
+      highest_conviction_flow: "dict"
+      confidence: "0.0-1.0"
+    prompt: |
+      Track smart money (commercials + asset managers) vs dumb money (leveraged
+      funds + retail) positioning. When smart money is building positions opposite
+      to dumb money at extremes, a reversal is imminent. Commercials are
+      consistently profitable over 6-12 month horizons. Asset managers are
+      the largest single category. Dealer positioning reflects market-making,
+      not directional bets. Output JSON only. Never fabricate data.

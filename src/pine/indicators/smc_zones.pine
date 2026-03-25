@@ -1,0 +1,172 @@
+// =============================================================================
+// SMC Zones — Supply/Demand-soner med BOS-linjer og strukturklassifisering
+// Basert pa FluidTrades SMC Lite, tilpasset COT Explorer
+// =============================================================================
+//@version=5
+indicator("COT Explorer: SMC Zones", shorttitle="SMC", overlay=true, max_boxes_count=50, max_lines_count=50, max_labels_count=20)
+
+// ── Fargepalett (mork tema) ─────────────────────────────────────────────────
+var color C_GREEN      = #3fb950
+var color C_RED        = #f85149
+var color C_YELLOW     = #d29922
+var color C_BLUE       = #58a6ff
+var color C_BG         = #161b22
+var color C_TEXT       = #c9d1d9
+var color C_SUPPLY     = color.new(#f85149, 75)
+var color C_SUPPLY_BRD = color.new(#f85149, 40)
+var color C_DEMAND     = color.new(#3fb950, 75)
+var color C_DEMAND_BRD = color.new(#3fb950, 40)
+
+// ── Inputs ──────────────────────────────────────────────────────────────────
+swing_len     = input.int(10,   "Swing-lengde",           minval=3, maxval=50)
+zone_atr_frac = input.float(2.5, "Sonebredde (ATR-fraksjon /10)", minval=0.5, maxval=10.0, step=0.5)
+max_zones     = input.int(5,    "Maks soner per side",    minval=1, maxval=15)
+show_bos      = input.bool(true, "Vis BOS-linjer")
+show_labels   = input.bool(true, "Vis swing-labels")
+show_struct   = input.bool(true, "Vis strukturlabel")
+
+// ── ATR ─────────────────────────────────────────────────────────────────────
+atr_val = ta.atr(50)
+atr_buf = atr_val * (zone_atr_frac / 10)
+
+// ── Pivot High / Low ────────────────────────────────────────────────────────
+ph = ta.pivothigh(high, swing_len, swing_len)
+pl = ta.pivotlow(low, swing_len, swing_len)
+
+// ── Swing-klassifisering (HH/LH, HL/LL) ────────────────────────────────────
+var float prev_ph = na
+var float curr_ph = na
+var float prev_pl = na
+var float curr_pl = na
+
+var string last_hi_label = ""
+var string last_lo_label = ""
+
+if not na(ph)
+    prev_ph := curr_ph
+    curr_ph := ph
+    last_hi_label := not na(prev_ph) ? (curr_ph > prev_ph ? "HH" : "LH") : "HH"
+
+if not na(pl)
+    prev_pl := curr_pl
+    curr_pl := pl
+    last_lo_label := not na(prev_pl) ? (curr_pl > prev_pl ? "HL" : "LL") : "HL"
+
+// ── Strukturklassifisering ──────────────────────────────────────────────────
+structure() =>
+    if last_hi_label == "HH" and last_lo_label == "HL"
+        "BULLISH"
+    else if last_hi_label == "LH" and last_lo_label == "LL"
+        "BEARISH"
+    else
+        "MIXED"
+
+struct_str = structure()
+
+// ── Supply/Demand-soner som bokser ──────────────────────────────────────────
+// Arrays for a holde aktive soner
+var box[] supply_boxes = array.new_box()
+var box[] demand_boxes = array.new_box()
+var float[] supply_tops = array.new_float()
+var float[] supply_bots = array.new_float()
+var float[] demand_tops = array.new_float()
+var float[] demand_bots = array.new_float()
+
+// Rens soner som er brutt (close handler gjennom)
+check_broken_supply() =>
+    if array.size(supply_boxes) > 0
+        for i = array.size(supply_boxes) - 1 to 0
+            top_val = array.get(supply_tops, i)
+            if close > top_val
+                // Sone brutt — tegn BOS-linje
+                if show_bos
+                    bot_val = array.get(supply_bots, i)
+                    mid = (top_val + bot_val) / 2
+                    line.new(bar_index - swing_len * 2, mid, bar_index, mid, color=C_GREEN, style=line.style_solid, width=2)
+                box.delete(array.get(supply_boxes, i))
+                array.remove(supply_boxes, i)
+                array.remove(supply_tops, i)
+                array.remove(supply_bots, i)
+
+check_broken_demand() =>
+    if array.size(demand_boxes) > 0
+        for i = array.size(demand_boxes) - 1 to 0
+            bot_val = array.get(demand_bots, i)
+            if close < bot_val
+                // Sone brutt — tegn BOS-linje
+                if show_bos
+                    top_val = array.get(demand_tops, i)
+                    mid = (top_val + bot_val) / 2
+                    line.new(bar_index - swing_len * 2, mid, bar_index, mid, color=C_RED, style=line.style_solid, width=2)
+                box.delete(array.get(demand_boxes, i))
+                array.remove(demand_boxes, i)
+                array.remove(demand_tops, i)
+                array.remove(demand_bots, i)
+
+check_broken_supply()
+check_broken_demand()
+
+// ── Legg til nye soner ──────────────────────────────────────────────────────
+// Ny supply-sone ved pivot high
+if not na(ph)
+    s_top = ph
+    s_bot = ph - atr_buf
+    // Sjekk overlapping: ikke tegn hvis for naer eksisterende sone
+    overlap = false
+    if array.size(supply_tops) > 0
+        for i = 0 to array.size(supply_tops) - 1
+            if math.abs(s_top - array.get(supply_tops, i)) < atr_val * 2
+                overlap := true
+                break
+    if not overlap
+        // Begrens antall soner
+        if array.size(supply_boxes) >= max_zones
+            box.delete(array.get(supply_boxes, 0))
+            array.remove(supply_boxes, 0)
+            array.remove(supply_tops, 0)
+            array.remove(supply_bots, 0)
+        b = box.new(bar_index - swing_len, s_top, bar_index + 100, s_bot, bgcolor=C_SUPPLY, border_color=C_SUPPLY_BRD, border_width=1)
+        array.push(supply_boxes, b)
+        array.push(supply_tops, s_top)
+        array.push(supply_bots, s_bot)
+        if show_labels
+            label.new(bar_index - swing_len, s_top, last_hi_label, color=color.new(C_RED, 60), textcolor=C_TEXT, style=label.style_label_down, size=size.tiny)
+
+// Ny demand-sone ved pivot low
+if not na(pl)
+    d_bot = pl
+    d_top = pl + atr_buf
+    overlap = false
+    if array.size(demand_bots) > 0
+        for i = 0 to array.size(demand_bots) - 1
+            if math.abs(d_bot - array.get(demand_bots, i)) < atr_val * 2
+                overlap := true
+                break
+    if not overlap
+        if array.size(demand_boxes) >= max_zones
+            box.delete(array.get(demand_boxes, 0))
+            array.remove(demand_boxes, 0)
+            array.remove(demand_tops, 0)
+            array.remove(demand_bots, 0)
+        b = box.new(bar_index - swing_len, d_top, bar_index + 100, d_bot, bgcolor=C_DEMAND, border_color=C_DEMAND_BRD, border_width=1)
+        array.push(demand_boxes, b)
+        array.push(demand_tops, d_top)
+        array.push(demand_bots, d_bot)
+        if show_labels
+            label.new(bar_index - swing_len, d_bot, last_lo_label, color=color.new(C_GREEN, 60), textcolor=C_TEXT, style=label.style_label_up, size=size.tiny)
+
+// ── Forleng aktive bokser til navaerende bar ────────────────────────────────
+if array.size(supply_boxes) > 0
+    for i = 0 to array.size(supply_boxes) - 1
+        box.set_right(array.get(supply_boxes, i), bar_index + 20)
+
+if array.size(demand_boxes) > 0
+    for i = 0 to array.size(demand_boxes) - 1
+        box.set_right(array.get(demand_boxes, i), bar_index + 20)
+
+// ── Strukturlabel ───────────────────────────────────────────────────────────
+if show_struct and barstate.islast
+    s_col = struct_str == "BULLISH" ? C_GREEN : struct_str == "BEARISH" ? C_RED : C_YELLOW
+    var label struct_lbl = na
+    label.delete(struct_lbl)
+    struct_lbl := label.new(bar_index + 5, high, "SMC: " + struct_str, color=color.new(s_col, 70), textcolor=s_col, style=label.style_label_left, size=size.normal)

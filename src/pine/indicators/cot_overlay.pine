@@ -1,0 +1,131 @@
+// =============================================================================
+// COT Overlay — Spekulant- og kommersiell netto-posisjon med persentilrangering
+// Bruker TradingViews innebygde CFTC-data via COT:-prefikset
+// =============================================================================
+//@version=5
+indicator("COT Explorer: Overlay", shorttitle="COT", overlay=false, max_labels_count=10)
+
+// ── Fargepalett (mork tema) ─────────────────────────────────────────────────
+var color C_GREEN  = #3fb950
+var color C_RED    = #f85149
+var color C_YELLOW = #d29922
+var color C_BLUE   = #58a6ff
+var color C_BG     = #161b22
+var color C_TEXT   = #c9d1d9
+
+// ── CFTC-kode-velger ────────────────────────────────────────────────────────
+cftc_code = input.string("099741", "CFTC-kode", options=[
+     "099741", "096742", "092741", "088691", "084691",
+     "067651", "13874A", "209742", "098662"],
+     tooltip="099741=EUR, 096742=JPY, 092741=GBP, 088691=Gold, 084691=Silver, 067651=Oil, 13874A=SPX, 209742=NAS, 098662=DXY")
+
+lookback   = input.int(52, "Persentil-vindu (uker)", minval=10, maxval=260)
+show_table = input.bool(true, "Vis tabell")
+
+// ── Markednavn for visning ──────────────────────────────────────────────────
+market_name() =>
+    switch cftc_code
+        "099741" => "EUR/USD"
+        "096742" => "USD/JPY"
+        "092741" => "GBP/USD"
+        "088691" => "Gull"
+        "084691" => "Solv"
+        "067651" => "Raolje (WTI)"
+        "13874A" => "S&P 500"
+        "209742" => "Nasdaq"
+        "098662" => "DXY"
+        => "Ukjent"
+
+// ── Hent COT-data (ukentlig fra CFTC, legacy-rapport) ──────────────────────
+// Spekulanter (non-commercial)
+spec_long  = request.security("COT:LEGACY:" + cftc_code + ":NC:L", "W", close, lookahead=barmerge.lookahead_on)
+spec_short = request.security("COT:LEGACY:" + cftc_code + ":NC:S", "W", close, lookahead=barmerge.lookahead_on)
+
+// Kommersielle (commercial)
+comm_long  = request.security("COT:LEGACY:" + cftc_code + ":C:L", "W", close, lookahead=barmerge.lookahead_on)
+comm_short = request.security("COT:LEGACY:" + cftc_code + ":C:S", "W", close, lookahead=barmerge.lookahead_on)
+
+// Open Interest
+oi_total   = request.security("COT:LEGACY:" + cftc_code + ":OI", "W", close, lookahead=barmerge.lookahead_on)
+
+// ── Beregn netto-posisjoner ─────────────────────────────────────────────────
+spec_net = spec_long - spec_short
+comm_net = comm_long - comm_short
+
+// ── Spec net som prosent av OI ──────────────────────────────────────────────
+spec_pct = oi_total != 0 ? (spec_net / oi_total) * 100 : 0.0
+
+// ── Persentilrangering (52-ukers vindu) ─────────────────────────────────────
+pct_rank(src, len) =>
+    count = 0
+    for i = 1 to len
+        if src[i] <= src
+            count += 1
+    result = (count / len) * 100
+    result
+
+percentile = pct_rank(spec_net, lookback)
+
+// ── Momentum-klassifisering (OKER / SNUR / STABIL) ─────────────────────────
+spec_chg_1w = spec_net - nz(spec_net[1])
+spec_chg_2w = spec_net - nz(spec_net[2])
+
+// Momentum: OKER = samme retning, SNUR = retningsendring, STABIL = flat
+momentum_label() =>
+    if math.abs(spec_chg_1w) < math.abs(spec_net) * 0.02
+        "STABIL"
+    else if (spec_net > 0 and spec_chg_1w > 0 and spec_chg_2w > 0) or (spec_net < 0 and spec_chg_1w < 0 and spec_chg_2w < 0)
+        "OKER"
+    else if (spec_net > 0 and spec_chg_1w < 0) or (spec_net < 0 and spec_chg_1w > 0)
+        "SNUR"
+    else
+        "STABIL"
+
+mom_str = momentum_label()
+
+// ── Plotting ────────────────────────────────────────────────────────────────
+// Spekulant netto som histogram
+spec_color = spec_net >= 0 ? C_GREEN : C_RED
+plot(spec_net, "Spekulant Netto", color=spec_color, style=plot.style_histogram, linewidth=3)
+
+// Kommersiell netto som linje
+plot(comm_net, "Kommersiell Netto", color=C_BLUE, linewidth=2)
+
+// Nulllinje
+hline(0, "Null", color=color.gray, linestyle=hline.style_dotted)
+
+// ── Bakgrunnsfarge for ekstreme posisjoner ──────────────────────────────────
+extreme_long  = percentile > 90
+extreme_short = percentile < 10
+
+bgcolor(extreme_long  ? color.new(C_GREEN, 85) : na, title="Ekstrem Long (>90. persentil)")
+bgcolor(extreme_short ? color.new(C_RED, 85)   : na, title="Ekstrem Short (<10. persentil)")
+
+// ── Infotabell (ovre hoyre) ─────────────────────────────────────────────────
+if show_table and barstate.islast
+    var table t = table.new(position.top_right, 2, 7, bgcolor=C_BG, border_width=1, border_color=color.new(C_TEXT, 70))
+
+    table.cell(t, 0, 0, "COT: " + market_name(), text_color=C_BLUE, text_size=size.small, text_halign=text.align_left)
+    table.cell(t, 1, 0, cftc_code, text_color=color.gray, text_size=size.tiny)
+
+    table.cell(t, 0, 1, "Spec Netto", text_color=C_TEXT, text_size=size.tiny, text_halign=text.align_left)
+    table.cell(t, 1, 1, str.tostring(spec_net, "#,##0"), text_color=spec_color, text_size=size.small)
+
+    table.cell(t, 0, 2, "Comm Netto", text_color=C_TEXT, text_size=size.tiny, text_halign=text.align_left)
+    table.cell(t, 1, 2, str.tostring(comm_net, "#,##0"), text_color=C_BLUE, text_size=size.small)
+
+    table.cell(t, 0, 3, "Spec % av OI", text_color=C_TEXT, text_size=size.tiny, text_halign=text.align_left)
+    pct_col = spec_pct > 10 ? C_GREEN : spec_pct < -10 ? C_RED : C_YELLOW
+    table.cell(t, 1, 3, str.tostring(spec_pct, "#0.1") + "%", text_color=pct_col, text_size=size.small)
+
+    table.cell(t, 0, 4, "Persentil", text_color=C_TEXT, text_size=size.tiny, text_halign=text.align_left)
+    p_col = percentile > 80 ? C_GREEN : percentile < 20 ? C_RED : C_YELLOW
+    table.cell(t, 1, 4, str.tostring(percentile, "#0") + "%", text_color=p_col, text_size=size.small)
+
+    table.cell(t, 0, 5, "Momentum", text_color=C_TEXT, text_size=size.tiny, text_halign=text.align_left)
+    m_col = mom_str == "OKER" ? C_GREEN : mom_str == "SNUR" ? C_RED : C_YELLOW
+    table.cell(t, 1, 5, mom_str, text_color=m_col, text_size=size.small)
+
+    table.cell(t, 0, 6, "Endring 1u", text_color=C_TEXT, text_size=size.tiny, text_halign=text.align_left)
+    chg_col = spec_chg_1w > 0 ? C_GREEN : spec_chg_1w < 0 ? C_RED : C_TEXT
+    table.cell(t, 1, 6, str.tostring(spec_chg_1w, "+#,##0"), text_color=chg_col, text_size=size.small)

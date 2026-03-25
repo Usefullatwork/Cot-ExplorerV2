@@ -1,0 +1,109 @@
+prompts:
+  - id: data_quality_auditor
+    name: "Data Quality Auditor"
+    category: meta
+    subcategory: system
+    instrument: null
+    model: haiku
+    schedule: every_run
+    input_schema:
+      - all_data_sources
+      - data_timestamps
+      - data_completeness
+      - historical_data_issues
+    output_schema:
+      overall_quality: "GREEN | YELLOW | RED"
+      source_status: "dict[str, str]"
+      missing_data: "list[dict]"
+      proceed_recommendation: "bool"
+      confidence: "0.0-1.0"
+    prompt: |
+      Audit all data sources for quality before analysis pipeline runs. Check
+      each source: price feeds (12 instruments), COT data, economic calendar,
+      news feeds, volatility data. GREEN = all sources fresh and complete.
+      YELLOW = minor gaps (1-2 sources delayed). RED = critical data missing
+      (>3 sources stale or >50% of instruments affected). Recommend: GREEN =
+      proceed normally, YELLOW = proceed with caution, RED = halt pipeline.
+      Output JSON only. Never fabricate data.
+
+  - id: pipeline_health
+    name: "Pipeline Health Monitor"
+    category: meta
+    subcategory: system
+    instrument: null
+    model: haiku
+    schedule: every_run
+    input_schema:
+      - agent_execution_times
+      - agent_error_rates
+      - agent_output_completeness
+      - pipeline_latency
+    output_schema:
+      health_status: "HEALTHY | DEGRADED | UNHEALTHY"
+      slow_agents: "list[dict]"
+      failed_agents: "list[dict]"
+      total_latency_ms: "int"
+      confidence: "0.0-1.0"
+    prompt: |
+      Monitor the health of the analysis pipeline. Track execution time and error
+      rate for each agent. Flag agents exceeding 2x their average execution time.
+      Flag agents with >5% error rate. Calculate total pipeline latency. HEALTHY
+      = all agents completing, <5% errors, latency <30s. DEGRADED = some agents
+      slow or erroring, latency <60s. UNHEALTHY = critical agents failing,
+      latency >60s. Recommend restart for UNHEALTHY status.
+      Output JSON only. Never fabricate data.
+
+  - id: api_reliability
+    name: "API Reliability Monitor"
+    category: meta
+    subcategory: system
+    instrument: null
+    model: haiku
+    schedule: every_run
+    input_schema:
+      - api_response_times
+      - api_error_codes
+      - api_rate_limits
+      - api_uptime_24h
+    output_schema:
+      reliability_score: "0.0-1.0"
+      degraded_apis: "list[dict]"
+      rate_limit_warnings: "list[dict]"
+      fallback_activated: "list[str]"
+      confidence: "0.0-1.0"
+    prompt: |
+      Monitor external API reliability. Track response times, error rates, and
+      rate limit proximity for: price data APIs, COT data API, news APIs,
+      economic calendar API, LLM APIs (Haiku/Sonnet/Opus). Flag APIs with >2s
+      response time or >2% error rate. If rate limits are within 20% of max,
+      recommend throttling. Activate fallback data sources for degraded APIs.
+      LLM API reliability directly affects agent execution.
+      Output JSON only. Never fabricate data.
+
+  - id: edge_degradation
+    name: "Edge Degradation Monitor"
+    category: meta
+    subcategory: system
+    instrument: null
+    model: sonnet
+    schedule: daily
+    input_schema:
+      - rolling_win_rate_30d
+      - rolling_sharpe_30d
+      - rolling_profit_factor_30d
+      - baseline_metrics
+      - market_regime_current
+    output_schema:
+      edge_status: "STRONG | NORMAL | WEAKENING | DEGRADED"
+      metrics_vs_baseline: "dict[str, float]"
+      degradation_cause: "str"
+      recommended_action: "str"
+      confidence: "0.0-1.0"
+    prompt: |
+      Monitor for systematic edge degradation. Compare rolling 30-day performance
+      metrics (win rate, Sharpe, profit factor) to the baseline established during
+      backtesting. STRONG = metrics >10% above baseline. NORMAL = within 10%.
+      WEAKENING = 10-25% below baseline. DEGRADED = >25% below baseline for >10
+      days. Determine if degradation is regime-specific (temporary) or structural
+      (system needs redesign). Recommend action for each level.
+      Output JSON only. Never fabricate data.

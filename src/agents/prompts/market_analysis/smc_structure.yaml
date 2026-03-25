@@ -1,0 +1,1047 @@
+prompts:
+  # ── SMC 15-minute (12 instruments) ─────────────────────────────────
+  - id: smc_15m_eurusd
+    name: "SMC Structure 15m - EUR/USD"
+    category: market_analysis
+    subcategory: smc_structure
+    instrument: EURUSD
+    model: haiku
+    schedule: every_run
+    input_schema:
+      - ohlc_15m_200
+      - swing_highs_lows_15m
+      - volume_15m
+      - current_price
+    output_schema:
+      market_structure: "BULLISH | BEARISH | RANGING"
+      last_bos: "dict"
+      last_choch: "dict"
+      order_blocks: "list[dict]"
+      confidence: "0.0-1.0"
+    prompt: |
+      Map EUR/USD 15m Smart Money Concept structure. Identify Break of Structure
+      (BOS) and Change of Character (CHoCH) from swing points. EUR/USD 15m is
+      ideal for London/NY session scalps. Mark active order blocks, fair value gaps,
+      and liquidity pools above/below equal highs/lows. Label structure
+      BULLISH/BEARISH/RANGING. Output JSON only. Never fabricate data.
+
+  - id: smc_15m_usdjpy
+    name: "SMC Structure 15m - USD/JPY"
+    category: market_analysis
+    subcategory: smc_structure
+    instrument: USDJPY
+    model: haiku
+    schedule: every_run
+    input_schema:
+      - ohlc_15m_200
+      - swing_highs_lows_15m
+      - volume_15m
+      - current_price
+    output_schema:
+      market_structure: "BULLISH | BEARISH | RANGING"
+      last_bos: "dict"
+      last_choch: "dict"
+      order_blocks: "list[dict]"
+      confidence: "0.0-1.0"
+    prompt: |
+      Map USD/JPY 15m SMC structure. USD/JPY has strong Tokyo session moves and
+      often gaps at Asian open. Identify BOS and CHoCH from swing points. Mark
+      active order blocks, FVGs, and liquidity pools. BoJ intervention creates
+      massive displacement candles — flag any candles >3x ATR as potential
+      intervention artifacts. Label structure BULLISH/BEARISH/RANGING.
+      Output JSON only. Never fabricate data.
+
+  - id: smc_15m_gbpusd
+    name: "SMC Structure 15m - GBP/USD"
+    category: market_analysis
+    subcategory: smc_structure
+    instrument: GBPUSD
+    model: haiku
+    schedule: every_run
+    input_schema:
+      - ohlc_15m_200
+      - swing_highs_lows_15m
+      - volume_15m
+      - current_price
+    output_schema:
+      market_structure: "BULLISH | BEARISH | RANGING"
+      last_bos: "dict"
+      last_choch: "dict"
+      order_blocks: "list[dict]"
+      confidence: "0.0-1.0"
+    prompt: |
+      Map GBP/USD 15m SMC structure. Cable is volatile at London open (08:00 GMT)
+      with frequent stop hunts before trend continuation. Identify BOS and CHoCH.
+      Mark order blocks, FVGs, and liquidity pools. GBP pairs tend to have wider
+      FVGs due to higher volatility. Label structure BULLISH/BEARISH/RANGING.
+      Output JSON only. Never fabricate data.
+
+  - id: smc_15m_audusd
+    name: "SMC Structure 15m - AUD/USD"
+    category: market_analysis
+    subcategory: smc_structure
+    instrument: AUDUSD
+    model: haiku
+    schedule: every_run
+    input_schema:
+      - ohlc_15m_200
+      - swing_highs_lows_15m
+      - volume_15m
+      - current_price
+    output_schema:
+      market_structure: "BULLISH | BEARISH | RANGING"
+      last_bos: "dict"
+      last_choch: "dict"
+      order_blocks: "list[dict]"
+      confidence: "0.0-1.0"
+    prompt: |
+      Map AUD/USD 15m SMC structure. Aussie has key moves during Asian and early
+      London sessions. China data releases cause sharp 15m displacements. Identify
+      BOS and CHoCH from swing points. Mark order blocks, FVGs, and liquidity pools.
+      AUD/USD respects Asian session highs/lows as liquidity targets.
+      Label structure BULLISH/BEARISH/RANGING.
+      Output JSON only. Never fabricate data.
+
+  - id: smc_15m_gold
+    name: "SMC Structure 15m - Gold"
+    category: market_analysis
+    subcategory: smc_structure
+    instrument: Gold
+    model: haiku
+    schedule: every_run
+    input_schema:
+      - ohlc_15m_200
+      - swing_highs_lows_15m
+      - volume_15m
+      - current_price
+    output_schema:
+      market_structure: "BULLISH | BEARISH | RANGING"
+      last_bos: "dict"
+      last_choch: "dict"
+      order_blocks: "list[dict]"
+      confidence: "0.0-1.0"
+    prompt: |
+      Map Gold 15m SMC structure. Gold respects SMC concepts well due to
+      institutional participation. $5-$10 round numbers create liquidity pools.
+      Identify BOS and CHoCH from swing points. Mark order blocks, FVGs, and
+      liquidity above/below equal highs/lows. London session open is the primary
+      manipulation window. Label structure BULLISH/BEARISH/RANGING.
+      Output JSON only. Never fabricate data.
+
+  - id: smc_15m_silver
+    name: "SMC Structure 15m - Silver"
+    category: market_analysis
+    subcategory: smc_structure
+    instrument: Silver
+    model: haiku
+    schedule: every_run
+    input_schema:
+      - ohlc_15m_200
+      - swing_highs_lows_15m
+      - volume_15m
+      - current_price
+    output_schema:
+      market_structure: "BULLISH | BEARISH | RANGING"
+      last_bos: "dict"
+      last_choch: "dict"
+      order_blocks: "list[dict]"
+      confidence: "0.0-1.0"
+    prompt: |
+      Map Silver 15m SMC structure. Silver is thinner than gold; FVGs are wider
+      and order blocks less precise. Slippage risk is higher. Identify BOS and
+      CHoCH from swing points. Mark order blocks and FVGs with wider tolerance
+      zones. Whole-dollar levels ($25, $26, $27) are key liquidity targets.
+      Label structure BULLISH/BEARISH/RANGING.
+      Output JSON only. Never fabricate data.
+
+  - id: smc_15m_brent
+    name: "SMC Structure 15m - Brent Crude"
+    category: market_analysis
+    subcategory: smc_structure
+    instrument: Brent
+    model: haiku
+    schedule: every_run
+    input_schema:
+      - ohlc_15m_200
+      - swing_highs_lows_15m
+      - volume_15m
+      - current_price
+    output_schema:
+      market_structure: "BULLISH | BEARISH | RANGING"
+      last_bos: "dict"
+      last_choch: "dict"
+      order_blocks: "list[dict]"
+      confidence: "0.0-1.0"
+    prompt: |
+      Map Brent Crude 15m SMC structure. Oil has news-driven displacements from
+      OPEC headlines, EIA data, and geopolitical events. Identify BOS and CHoCH
+      from swing points. Mark order blocks and FVGs. Whole-dollar levels are key
+      liquidity targets. London open and NY open create primary session liquidity
+      sweeps. Label structure BULLISH/BEARISH/RANGING.
+      Output JSON only. Never fabricate data.
+
+  - id: smc_15m_wti
+    name: "SMC Structure 15m - WTI Crude"
+    category: market_analysis
+    subcategory: smc_structure
+    instrument: WTI
+    model: haiku
+    schedule: every_run
+    input_schema:
+      - ohlc_15m_200
+      - swing_highs_lows_15m
+      - volume_15m
+      - current_price
+    output_schema:
+      market_structure: "BULLISH | BEARISH | RANGING"
+      last_bos: "dict"
+      last_choch: "dict"
+      order_blocks: "list[dict]"
+      confidence: "0.0-1.0"
+    prompt: |
+      Map WTI Crude 15m SMC structure. WTI has high 15m volatility around EIA
+      inventory report (10:30 ET Wednesday). Identify BOS and CHoCH from swing
+      points. Mark order blocks and FVGs. EIA candles often create false BOS
+      that reverses within 1-2 hours — flag post-news structure separately.
+      Label structure BULLISH/BEARISH/RANGING.
+      Output JSON only. Never fabricate data.
+
+  - id: smc_15m_spx
+    name: "SMC Structure 15m - S&P 500"
+    category: market_analysis
+    subcategory: smc_structure
+    instrument: SPX
+    model: haiku
+    schedule: every_run
+    input_schema:
+      - ohlc_15m_200
+      - swing_highs_lows_15m
+      - volume_15m
+      - current_price
+    output_schema:
+      market_structure: "BULLISH | BEARISH | RANGING"
+      last_bos: "dict"
+      last_choch: "dict"
+      order_blocks: "list[dict]"
+      confidence: "0.0-1.0"
+    prompt: |
+      Map S&P 500 15m SMC structure. SPX has predictable session patterns: pre-market
+      gap, opening drive (9:30-10:00 ET), midday range, power hour (3:00-4:00 ET).
+      Identify BOS and CHoCH from swing points. Mark order blocks and FVGs. Opening
+      gap fill is a common liquidity target. Previous day high/low are primary
+      liquidity pools. Label structure BULLISH/BEARISH/RANGING.
+      Output JSON only. Never fabricate data.
+
+  - id: smc_15m_nas100
+    name: "SMC Structure 15m - NASDAQ 100"
+    category: market_analysis
+    subcategory: smc_structure
+    instrument: NAS100
+    model: haiku
+    schedule: every_run
+    input_schema:
+      - ohlc_15m_200
+      - swing_highs_lows_15m
+      - volume_15m
+      - current_price
+    output_schema:
+      market_structure: "BULLISH | BEARISH | RANGING"
+      last_bos: "dict"
+      last_choch: "dict"
+      order_blocks: "list[dict]"
+      confidence: "0.0-1.0"
+    prompt: |
+      Map NASDAQ 100 15m SMC structure. NAS100 is more volatile than SPX with
+      wider FVGs and more aggressive stop hunts. Tech earnings after-hours create
+      gap-and-go or gap-and-fade setups. Identify BOS and CHoCH from swing points.
+      Mark order blocks and FVGs. 100-point round numbers are key liquidity levels.
+      Label structure BULLISH/BEARISH/RANGING.
+      Output JSON only. Never fabricate data.
+
+  - id: smc_15m_dxy
+    name: "SMC Structure 15m - US Dollar Index"
+    category: market_analysis
+    subcategory: smc_structure
+    instrument: DXY
+    model: haiku
+    schedule: every_run
+    input_schema:
+      - ohlc_15m_200
+      - swing_highs_lows_15m
+      - volume_15m
+      - current_price
+    output_schema:
+      market_structure: "BULLISH | BEARISH | RANGING"
+      last_bos: "dict"
+      last_choch: "dict"
+      order_blocks: "list[dict]"
+      confidence: "0.0-1.0"
+    prompt: |
+      Map DXY 15m SMC structure. DXY 15m structure confirms or denies FX pair
+      setups — always check DXY before entering FX trades. Identify BOS and CHoCH
+      from swing points. Mark order blocks, FVGs, and liquidity pools. DXY CHoCH
+      on 15m often precedes EUR/USD reversal by 1-3 candles.
+      Label structure BULLISH/BEARISH/RANGING.
+      Output JSON only. Never fabricate data.
+
+  - id: smc_15m_vix
+    name: "SMC Structure 15m - VIX"
+    category: market_analysis
+    subcategory: smc_structure
+    instrument: VIX
+    model: haiku
+    schedule: every_run
+    input_schema:
+      - ohlc_15m_200
+      - swing_highs_lows_15m
+      - volume_15m
+      - current_price
+    output_schema:
+      market_structure: "BULLISH | BEARISH | RANGING"
+      last_bos: "dict"
+      last_choch: "dict"
+      order_blocks: "list[dict]"
+      confidence: "0.0-1.0"
+    prompt: |
+      Map VIX 15m SMC structure. VIX is inverse to SPX; a bullish VIX BOS signals
+      risk-off. VIX spikes are fast and mean-reversions are slow. Identify BOS and
+      CHoCH from swing points. Mark order blocks and FVGs. VIX FVGs below tend to
+      get filled during calm periods. VIX above 20 with bullish structure = reduce
+      equity exposure. Label structure BULLISH/BEARISH/RANGING.
+      Output JSON only. Never fabricate data.
+
+  # ── SMC 1-hour (12 instruments) ────────────────────────────────────
+  - id: smc_1h_eurusd
+    name: "SMC Structure 1H - EUR/USD"
+    category: market_analysis
+    subcategory: smc_structure
+    instrument: EURUSD
+    model: haiku
+    schedule: every_run
+    input_schema:
+      - ohlc_1h_200
+      - swing_highs_lows_1h
+      - volume_1h
+      - current_price
+    output_schema:
+      market_structure: "BULLISH | BEARISH | RANGING"
+      last_bos: "dict"
+      last_choch: "dict"
+      order_blocks: "list[dict]"
+      premium_discount: "PREMIUM | DISCOUNT | EQUILIBRIUM"
+      confidence: "0.0-1.0"
+    prompt: |
+      Map EUR/USD 1H SMC structure for intraday swing setups. 1H provides the
+      primary dealing range for London and NY sessions. Identify BOS and CHoCH.
+      Mark order blocks, FVGs, and premium/discount zones relative to the current
+      dealing range. EUR/USD 1H order blocks at session opens are high-probability.
+      Label structure and premium/discount zone.
+      Output JSON only. Never fabricate data.
+
+  - id: smc_1h_usdjpy
+    name: "SMC Structure 1H - USD/JPY"
+    category: market_analysis
+    subcategory: smc_structure
+    instrument: USDJPY
+    model: haiku
+    schedule: every_run
+    input_schema:
+      - ohlc_1h_200
+      - swing_highs_lows_1h
+      - volume_1h
+      - current_price
+    output_schema:
+      market_structure: "BULLISH | BEARISH | RANGING"
+      last_bos: "dict"
+      last_choch: "dict"
+      order_blocks: "list[dict]"
+      premium_discount: "PREMIUM | DISCOUNT | EQUILIBRIUM"
+      confidence: "0.0-1.0"
+    prompt: |
+      Map USD/JPY 1H SMC structure. USD/JPY 1H is optimal for Tokyo-to-London
+      session transitions. Rate differential drives directional bias. Identify BOS
+      and CHoCH. Mark order blocks and premium/discount zones. Tokyo session
+      high/low often acts as liquidity target for London session.
+      Label structure BULLISH/BEARISH/RANGING.
+      Output JSON only. Never fabricate data.
+
+  - id: smc_1h_gbpusd
+    name: "SMC Structure 1H - GBP/USD"
+    category: market_analysis
+    subcategory: smc_structure
+    instrument: GBPUSD
+    model: haiku
+    schedule: every_run
+    input_schema:
+      - ohlc_1h_200
+      - swing_highs_lows_1h
+      - volume_1h
+      - current_price
+    output_schema:
+      market_structure: "BULLISH | BEARISH | RANGING"
+      last_bos: "dict"
+      last_choch: "dict"
+      order_blocks: "list[dict]"
+      premium_discount: "PREMIUM | DISCOUNT | EQUILIBRIUM"
+      confidence: "0.0-1.0"
+    prompt: |
+      Map GBP/USD 1H SMC structure. Cable 1H is the bread-and-butter timeframe
+      for London session setups. UK data releases (CPI, employment, GDP) create
+      1H displacement candles. Identify BOS and CHoCH. Mark order blocks and
+      premium/discount zones. Label structure BULLISH/BEARISH/RANGING.
+      Output JSON only. Never fabricate data.
+
+  - id: smc_1h_audusd
+    name: "SMC Structure 1H - AUD/USD"
+    category: market_analysis
+    subcategory: smc_structure
+    instrument: AUDUSD
+    model: haiku
+    schedule: every_run
+    input_schema:
+      - ohlc_1h_200
+      - swing_highs_lows_1h
+      - volume_1h
+      - current_price
+    output_schema:
+      market_structure: "BULLISH | BEARISH | RANGING"
+      last_bos: "dict"
+      last_choch: "dict"
+      order_blocks: "list[dict]"
+      premium_discount: "PREMIUM | DISCOUNT | EQUILIBRIUM"
+      confidence: "0.0-1.0"
+    prompt: |
+      Map AUD/USD 1H SMC structure. AUD/USD 1H structure is clean during Asian
+      session; gets noisy during London as liquidity thins for AUD. Identify BOS
+      and CHoCH. Mark order blocks, FVGs, and premium/discount zones. RBA
+      decisions create 1H displacement candles with valid order blocks.
+      Label structure BULLISH/BEARISH/RANGING.
+      Output JSON only. Never fabricate data.
+
+  - id: smc_1h_gold
+    name: "SMC Structure 1H - Gold"
+    category: market_analysis
+    subcategory: smc_structure
+    instrument: Gold
+    model: haiku
+    schedule: every_run
+    input_schema:
+      - ohlc_1h_200
+      - swing_highs_lows_1h
+      - volume_1h
+      - current_price
+    output_schema:
+      market_structure: "BULLISH | BEARISH | RANGING"
+      last_bos: "dict"
+      last_choch: "dict"
+      order_blocks: "list[dict]"
+      premium_discount: "PREMIUM | DISCOUNT | EQUILIBRIUM"
+      confidence: "0.0-1.0"
+    prompt: |
+      Map Gold 1H SMC structure. Gold 1H is the primary swing timeframe; order
+      blocks at $10 round numbers are high-probability. Identify BOS and CHoCH.
+      Mark order blocks, FVGs, and premium/discount zones. Gold respects 1H order
+      blocks precisely — typical reaction is 50-100 pips.
+      Label structure BULLISH/BEARISH/RANGING.
+      Output JSON only. Never fabricate data.
+
+  - id: smc_1h_silver
+    name: "SMC Structure 1H - Silver"
+    category: market_analysis
+    subcategory: smc_structure
+    instrument: Silver
+    model: haiku
+    schedule: every_run
+    input_schema:
+      - ohlc_1h_200
+      - swing_highs_lows_1h
+      - volume_1h
+      - current_price
+    output_schema:
+      market_structure: "BULLISH | BEARISH | RANGING"
+      last_bos: "dict"
+      last_choch: "dict"
+      order_blocks: "list[dict]"
+      premium_discount: "PREMIUM | DISCOUNT | EQUILIBRIUM"
+      confidence: "0.0-1.0"
+    prompt: |
+      Map Silver 1H SMC structure. Silver 1H order blocks are wider than gold due
+      to lower liquidity. Whole-dollar levels create strong liquidity pools. Identify
+      BOS and CHoCH. Mark order blocks with wider zones (add 0.5x ATR buffer).
+      Silver tends to have more CHoCH fake-outs than gold.
+      Label structure BULLISH/BEARISH/RANGING.
+      Output JSON only. Never fabricate data.
+
+  - id: smc_1h_brent
+    name: "SMC Structure 1H - Brent Crude"
+    category: market_analysis
+    subcategory: smc_structure
+    instrument: Brent
+    model: haiku
+    schedule: every_run
+    input_schema:
+      - ohlc_1h_200
+      - swing_highs_lows_1h
+      - volume_1h
+      - current_price
+    output_schema:
+      market_structure: "BULLISH | BEARISH | RANGING"
+      last_bos: "dict"
+      last_choch: "dict"
+      order_blocks: "list[dict]"
+      premium_discount: "PREMIUM | DISCOUNT | EQUILIBRIUM"
+      confidence: "0.0-1.0"
+    prompt: |
+      Map Brent Crude 1H SMC structure. Oil 1H is driven by inventory data and
+      OPEC headlines. Identify BOS and CHoCH from swing points. Mark order blocks
+      and FVGs. $1 round levels are liquidity targets. Brent 1H structure breaks
+      down during OPEC meeting days — flag these as unreliable.
+      Label structure BULLISH/BEARISH/RANGING.
+      Output JSON only. Never fabricate data.
+
+  - id: smc_1h_wti
+    name: "SMC Structure 1H - WTI Crude"
+    category: market_analysis
+    subcategory: smc_structure
+    instrument: WTI
+    model: haiku
+    schedule: every_run
+    input_schema:
+      - ohlc_1h_200
+      - swing_highs_lows_1h
+      - volume_1h
+      - current_price
+    output_schema:
+      market_structure: "BULLISH | BEARISH | RANGING"
+      last_bos: "dict"
+      last_choch: "dict"
+      order_blocks: "list[dict]"
+      premium_discount: "PREMIUM | DISCOUNT | EQUILIBRIUM"
+      confidence: "0.0-1.0"
+    prompt: |
+      Map WTI Crude 1H SMC structure. WTI 1H has key structural moves around
+      EIA data release (Wednesday 10:30 ET) and API data (Tuesday 4:30 PM ET).
+      Identify BOS and CHoCH. Mark order blocks and FVGs. Post-EIA 1H candle
+      often creates a displacement that sets the weekly direction.
+      Label structure BULLISH/BEARISH/RANGING.
+      Output JSON only. Never fabricate data.
+
+  - id: smc_1h_spx
+    name: "SMC Structure 1H - S&P 500"
+    category: market_analysis
+    subcategory: smc_structure
+    instrument: SPX
+    model: haiku
+    schedule: every_run
+    input_schema:
+      - ohlc_1h_200
+      - swing_highs_lows_1h
+      - volume_1h
+      - current_price
+    output_schema:
+      market_structure: "BULLISH | BEARISH | RANGING"
+      last_bos: "dict"
+      last_choch: "dict"
+      order_blocks: "list[dict]"
+      premium_discount: "PREMIUM | DISCOUNT | EQUILIBRIUM"
+      confidence: "0.0-1.0"
+    prompt: |
+      Map S&P 500 1H SMC structure. SPX 1H defines the intraday dealing range.
+      Fed announcements create 1H displacement candles with valid order blocks.
+      Identify BOS and CHoCH. Mark order blocks and premium/discount zones.
+      Previous day 1H high/low are primary targets. SPX tends to respect 1H OBs
+      more cleanly than NAS100. Label structure BULLISH/BEARISH/RANGING.
+      Output JSON only. Never fabricate data.
+
+  - id: smc_1h_nas100
+    name: "SMC Structure 1H - NASDAQ 100"
+    category: market_analysis
+    subcategory: smc_structure
+    instrument: NAS100
+    model: haiku
+    schedule: every_run
+    input_schema:
+      - ohlc_1h_200
+      - swing_highs_lows_1h
+      - volume_1h
+      - current_price
+    output_schema:
+      market_structure: "BULLISH | BEARISH | RANGING"
+      last_bos: "dict"
+      last_choch: "dict"
+      order_blocks: "list[dict]"
+      premium_discount: "PREMIUM | DISCOUNT | EQUILIBRIUM"
+      confidence: "0.0-1.0"
+    prompt: |
+      Map NASDAQ 100 1H SMC structure. NAS100 1H has wider FVGs and more aggressive
+      order blocks than SPX. After-hours earnings create gaps that act as FVGs on
+      the 1H. Identify BOS and CHoCH. Mark order blocks and premium/discount zones.
+      100-point round numbers serve as significant liquidity targets.
+      Label structure BULLISH/BEARISH/RANGING.
+      Output JSON only. Never fabricate data.
+
+  - id: smc_1h_dxy
+    name: "SMC Structure 1H - US Dollar Index"
+    category: market_analysis
+    subcategory: smc_structure
+    instrument: DXY
+    model: haiku
+    schedule: every_run
+    input_schema:
+      - ohlc_1h_200
+      - swing_highs_lows_1h
+      - volume_1h
+      - current_price
+    output_schema:
+      market_structure: "BULLISH | BEARISH | RANGING"
+      last_bos: "dict"
+      last_choch: "dict"
+      order_blocks: "list[dict]"
+      premium_discount: "PREMIUM | DISCOUNT | EQUILIBRIUM"
+      confidence: "0.0-1.0"
+    prompt: |
+      Map DXY 1H SMC structure. DXY 1H is the macro confirmation layer for all
+      FX trades. US data releases (NFP, CPI) create 1H displacement candles that
+      set multi-day direction. Identify BOS and CHoCH. Mark order blocks and
+      premium/discount zones. DXY 1H CHoCH is the earliest signal for FX trend
+      reversal. Label structure BULLISH/BEARISH/RANGING.
+      Output JSON only. Never fabricate data.
+
+  - id: smc_1h_vix
+    name: "SMC Structure 1H - VIX"
+    category: market_analysis
+    subcategory: smc_structure
+    instrument: VIX
+    model: haiku
+    schedule: every_run
+    input_schema:
+      - ohlc_1h_200
+      - swing_highs_lows_1h
+      - volume_1h
+      - current_price
+    output_schema:
+      market_structure: "BULLISH | BEARISH | RANGING"
+      last_bos: "dict"
+      last_choch: "dict"
+      order_blocks: "list[dict]"
+      premium_discount: "PREMIUM | DISCOUNT | EQUILIBRIUM"
+      confidence: "0.0-1.0"
+    prompt: |
+      Map VIX 1H SMC structure. VIX 1H structure confirms risk-off/risk-on
+      transitions. A VIX 1H BOS above recent highs while SPX holds is a warning.
+      Identify BOS and CHoCH. Mark order blocks and FVGs. VIX FVGs below typically
+      fill during overnight sessions. VIX 1H CHoCH bearish (declining fear) is
+      a go-signal for equity longs. Label structure BULLISH/BEARISH/RANGING.
+      Output JSON only. Never fabricate data.
+
+  # ── SMC 4-hour (12 instruments) ────────────────────────────────────
+  - id: smc_4h_eurusd
+    name: "SMC Structure 4H - EUR/USD"
+    category: market_analysis
+    subcategory: smc_structure
+    instrument: EURUSD
+    model: haiku
+    schedule: every_run
+    input_schema:
+      - ohlc_4h_200
+      - swing_highs_lows_4h
+      - volume_4h
+      - current_price
+    output_schema:
+      market_structure: "BULLISH | BEARISH | RANGING"
+      last_bos: "dict"
+      last_choch: "dict"
+      order_blocks: "list[dict]"
+      premium_discount: "PREMIUM | DISCOUNT | EQUILIBRIUM"
+      poi_zones: "list[dict]"
+      confidence: "0.0-1.0"
+    prompt: |
+      Map EUR/USD 4H SMC structure for swing trade setups. 4H is the primary
+      directional timeframe — 15m and 1H entries should align with 4H bias.
+      Identify BOS and CHoCH from swing points. Mark order blocks, FVGs, and
+      points of interest (POI). Calculate premium/discount relative to the
+      current 4H dealing range. EUR/USD 4H OBs have 2-5 day validity.
+      Output JSON only. Never fabricate data.
+
+  - id: smc_4h_usdjpy
+    name: "SMC Structure 4H - USD/JPY"
+    category: market_analysis
+    subcategory: smc_structure
+    instrument: USDJPY
+    model: haiku
+    schedule: every_run
+    input_schema:
+      - ohlc_4h_200
+      - swing_highs_lows_4h
+      - volume_4h
+      - current_price
+    output_schema:
+      market_structure: "BULLISH | BEARISH | RANGING"
+      last_bos: "dict"
+      last_choch: "dict"
+      order_blocks: "list[dict]"
+      premium_discount: "PREMIUM | DISCOUNT | EQUILIBRIUM"
+      poi_zones: "list[dict]"
+      confidence: "0.0-1.0"
+    prompt: |
+      Map USD/JPY 4H SMC structure. USD/JPY 4H structure reflects the macro yield
+      differential trend. BoJ policy shifts create multi-hundred pip 4H
+      displacements. Identify BOS and CHoCH. Mark order blocks and POI zones.
+      4H OBs near intervention levels (150, 155, 160) are invalidated if
+      intervention occurs. Label structure and premium/discount zone.
+      Output JSON only. Never fabricate data.
+
+  - id: smc_4h_gbpusd
+    name: "SMC Structure 4H - GBP/USD"
+    category: market_analysis
+    subcategory: smc_structure
+    instrument: GBPUSD
+    model: haiku
+    schedule: every_run
+    input_schema:
+      - ohlc_4h_200
+      - swing_highs_lows_4h
+      - volume_4h
+      - current_price
+    output_schema:
+      market_structure: "BULLISH | BEARISH | RANGING"
+      last_bos: "dict"
+      last_choch: "dict"
+      order_blocks: "list[dict]"
+      premium_discount: "PREMIUM | DISCOUNT | EQUILIBRIUM"
+      poi_zones: "list[dict]"
+      confidence: "0.0-1.0"
+    prompt: |
+      Map GBP/USD 4H SMC structure. Cable 4H is the swing trading timeframe;
+      weekly high/low are usually set by a 4H displacement candle. Identify BOS
+      and CHoCH. Mark order blocks and POI zones. UK BoE decisions and fiscal
+      events create strong 4H OBs. Cable respects weekly open as equilibrium.
+      Label structure BULLISH/BEARISH/RANGING.
+      Output JSON only. Never fabricate data.
+
+  - id: smc_4h_audusd
+    name: "SMC Structure 4H - AUD/USD"
+    category: market_analysis
+    subcategory: smc_structure
+    instrument: AUDUSD
+    model: haiku
+    schedule: every_run
+    input_schema:
+      - ohlc_4h_200
+      - swing_highs_lows_4h
+      - volume_4h
+      - current_price
+    output_schema:
+      market_structure: "BULLISH | BEARISH | RANGING"
+      last_bos: "dict"
+      last_choch: "dict"
+      order_blocks: "list[dict]"
+      premium_discount: "PREMIUM | DISCOUNT | EQUILIBRIUM"
+      poi_zones: "list[dict]"
+      confidence: "0.0-1.0"
+    prompt: |
+      Map AUD/USD 4H SMC structure. AUD/USD 4H reflects the commodity/risk cycle.
+      China PMI and RBA decisions are the primary 4H structure drivers. Identify
+      BOS and CHoCH. Mark order blocks and POI zones. AUD/USD 4H often ranges
+      during US session before Asia sets the next direction.
+      Label structure BULLISH/BEARISH/RANGING.
+      Output JSON only. Never fabricate data.
+
+  - id: smc_4h_gold
+    name: "SMC Structure 4H - Gold"
+    category: market_analysis
+    subcategory: smc_structure
+    instrument: Gold
+    model: haiku
+    schedule: every_run
+    input_schema:
+      - ohlc_4h_200
+      - swing_highs_lows_4h
+      - volume_4h
+      - current_price
+    output_schema:
+      market_structure: "BULLISH | BEARISH | RANGING"
+      last_bos: "dict"
+      last_choch: "dict"
+      order_blocks: "list[dict]"
+      premium_discount: "PREMIUM | DISCOUNT | EQUILIBRIUM"
+      poi_zones: "list[dict]"
+      confidence: "0.0-1.0"
+    prompt: |
+      Map Gold 4H SMC structure. Gold 4H is the core swing timeframe; COT
+      positioning extremes align with 4H CHoCH for reversal signals. Identify BOS
+      and CHoCH. Mark order blocks and POI zones. $25-$50 round levels create
+      4H liquidity pools. Gold 4H OBs at weekly S/R are highest probability.
+      Label structure and premium/discount zone.
+      Output JSON only. Never fabricate data.
+
+  - id: smc_4h_silver
+    name: "SMC Structure 4H - Silver"
+    category: market_analysis
+    subcategory: smc_structure
+    instrument: Silver
+    model: haiku
+    schedule: every_run
+    input_schema:
+      - ohlc_4h_200
+      - swing_highs_lows_4h
+      - volume_4h
+      - current_price
+    output_schema:
+      market_structure: "BULLISH | BEARISH | RANGING"
+      last_bos: "dict"
+      last_choch: "dict"
+      order_blocks: "list[dict]"
+      premium_discount: "PREMIUM | DISCOUNT | EQUILIBRIUM"
+      poi_zones: "list[dict]"
+      confidence: "0.0-1.0"
+    prompt: |
+      Map Silver 4H SMC structure. Silver 4H has lower reliability than gold for
+      SMC setups due to thinner liquidity and manipulation. Use wider OB zones.
+      Identify BOS and CHoCH. Mark order blocks and POI zones. Silver 4H structure
+      should be confirmed by gold 4H alignment for higher probability.
+      Label structure BULLISH/BEARISH/RANGING.
+      Output JSON only. Never fabricate data.
+
+  - id: smc_4h_brent
+    name: "SMC Structure 4H - Brent Crude"
+    category: market_analysis
+    subcategory: smc_structure
+    instrument: Brent
+    model: haiku
+    schedule: every_run
+    input_schema:
+      - ohlc_4h_200
+      - swing_highs_lows_4h
+      - volume_4h
+      - current_price
+    output_schema:
+      market_structure: "BULLISH | BEARISH | RANGING"
+      last_bos: "dict"
+      last_choch: "dict"
+      order_blocks: "list[dict]"
+      premium_discount: "PREMIUM | DISCOUNT | EQUILIBRIUM"
+      poi_zones: "list[dict]"
+      confidence: "0.0-1.0"
+    prompt: |
+      Map Brent Crude 4H SMC structure. Oil 4H structure reflects OPEC+ supply
+      dynamics and global demand narrative. Identify BOS and CHoCH. Mark order
+      blocks and POI zones. Weekly EIA data and monthly OPEC reports create
+      4H displacement candles. $5 round levels are structural pivots.
+      Label structure BULLISH/BEARISH/RANGING.
+      Output JSON only. Never fabricate data.
+
+  - id: smc_4h_wti
+    name: "SMC Structure 4H - WTI Crude"
+    category: market_analysis
+    subcategory: smc_structure
+    instrument: WTI
+    model: haiku
+    schedule: every_run
+    input_schema:
+      - ohlc_4h_200
+      - swing_highs_lows_4h
+      - volume_4h
+      - current_price
+    output_schema:
+      market_structure: "BULLISH | BEARISH | RANGING"
+      last_bos: "dict"
+      last_choch: "dict"
+      order_blocks: "list[dict]"
+      premium_discount: "PREMIUM | DISCOUNT | EQUILIBRIUM"
+      poi_zones: "list[dict]"
+      confidence: "0.0-1.0"
+    prompt: |
+      Map WTI Crude 4H SMC structure. WTI 4H has cleaner structure than Brent
+      due to higher trading volume. Cushing storage data impacts 4H structure.
+      Identify BOS and CHoCH. Mark order blocks and POI zones. Brent-WTI spread
+      widening/narrowing can invalidate WTI-only setups. $5 round levels are key.
+      Label structure BULLISH/BEARISH/RANGING.
+      Output JSON only. Never fabricate data.
+
+  - id: smc_4h_spx
+    name: "SMC Structure 4H - S&P 500"
+    category: market_analysis
+    subcategory: smc_structure
+    instrument: SPX
+    model: haiku
+    schedule: every_run
+    input_schema:
+      - ohlc_4h_200
+      - swing_highs_lows_4h
+      - volume_4h
+      - current_price
+    output_schema:
+      market_structure: "BULLISH | BEARISH | RANGING"
+      last_bos: "dict"
+      last_choch: "dict"
+      order_blocks: "list[dict]"
+      premium_discount: "PREMIUM | DISCOUNT | EQUILIBRIUM"
+      poi_zones: "list[dict]"
+      confidence: "0.0-1.0"
+    prompt: |
+      Map S&P 500 4H SMC structure. SPX 4H defines the weekly dealing range.
+      FOMC decisions, NFP, and CPI create major 4H displacement candles. Identify
+      BOS and CHoCH. Mark order blocks and POI zones. Weekly open price is the
+      4H equilibrium. SPX 4H CHoCH typically leads to 2-5% moves.
+      Label structure BULLISH/BEARISH/RANGING.
+      Output JSON only. Never fabricate data.
+
+  - id: smc_4h_nas100
+    name: "SMC Structure 4H - NASDAQ 100"
+    category: market_analysis
+    subcategory: smc_structure
+    instrument: NAS100
+    model: haiku
+    schedule: every_run
+    input_schema:
+      - ohlc_4h_200
+      - swing_highs_lows_4h
+      - volume_4h
+      - current_price
+    output_schema:
+      market_structure: "BULLISH | BEARISH | RANGING"
+      last_bos: "dict"
+      last_choch: "dict"
+      order_blocks: "list[dict]"
+      premium_discount: "PREMIUM | DISCOUNT | EQUILIBRIUM"
+      poi_zones: "list[dict]"
+      confidence: "0.0-1.0"
+    prompt: |
+      Map NASDAQ 100 4H SMC structure. NAS100 4H has wider dealing ranges than
+      SPX (1.5-2x). Mega-cap earnings create 4H gaps that act as FVGs. Identify
+      BOS and CHoCH. Mark order blocks and POI zones. NAS100 4H OBs should be
+      traded with SPX confirmation. 500-point round levels are key.
+      Label structure BULLISH/BEARISH/RANGING.
+      Output JSON only. Never fabricate data.
+
+  - id: smc_4h_dxy
+    name: "SMC Structure 4H - US Dollar Index"
+    category: market_analysis
+    subcategory: smc_structure
+    instrument: DXY
+    model: haiku
+    schedule: every_run
+    input_schema:
+      - ohlc_4h_200
+      - swing_highs_lows_4h
+      - volume_4h
+      - current_price
+    output_schema:
+      market_structure: "BULLISH | BEARISH | RANGING"
+      last_bos: "dict"
+      last_choch: "dict"
+      order_blocks: "list[dict]"
+      premium_discount: "PREMIUM | DISCOUNT | EQUILIBRIUM"
+      poi_zones: "list[dict]"
+      confidence: "0.0-1.0"
+    prompt: |
+      Map DXY 4H SMC structure. DXY 4H is the macro directional compass for all
+      FX and commodity trades. NFP and CPI releases create the defining 4H candles.
+      Identify BOS and CHoCH. Mark order blocks and POI zones. DXY 4H OBs near
+      the 100 level have multi-week significance. A DXY 4H CHoCH should trigger
+      portfolio-wide reassessment. Label structure BULLISH/BEARISH/RANGING.
+      Output JSON only. Never fabricate data.
+
+  - id: smc_4h_vix
+    name: "SMC Structure 4H - VIX"
+    category: market_analysis
+    subcategory: smc_structure
+    instrument: VIX
+    model: haiku
+    schedule: every_run
+    input_schema:
+      - ohlc_4h_200
+      - swing_highs_lows_4h
+      - volume_4h
+      - current_price
+    output_schema:
+      market_structure: "BULLISH | BEARISH | RANGING"
+      last_bos: "dict"
+      last_choch: "dict"
+      order_blocks: "list[dict]"
+      premium_discount: "PREMIUM | DISCOUNT | EQUILIBRIUM"
+      poi_zones: "list[dict]"
+      confidence: "0.0-1.0"
+    prompt: |
+      Map VIX 4H SMC structure. VIX 4H defines the volatility regime. A 4H BOS
+      above 20 signals regime shift to risk-off. Identify BOS and CHoCH. Mark
+      order blocks and POI zones. VIX 4H structure is the primary risk management
+      input — bullish VIX 4H structure means reduce all position sizes by 50%.
+      VIX spikes create FVGs that fill over 1-2 weeks.
+      Label structure BULLISH/BEARISH/RANGING.
+      Output JSON only. Never fabricate data.
+
+  # ── Cross-instrument SMC agents ────────────────────────────────────
+  - id: institutional_order_flow
+    name: "Institutional Order Flow Detection"
+    category: market_analysis
+    subcategory: smc_structure
+    instrument: null
+    model: sonnet
+    schedule: every_run
+    input_schema:
+      - all_smc_4h_structures
+      - cot_data_all
+      - volume_profiles_all
+      - dark_pool_flow
+    output_schema:
+      institutional_bias: "dict"
+      accumulation_instruments: "list[str]"
+      distribution_instruments: "list[str]"
+      confidence: "0.0-1.0"
+    prompt: |
+      Synthesize 4H SMC structures across all 12 instruments with COT positioning
+      data to detect institutional order flow patterns. Identify instruments in
+      accumulation (bullish OBs being respected + rising COT longs) vs distribution
+      (bearish OBs + declining COT longs). Cross-reference with volume profile for
+      confirmation. Flag divergences between SMC structure and COT positioning.
+      Output JSON only. Never fabricate data.
+
+  - id: liquidity_pool_detection
+    name: "Liquidity Pool Detection"
+    category: market_analysis
+    subcategory: smc_structure
+    instrument: null
+    model: sonnet
+    schedule: every_run
+    input_schema:
+      - all_smc_structures
+      - equal_highs_lows_all
+      - stop_loss_clusters
+      - options_oi_levels
+    output_schema:
+      liquidity_pools: "list[dict]"
+      high_probability_sweeps: "list[dict]"
+      confidence: "0.0-1.0"
+    prompt: |
+      Scan all 12 instruments for liquidity pools created by equal highs/lows,
+      trendline touches, and stop-loss clusters. Cross-reference with options
+      open interest for gamma-related liquidity targets. Rank pools by size
+      (estimated stop-loss volume) and proximity to current price. Identify which
+      pools are most likely to be swept in the next session.
+      Output JSON only. Never fabricate data.
+
+  - id: fair_value_gap
+    name: "Fair Value Gap Scanner"
+    category: market_analysis
+    subcategory: smc_structure
+    instrument: null
+    model: sonnet
+    schedule: every_run
+    input_schema:
+      - all_smc_structures
+      - unfilled_fvgs_all
+      - daily_atr_all
+    output_schema:
+      active_fvgs: "list[dict]"
+      high_probability_fills: "list[dict]"
+      expired_fvgs: "list[dict]"
+      confidence: "0.0-1.0"
+    prompt: |
+      Scan all 12 instruments for unfilled Fair Value Gaps across 15m, 1H, and 4H
+      timeframes. Classify FVGs by size relative to ATR, age (older = less reliable),
+      and alignment with higher-timeframe bias. FVGs in premium zone with bearish
+      HTF bias are high-probability short entries; discount FVGs with bullish HTF
+      are high-probability longs. Flag FVGs older than 20 candles as expired.
+      Output JSON only. Never fabricate data.

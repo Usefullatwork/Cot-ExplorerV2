@@ -1,0 +1,175 @@
+// =============================================================================
+// Confluence Score — 12-punkts konfluensvurdering for handelssetups
+// 7 av 12 kriterier beregnes automatisk fra prisdata.
+// 5 kriterier er manuelle inputs (COT, nyheter, fundamentals).
+// =============================================================================
+//@version=5
+indicator("COT Explorer: Confluence Score", shorttitle="Score", overlay=false, max_labels_count=5)
+
+// ── Fargepalett (mork tema) ─────────────────────────────────────────────────
+var color C_GREEN  = #3fb950
+var color C_RED    = #f85149
+var color C_YELLOW = #d29922
+var color C_BLUE   = #58a6ff
+var color C_BG     = #161b22
+var color C_TEXT   = #c9d1d9
+
+// ── Retningsvalg ────────────────────────────────────────────────────────────
+direction = input.string("LONG", "Retning", options=["LONG", "SHORT"])
+is_long   = direction == "LONG"
+
+// ── Auto-beregnede parametere ───────────────────────────────────────────────
+sma_len      = input.int(200, "SMA-lengde (D1)")
+mom_len      = input.int(20,  "Momentum-periode (dager)")
+swing_len    = input.int(10,  "Swing-lengde for SMC")
+at_level_tol = input.float(0.45, "AT-level toleranse (xATR)", step=0.05)
+
+// ── Manuelle inputs (5 kriterier fra Python-analyse) ────────────────────────
+in_cot_confirms    = input.bool(false, "COT bekrefter retning")
+in_cot_strong      = input.bool(false, "COT sterk posisjonering (>10%)")
+in_no_event_risk   = input.bool(true,  "Ingen event-risiko (4t)")
+in_news_confirms   = input.bool(false, "Nyhetssentiment bekrefter")
+in_fund_confirms   = input.bool(false, "Fundamental bekrefter")
+
+// ── Hjelpefunksjoner ────────────────────────────────────────────────────────
+atr14 = ta.atr(14)
+
+// ── Kriterium 1: Over/Under SMA200 (D1 trend) ──────────────────────────────
+sma200_d = request.security(syminfo.tickerid, "D", ta.sma(close, sma_len), lookahead=barmerge.lookahead_off)
+c1_sma200 = is_long ? close > sma200_d : close < sma200_d
+
+// ── Kriterium 2: Momentum 20d bekrefter ─────────────────────────────────────
+chg_20d = request.security(syminfo.tickerid, "D", (close - close[mom_len]) / close[mom_len] * 100, lookahead=barmerge.lookahead_off)
+c2_momentum = is_long ? chg_20d > 0 : chg_20d < 0
+
+// ── Kriterium 3: COT bekrefter retning (manuell) ───────────────────────────
+c3_cot = in_cot_confirms
+
+// ── Kriterium 4: COT sterk posisjonering (manuell) ─────────────────────────
+c4_cot_strong = in_cot_strong
+
+// ── Kriterium 5: Pris VED HTF-niva na ──────────────────────────────────────
+// Sjekker om pris er naer PDH/PDL (forrige dags hoy/lav)
+pdh = request.security(syminfo.tickerid, "D", high[1], lookahead=barmerge.lookahead_on)
+pdl = request.security(syminfo.tickerid, "D", low[1],  lookahead=barmerge.lookahead_on)
+dist_pdh = math.abs(close - pdh)
+dist_pdl = math.abs(close - pdl)
+nearest_level_dist = math.min(dist_pdh, dist_pdl)
+c5_at_level = nearest_level_dist <= atr14 * at_level_tol
+
+// ── Kriterium 6: HTF-niva D1/Ukentlig i narheten ───────────────────────────
+pwh = request.security(syminfo.tickerid, "W", high[1], lookahead=barmerge.lookahead_on)
+pwl = request.security(syminfo.tickerid, "W", low[1],  lookahead=barmerge.lookahead_on)
+dist_pwh = math.abs(close - pwh)
+dist_pwl = math.abs(close - pwl)
+htf_nearby = math.min(dist_pwh, dist_pwl) <= atr14 * 3.0
+c6_htf_nearby = htf_nearby
+
+// ── Kriterium 7: D1 + 4H trend kongruent ───────────────────────────────────
+ema9_d  = request.security(syminfo.tickerid, "D",  ta.ema(close, 9),  lookahead=barmerge.lookahead_off)
+ema9_4h = request.security(syminfo.tickerid, "240", ta.ema(close, 9), lookahead=barmerge.lookahead_off)
+d1_bull = close > ema9_d
+h4_bull = close > ema9_4h
+c7_trend = is_long ? (d1_bull and h4_bull) : (not d1_bull and not h4_bull)
+
+// ── Kriterium 8: Ingen event-risiko (manuell) ──────────────────────────────
+c8_no_event = in_no_event_risk
+
+// ── Kriterium 9: Nyhetssentiment bekrefter (manuell) ────────────────────────
+c9_news = in_news_confirms
+
+// ── Kriterium 10: Fundamental bekrefter (manuell) ──────────────────────────
+c10_fund = in_fund_confirms
+
+// ── Kriterium 11: BOS 1H/4H bekrefter retning ─────────────────────────────
+// BOS = Break of Structure: pris bryter over forrige swing high (long) / under forrige swing low (short)
+swing_hi_4h = request.security(syminfo.tickerid, "240", ta.pivothigh(high, swing_len, swing_len), lookahead=barmerge.lookahead_off)
+swing_lo_4h = request.security(syminfo.tickerid, "240", ta.pivotlow(low, swing_len, swing_len),   lookahead=barmerge.lookahead_off)
+
+var float last_swing_hi_4h = na
+var float last_swing_lo_4h = na
+if not na(swing_hi_4h)
+    last_swing_hi_4h := swing_hi_4h
+if not na(swing_lo_4h)
+    last_swing_lo_4h := swing_lo_4h
+
+c11_bos = is_long ? (close > nz(last_swing_hi_4h)) : (close < nz(last_swing_lo_4h))
+
+// ── Kriterium 12: SMC 1H struktur bekrefter ─────────────────────────────────
+// HH+HL = bullish struktur, LH+LL = bearish struktur
+swing_hi_1h = request.security(syminfo.tickerid, "60", ta.pivothigh(high, swing_len, swing_len), lookahead=barmerge.lookahead_off)
+swing_lo_1h = request.security(syminfo.tickerid, "60", ta.pivotlow(low, swing_len, swing_len),   lookahead=barmerge.lookahead_off)
+
+var float prev_swing_hi = na
+var float curr_swing_hi = na
+var float prev_swing_lo = na
+var float curr_swing_lo = na
+
+if not na(swing_hi_1h)
+    prev_swing_hi := curr_swing_hi
+    curr_swing_hi := swing_hi_1h
+if not na(swing_lo_1h)
+    prev_swing_lo := curr_swing_lo
+    curr_swing_lo := swing_lo_1h
+
+is_hh = not na(curr_swing_hi) and not na(prev_swing_hi) and curr_swing_hi > prev_swing_hi
+is_hl = not na(curr_swing_lo) and not na(prev_swing_lo) and curr_swing_lo > prev_swing_lo
+is_lh = not na(curr_swing_hi) and not na(prev_swing_hi) and curr_swing_hi < prev_swing_hi
+is_ll = not na(curr_swing_lo) and not na(prev_swing_lo) and curr_swing_lo < prev_swing_lo
+
+c12_smc = is_long ? (is_hh and is_hl) : (is_lh and is_ll)
+
+// ── Totalpoeng ──────────────────────────────────────────────────────────────
+score = (c1_sma200    ? 1 : 0) + (c2_momentum  ? 1 : 0) +
+        (c3_cot       ? 1 : 0) + (c4_cot_strong ? 1 : 0) +
+        (c5_at_level  ? 1 : 0) + (c6_htf_nearby ? 1 : 0) +
+        (c7_trend     ? 1 : 0) + (c8_no_event   ? 1 : 0) +
+        (c9_news      ? 1 : 0) + (c10_fund      ? 1 : 0) +
+        (c11_bos      ? 1 : 0) + (c12_smc       ? 1 : 0)
+
+// ── Grade-klassifisering ────────────────────────────────────────────────────
+grade_label = score >= 11 ? "A+" : score >= 9 ? "A" : score >= 6 ? "B" : "C"
+grade_color = score >= 11 ? C_GREEN : score >= 9 ? C_YELLOW : score >= 6 ? C_BLUE : C_RED
+
+// ── Plot histogram ──────────────────────────────────────────────────────────
+plot(score, "Score", color=grade_color, style=plot.style_histogram, linewidth=4)
+
+// Terskellinjer
+hline(11, "A+ (11)",  color=color.new(C_GREEN, 60),  linestyle=hline.style_dotted)
+hline(9,  "A  (9)",   color=color.new(C_YELLOW, 60), linestyle=hline.style_dotted)
+hline(6,  "B  (6)",   color=color.new(C_BLUE, 60),   linestyle=hline.style_dotted)
+
+// ── Kriterietabell (nedre hoyre) ────────────────────────────────────────────
+show_table = input.bool(true, "Vis kriterietabell")
+
+if show_table and barstate.islast
+    var table ct = table.new(position.bottom_right, 3, 14, bgcolor=C_BG, border_width=1, border_color=color.new(C_TEXT, 70))
+
+    // Overskrift
+    table.cell(ct, 0, 0, "#",         text_color=C_TEXT,   text_size=size.tiny)
+    table.cell(ct, 1, 0, "Kriterium", text_color=C_BLUE,   text_size=size.tiny, text_halign=text.align_left)
+    table.cell(ct, 2, 0, "Status",    text_color=C_TEXT,   text_size=size.tiny)
+
+    // Kriterierader
+    make_row(tbl, row, num, label, val) =>
+        table.cell(tbl, 0, row, num,   text_color=C_TEXT,                     text_size=size.tiny)
+        table.cell(tbl, 1, row, label, text_color=C_TEXT,                     text_size=size.tiny, text_halign=text.align_left)
+        table.cell(tbl, 2, row, val ? "\u2713" : "\u2717", text_color=val ? C_GREEN : C_RED, text_size=size.small)
+
+    make_row(ct, 1,  "1",  "SMA200 (D1 trend)",       c1_sma200)
+    make_row(ct, 2,  "2",  "Momentum 20d",            c2_momentum)
+    make_row(ct, 3,  "3",  "COT bekrefter",           c3_cot)
+    make_row(ct, 4,  "4",  "COT sterk (>10%)",        c4_cot_strong)
+    make_row(ct, 5,  "5",  "Pris VED niva",           c5_at_level)
+    make_row(ct, 6,  "6",  "HTF D1/W niva",           c6_htf_nearby)
+    make_row(ct, 7,  "7",  "D1+4H trend kongruent",   c7_trend)
+    make_row(ct, 8,  "8",  "Ingen event-risiko",      c8_no_event)
+    make_row(ct, 9,  "9",  "Nyheter bekrefter",       c9_news)
+    make_row(ct, 10, "10", "Fundamental bekrefter",    c10_fund)
+    make_row(ct, 11, "11", "BOS 1H/4H",               c11_bos)
+    make_row(ct, 12, "12", "SMC 1H struktur",         c12_smc)
+
+    // Totalrad
+    table.cell(ct, 0, 13, "",         text_color=C_TEXT, text_size=size.tiny)
+    table.cell(ct, 1, 13, "TOTAL: " + grade_label, text_color=grade_color, text_size=size.small, text_halign=text.align_left)
+    table.cell(ct, 2, 13, str.tostring(score) + "/12", text_color=grade_color, text_size=size.small)

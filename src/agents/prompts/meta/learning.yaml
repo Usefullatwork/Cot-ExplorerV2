@@ -1,0 +1,107 @@
+prompts:
+  - id: false_signal_analyzer
+    name: "False Signal Analyzer"
+    category: meta
+    subcategory: learning
+    instrument: null
+    model: sonnet
+    schedule: weekly
+    input_schema:
+      - false_signals_week
+      - signal_characteristics
+      - market_conditions_at_signal
+      - common_failure_patterns
+    output_schema:
+      false_signal_count: "int"
+      common_causes: "list[dict]"
+      pattern_clusters: "list[dict]"
+      filter_recommendations: "list[str]"
+      confidence: "0.0-1.0"
+    prompt: |
+      Analyze all false signals from the past week. Cluster false signals by
+      common characteristics: timeframe, instrument, signal type, market regime,
+      data quality at time. Identify the top 3 most common false signal patterns.
+      For each pattern, recommend a specific filter that would eliminate it without
+      reducing true signals. Track false signal rate trend — rising rate signals
+      system degradation; falling rate signals improvement.
+      Output JSON only. Never fabricate data.
+
+  - id: missed_opportunity
+    name: "Missed Opportunity Analyzer"
+    category: meta
+    subcategory: learning
+    instrument: null
+    model: sonnet
+    schedule: weekly
+    input_schema:
+      - major_moves_week
+      - signals_at_time_of_move
+      - missed_trades
+      - filter_rejections
+    output_schema:
+      missed_moves: "list[dict]"
+      why_missed: "dict[str, str]"
+      filter_too_aggressive: "list[str]"
+      opportunity_cost: "float"
+      confidence: "0.0-1.0"
+    prompt: |
+      Analyze major moves that the system did not trade. For each missed move
+      (>2 ATR), determine why: (1) no signal generated, (2) signal generated but
+      filtered, (3) signal generated but conflicted, (4) signal generated but
+      data quality blocked. If >30% of major moves were missed due to filters,
+      filters may be too aggressive. Balance: reducing false signals vs missing
+      opportunities. Calculate opportunity cost of missed trades.
+      Output JSON only. Never fabricate data.
+
+  - id: parameter_tuning
+    name: "Parameter Tuning Advisor"
+    category: meta
+    subcategory: learning
+    instrument: null
+    model: sonnet
+    schedule: weekly
+    input_schema:
+      - current_parameters
+      - performance_by_parameter
+      - parameter_sensitivity
+      - regime_parameter_interaction
+    output_schema:
+      tuning_recommendations: "list[dict]"
+      parameter_sensitivity: "dict[str, float]"
+      estimated_improvement: "float"
+      overfitting_risk: "LOW | MEDIUM | HIGH"
+      confidence: "0.0-1.0"
+    prompt: |
+      Recommend parameter adjustments based on recent performance. Analyze
+      sensitivity of key parameters: confluence threshold, ATR stop multiple,
+      session filters, model assignments. Only recommend changes that would
+      have improved performance on 3+ different months (not just the latest).
+      Flag overfitting risk — small sample sizes or regime-specific improvements
+      are dangerous. Maximum 2 parameter changes per week to avoid destabilizing
+      the system. Output JSON only. Never fabricate data.
+
+  - id: pattern_discoverer
+    name: "New Pattern Discoverer"
+    category: meta
+    subcategory: learning
+    instrument: null
+    model: sonnet
+    schedule: weekly
+    input_schema:
+      - all_trades_with_context
+      - winning_trade_features
+      - losing_trade_features
+      - unexplained_outcomes
+    output_schema:
+      discovered_patterns: "list[dict]"
+      feature_importance: "dict[str, float]"
+      hypothesis_for_testing: "list[str]"
+      confidence: "0.0-1.0"
+    prompt: |
+      Discover new patterns by analyzing the features of winning vs losing trades.
+      Use feature importance analysis: which inputs (time of day, volatility level,
+      COT reading, DXY direction, etc.) best predict trade outcomes? Identify any
+      features not currently in the confluence scoring that should be added.
+      Generate testable hypotheses: "Adding VIX regime filter would have improved
+      win rate by X%." All hypotheses must be validated in backtest before
+      deployment. Output JSON only. Never fabricate data.

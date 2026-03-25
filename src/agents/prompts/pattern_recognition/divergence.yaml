@@ -1,0 +1,340 @@
+prompts:
+  # ── RSI Divergence per instrument (12) ─────────────────────────────
+  - id: rsi_divergence_eurusd
+    name: "RSI Divergence - EUR/USD"
+    category: pattern_recognition
+    subcategory: divergence
+    instrument: EURUSD
+    model: haiku
+    schedule: every_run
+    input_schema:
+      - daily_ohlc_60
+      - rsi_14_daily
+      - h4_ohlc_100
+      - rsi_14_h4
+      - swing_highs_lows
+    output_schema:
+      divergences: "list[dict]"
+      divergence_type: "REGULAR_BULLISH | REGULAR_BEARISH | HIDDEN_BULLISH | HIDDEN_BEARISH"
+      timeframe: "str"
+      confidence: "0.0-1.0"
+    prompt: |
+      Scan EUR/USD for RSI divergences on daily and 4H. Regular bullish: price
+      makes lower low, RSI makes higher low (reversal signal). Regular bearish:
+      price makes higher high, RSI makes lower high. Hidden bullish: price makes
+      higher low, RSI makes lower low (continuation). EUR/USD RSI divergences
+      at the 70/30 extremes are highest probability. Daily divergences are more
+      reliable than 4H. Output JSON only. Never fabricate data.
+
+  - id: rsi_divergence_usdjpy
+    name: "RSI Divergence - USD/JPY"
+    category: pattern_recognition
+    subcategory: divergence
+    instrument: USDJPY
+    model: haiku
+    schedule: every_run
+    input_schema:
+      - daily_ohlc_60
+      - rsi_14_daily
+      - h4_ohlc_100
+      - rsi_14_h4
+      - swing_highs_lows
+    output_schema:
+      divergences: "list[dict]"
+      divergence_type: "REGULAR_BULLISH | REGULAR_BEARISH | HIDDEN_BULLISH | HIDDEN_BEARISH"
+      timeframe: "str"
+      confidence: "0.0-1.0"
+    prompt: |
+      Scan USD/JPY for RSI divergences. USD/JPY bearish RSI divergence near
+      intervention zones (150-160) is extremely significant — it confirms
+      momentum exhaustion before potential BoJ action. Bullish hidden divergence
+      during carry trade trending confirms accumulation. USD/JPY RSI can stay
+      overbought longer than most pairs due to carry dynamics.
+      Output JSON only. Never fabricate data.
+
+  - id: rsi_divergence_gbpusd
+    name: "RSI Divergence - GBP/USD"
+    category: pattern_recognition
+    subcategory: divergence
+    instrument: GBPUSD
+    model: haiku
+    schedule: every_run
+    input_schema:
+      - daily_ohlc_60
+      - rsi_14_daily
+      - h4_ohlc_100
+      - rsi_14_h4
+      - swing_highs_lows
+    output_schema:
+      divergences: "list[dict]"
+      divergence_type: "REGULAR_BULLISH | REGULAR_BEARISH | HIDDEN_BULLISH | HIDDEN_BEARISH"
+      timeframe: "str"
+      confidence: "0.0-1.0"
+    prompt: |
+      Scan GBP/USD for RSI divergences. Cable RSI divergences are most reliable
+      at the 1.20-1.40 range extremes. Regular bearish divergence at 1.35+ has
+      historically preceded 200-400 pip declines. GBP/USD 4H RSI divergences
+      around BoE decision days should be flagged separately as potentially
+      event-driven rather than technical.
+      Output JSON only. Never fabricate data.
+
+  - id: rsi_divergence_audusd
+    name: "RSI Divergence - AUD/USD"
+    category: pattern_recognition
+    subcategory: divergence
+    instrument: AUDUSD
+    model: haiku
+    schedule: every_run
+    input_schema:
+      - daily_ohlc_60
+      - rsi_14_daily
+      - h4_ohlc_100
+      - rsi_14_h4
+      - swing_highs_lows
+    output_schema:
+      divergences: "list[dict]"
+      divergence_type: "REGULAR_BULLISH | REGULAR_BEARISH | HIDDEN_BULLISH | HIDDEN_BEARISH"
+      timeframe: "str"
+      confidence: "0.0-1.0"
+    prompt: |
+      Scan AUD/USD for RSI divergences. AUD/USD RSI divergences should be
+      cross-referenced with iron ore price momentum. Bullish RSI divergence
+      with rising iron ore is high conviction. Bearish divergence with falling
+      China PMI confirms risk-off transition. AUD/USD at 0.60 handle with
+      bullish divergence is a historically strong reversal zone.
+      Output JSON only. Never fabricate data.
+
+  - id: rsi_divergence_gold
+    name: "RSI Divergence - Gold"
+    category: pattern_recognition
+    subcategory: divergence
+    instrument: Gold
+    model: haiku
+    schedule: every_run
+    input_schema:
+      - daily_ohlc_60
+      - rsi_14_daily
+      - h4_ohlc_100
+      - rsi_14_h4
+      - swing_highs_lows
+    output_schema:
+      divergences: "list[dict]"
+      divergence_type: "REGULAR_BULLISH | REGULAR_BEARISH | HIDDEN_BULLISH | HIDDEN_BEARISH"
+      timeframe: "str"
+      confidence: "0.0-1.0"
+    prompt: |
+      Scan Gold for RSI divergences. Gold RSI can remain overbought (>70) for
+      extended periods during safe-haven rallies — use 80 as extreme. Bearish
+      divergence at century levels ($2100, $2200, $2300) is a strong top signal.
+      Bullish hidden divergence during pullback to SMA50 confirms uptrend
+      continuation. Cross-reference with DXY RSI for confirmation.
+      Output JSON only. Never fabricate data.
+
+  - id: rsi_divergence_silver
+    name: "RSI Divergence - Silver"
+    category: pattern_recognition
+    subcategory: divergence
+    instrument: Silver
+    model: haiku
+    schedule: every_run
+    input_schema:
+      - daily_ohlc_60
+      - rsi_14_daily
+      - h4_ohlc_100
+      - rsi_14_h4
+      - swing_highs_lows
+    output_schema:
+      divergences: "list[dict]"
+      divergence_type: "REGULAR_BULLISH | REGULAR_BEARISH | HIDDEN_BULLISH | HIDDEN_BEARISH"
+      timeframe: "str"
+      confidence: "0.0-1.0"
+    prompt: |
+      Scan Silver for RSI divergences. Silver RSI divergences are noisier than
+      gold; use daily timeframe only for signals. Silver-gold RSI divergence
+      (gold making new high but silver RSI diverging) signals precious metals
+      weakness. Bullish RSI divergence at $22-$24 range lows has been a
+      reliable bottom signal historically.
+      Output JSON only. Never fabricate data.
+
+  - id: rsi_divergence_brent
+    name: "RSI Divergence - Brent Crude"
+    category: pattern_recognition
+    subcategory: divergence
+    instrument: Brent
+    model: haiku
+    schedule: every_run
+    input_schema:
+      - daily_ohlc_60
+      - rsi_14_daily
+      - h4_ohlc_100
+      - rsi_14_h4
+      - swing_highs_lows
+    output_schema:
+      divergences: "list[dict]"
+      divergence_type: "REGULAR_BULLISH | REGULAR_BEARISH | HIDDEN_BULLISH | HIDDEN_BEARISH"
+      timeframe: "str"
+      confidence: "0.0-1.0"
+    prompt: |
+      Scan Brent Crude for RSI divergences. Oil RSI divergences should be
+      cross-referenced with inventory data trends and OPEC+ compliance. Bearish
+      RSI divergence above $85 with rising US production signals supply-driven
+      top. Bullish divergence near $70 with OPEC+ cuts signals policy-supported
+      bottom. Oil RSI can stay extreme during geopolitical events.
+      Output JSON only. Never fabricate data.
+
+  - id: rsi_divergence_wti
+    name: "RSI Divergence - WTI Crude"
+    category: pattern_recognition
+    subcategory: divergence
+    instrument: WTI
+    model: haiku
+    schedule: every_run
+    input_schema:
+      - daily_ohlc_60
+      - rsi_14_daily
+      - h4_ohlc_100
+      - rsi_14_h4
+      - swing_highs_lows
+    output_schema:
+      divergences: "list[dict]"
+      divergence_type: "REGULAR_BULLISH | REGULAR_BEARISH | HIDDEN_BULLISH | HIDDEN_BEARISH"
+      timeframe: "str"
+      confidence: "0.0-1.0"
+    prompt: |
+      Scan WTI Crude for RSI divergences. WTI RSI divergences should align with
+      Brent for confirmation. WTI-only divergence (not present in Brent) may
+      be a US-specific supply factor rather than global oil signal. Check
+      Cushing storage trends alongside RSI divergence for context. EIA day
+      candles can create false divergence signals — verify on next day.
+      Output JSON only. Never fabricate data.
+
+  - id: rsi_divergence_spx
+    name: "RSI Divergence - S&P 500"
+    category: pattern_recognition
+    subcategory: divergence
+    instrument: SPX
+    model: haiku
+    schedule: every_run
+    input_schema:
+      - daily_ohlc_60
+      - rsi_14_daily
+      - h4_ohlc_100
+      - rsi_14_h4
+      - swing_highs_lows
+    output_schema:
+      divergences: "list[dict]"
+      divergence_type: "REGULAR_BULLISH | REGULAR_BEARISH | HIDDEN_BULLISH | HIDDEN_BEARISH"
+      timeframe: "str"
+      confidence: "0.0-1.0"
+    prompt: |
+      Scan S&P 500 for RSI divergences. SPX bearish RSI divergence at all-time
+      highs is one of the most important cross-asset signals — it precedes 5-10%
+      corrections 65% of the time. SPX RSI can stay overbought for weeks in bull
+      trends; use weekly RSI divergence for major tops. Cross-reference with
+      market breadth (advance-decline line) for confirmation.
+      Output JSON only. Never fabricate data.
+
+  - id: rsi_divergence_nas100
+    name: "RSI Divergence - NASDAQ 100"
+    category: pattern_recognition
+    subcategory: divergence
+    instrument: NAS100
+    model: haiku
+    schedule: every_run
+    input_schema:
+      - daily_ohlc_60
+      - rsi_14_daily
+      - h4_ohlc_100
+      - rsi_14_h4
+      - swing_highs_lows
+    output_schema:
+      divergences: "list[dict]"
+      divergence_type: "REGULAR_BULLISH | REGULAR_BEARISH | HIDDEN_BULLISH | HIDDEN_BEARISH"
+      timeframe: "str"
+      confidence: "0.0-1.0"
+    prompt: |
+      Scan NASDAQ 100 for RSI divergences. NAS100 bearish divergence when led by
+      narrow mega-cap rally (diverging from equal-weight NAS) is a strong top
+      signal. NAS100 RSI divergence vs SPX RSI (NAS100 diverging while SPX is
+      not) signals tech-specific weakness. Use 80/20 RSI extremes for NAS100 due
+      to its higher momentum characteristics.
+      Output JSON only. Never fabricate data.
+
+  - id: rsi_divergence_dxy
+    name: "RSI Divergence - DXY"
+    category: pattern_recognition
+    subcategory: divergence
+    instrument: DXY
+    model: haiku
+    schedule: every_run
+    input_schema:
+      - daily_ohlc_60
+      - rsi_14_daily
+      - h4_ohlc_100
+      - rsi_14_h4
+      - swing_highs_lows
+    output_schema:
+      divergences: "list[dict]"
+      divergence_type: "REGULAR_BULLISH | REGULAR_BEARISH | HIDDEN_BULLISH | HIDDEN_BEARISH"
+      timeframe: "str"
+      confidence: "0.0-1.0"
+    prompt: |
+      Scan DXY for RSI divergences. DXY RSI divergence is the most important FX
+      signal in the system — a DXY bearish divergence shifts all FX pairs. Weekly
+      DXY RSI divergence at the 105-110 range signals secular dollar weakness
+      cycle. Bullish divergence at 100 signals dollar strength resumption. All
+      FX positions should be reviewed when DXY divergence is detected.
+      Output JSON only. Never fabricate data.
+
+  - id: rsi_divergence_vix
+    name: "RSI Divergence - VIX"
+    category: pattern_recognition
+    subcategory: divergence
+    instrument: VIX
+    model: haiku
+    schedule: every_run
+    input_schema:
+      - daily_ohlc_60
+      - rsi_14_daily
+      - h4_ohlc_100
+      - rsi_14_h4
+      - swing_highs_lows
+    output_schema:
+      divergences: "list[dict]"
+      divergence_type: "REGULAR_BULLISH | REGULAR_BEARISH | HIDDEN_BULLISH | HIDDEN_BEARISH"
+      timeframe: "str"
+      confidence: "0.0-1.0"
+    prompt: |
+      Scan VIX for RSI divergences. VIX bullish RSI divergence (rising RSI lows
+      while VIX makes lower lows) signals building complacency that often precedes
+      vol spikes. VIX bearish divergence after a spike >30 (falling RSI highs)
+      confirms the spike is fading. VIX-SPX divergence (VIX not making new lows
+      while SPX makes new highs) is a key warning signal.
+      Output JSON only. Never fabricate data.
+
+  # ── Cross-instrument momentum divergence ───────────────────────────
+  - id: momentum_divergence
+    name: "Cross-Instrument Momentum Divergence"
+    category: pattern_recognition
+    subcategory: divergence
+    instrument: null
+    model: sonnet
+    schedule: daily
+    input_schema:
+      - rsi_14_all
+      - macd_all
+      - stochastic_all
+      - price_momentum_20d_all
+    output_schema:
+      multi_indicator_divergences: "list[dict]"
+      strongest_divergence: "dict"
+      consensus_signals: "list[dict]"
+      confidence: "0.0-1.0"
+    prompt: |
+      Analyze momentum divergence across multiple indicators (RSI, MACD,
+      Stochastic) for all 12 instruments. When 2+ momentum indicators diverge
+      from price simultaneously, the reversal probability increases to 70-80%.
+      Rank instruments by divergence count and severity. Triple divergence
+      (RSI + MACD + Stochastic all diverging) is the highest-conviction reversal
+      signal. Flag instruments with consensus (no divergence) as trend-following
+      candidates. Output JSON only. Never fabricate data.

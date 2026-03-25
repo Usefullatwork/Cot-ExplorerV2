@@ -1,0 +1,215 @@
+prompts:
+  - id: bond_equity
+    name: "Bond-Equity Relationship"
+    category: fundamental
+    subcategory: cross_asset
+    instrument: null
+    model: sonnet
+    schedule: daily
+    input_schema:
+      - us_10y_yield
+      - spx_daily
+      - nas100_daily
+      - yield_equity_correlation_30d
+    output_schema:
+      relationship: "POSITIVE | NEGATIVE | DECOUPLED"
+      regime: "GROWTH_DRIVEN | INFLATION_DRIVEN | CRISIS"
+      equity_implication: "str"
+      confidence: "0.0-1.0"
+    prompt: |
+      Analyze the bond-equity relationship. In normal growth regime: rising yields
+      + rising equities = healthy (growth optimism). In inflation regime: rising
+      yields + falling equities = dangerous (rate tightening fear). In crisis:
+      falling yields + falling equities initially, then yields crash further
+      as flight to safety. The correlation regime between bonds and equities is
+      the most important cross-asset signal for portfolio construction.
+      Output JSON only. Never fabricate data.
+
+  - id: fx_equity
+    name: "FX-Equity Correlation"
+    category: fundamental
+    subcategory: cross_asset
+    instrument: null
+    model: sonnet
+    schedule: daily
+    input_schema:
+      - dxy_daily
+      - spx_daily
+      - usdjpy_daily
+      - audusd_daily
+      - vix_daily
+    output_schema:
+      dxy_equity_correlation: "float"
+      risk_regime: "RISK_ON | RISK_OFF | TRANSITIONING"
+      strongest_fx_equity_link: "str"
+      confidence: "0.0-1.0"
+    prompt: |
+      Analyze FX-equity correlations. In risk-on: falling DXY + rising equities
+      + rising AUD/USD. In risk-off: rising DXY + falling equities + falling
+      AUD/USD. USD/JPY tracks equity risk sentiment due to carry trade unwind.
+      When DXY and equities rise together (unusual), it signals US-specific
+      capital inflows (dollar smile right side). Identify the strongest FX-equity
+      linkage for the current regime. Output JSON only. Never fabricate data.
+
+  - id: commodity_fx_cross
+    name: "Commodity-FX Cross-Asset Flow"
+    category: fundamental
+    subcategory: cross_asset
+    instrument: null
+    model: sonnet
+    schedule: daily
+    input_schema:
+      - gold_daily
+      - brent_daily
+      - audusd_daily
+      - dxy_daily
+      - copper_daily
+    output_schema:
+      commodity_fx_alignment: "ALIGNED | DIVERGENT"
+      divergences: "list[dict]"
+      flow_direction: "INTO_COMMODITIES | OUT_OF_COMMODITIES | MIXED"
+      confidence: "0.0-1.0"
+    prompt: |
+      Analyze commodity-FX capital flows. Rising commodities with falling DXY
+      confirms dollar weakness cycle (aligned). Rising commodities with rising
+      DXY is unusual and signals supply disruption or structural demand shift.
+      AUD/USD should track copper and iron ore. When commodity-FX links break,
+      it often signals a regime change. Identify any active divergences between
+      commodity prices and their associated currencies.
+      Output JSON only. Never fabricate data.
+
+  - id: em_risk
+    name: "Emerging Market Risk Assessment"
+    category: fundamental
+    subcategory: cross_asset
+    instrument: null
+    model: sonnet
+    schedule: weekly
+    input_schema:
+      - em_fx_index
+      - em_bond_spreads
+      - dxy_level
+      - us_rate_expectations
+      - commodity_prices
+    output_schema:
+      em_stress_level: "LOW | MODERATE | HIGH | CRISIS"
+      dxy_em_feedback: "str"
+      commodity_demand_signal: "str"
+      contagion_risk: "float"
+      confidence: "0.0-1.0"
+    prompt: |
+      Assess emerging market risk and its feedback to G10 assets. Strong DXY +
+      rising US rates = EM stress (capital outflows, debt burden). EM stress
+      reduces commodity demand (bearish Brent, gold demand for reserves). EM
+      crisis can create contagion: EM currency devaluation -> commodity sell-off
+      -> risk-off -> VIX spike -> DXY further strength (feedback loop).
+      Monitor EM bond spreads and FX as early warning for G10 positioning.
+      Output JSON only. Never fabricate data.
+
+  - id: carry_trade
+    name: "Carry Trade Analysis"
+    category: fundamental
+    subcategory: cross_asset
+    instrument: null
+    model: sonnet
+    schedule: weekly
+    input_schema:
+      - interest_rate_differentials
+      - fx_volatility_all
+      - vix_level
+      - carry_trade_flows
+    output_schema:
+      best_carry_pairs: "list[dict]"
+      carry_adjusted_returns: "dict[str, float]"
+      unwind_risk: "LOW | MEDIUM | HIGH"
+      confidence: "0.0-1.0"
+    prompt: |
+      Analyze carry trade dynamics across all instruments. Carry = interest rate
+      differential minus expected FX move. Best carry trades: high rate differential
+      + low volatility + stable trend. Carry unwind risk: VIX spike + risk-off
+      -> JPY strengthens violently as carry trades unwind. When VIX is low (<15),
+      carry is attractive. When VIX spikes above 25, carry positions should be
+      reduced. JPY and CHF are primary funding currencies.
+      Output JSON only. Never fabricate data.
+
+  - id: safe_haven
+    name: "Safe Haven Flow Analysis"
+    category: fundamental
+    subcategory: cross_asset
+    instrument: null
+    model: sonnet
+    schedule: daily
+    input_schema:
+      - gold_daily
+      - usdjpy_daily
+      - dxy_daily
+      - us_10y_yield
+      - vix_daily
+      - chf_flows
+    output_schema:
+      safe_haven_demand: "LOW | MODERATE | HIGH | EXTREME"
+      preferred_haven: "USD | JPY | CHF | GOLD"
+      flow_direction: "INTO_HAVENS | OUT_OF_HAVENS | ROTATING"
+      confidence: "0.0-1.0"
+    prompt: |
+      Analyze safe haven capital flows. Primary safe havens: USD (liquidity),
+      JPY (repatriation), CHF (neutral), Gold (no counterparty risk). In mild
+      risk-off: JPY and CHF strengthen first. In severe risk-off: USD strengthens
+      as global liquidity demand surges. Gold rises in inflation-driven risk-off
+      but can fall in liquidity crises (margin calls force gold selling).
+      Determine the current preferred safe haven and flow intensity.
+      Output JSON only. Never fabricate data.
+
+  - id: risk_parity
+    name: "Risk Parity Signal"
+    category: fundamental
+    subcategory: cross_asset
+    instrument: null
+    model: sonnet
+    schedule: daily
+    input_schema:
+      - equity_vol
+      - bond_vol
+      - commodity_vol
+      - fx_vol
+      - correlation_matrix
+    output_schema:
+      vol_adjusted_allocations: "dict[str, float]"
+      rebalancing_signal: "bool"
+      risk_contribution: "dict[str, float]"
+      confidence: "0.0-1.0"
+    prompt: |
+      Calculate risk parity signals. Risk parity targets equal risk contribution
+      from each asset class. When volatility spikes in one asset class, the
+      allocation should decrease. Large risk parity rebalancing flows can move
+      markets — institutional risk parity portfolios are $500B+. If equity vol
+      doubles, risk parity sells equities and buys bonds (driving rates down).
+      Flag when risk parity rebalancing signals are active as these create
+      predictable multi-day flows. Output JSON only. Never fabricate data.
+
+  - id: reflation_trade
+    name: "Reflation Trade Monitor"
+    category: fundamental
+    subcategory: cross_asset
+    instrument: null
+    model: sonnet
+    schedule: weekly
+    input_schema:
+      - breakeven_inflation
+      - commodity_index
+      - value_vs_growth
+      - yield_curve_slope
+      - pmi_trend
+    output_schema:
+      reflation_score: "0.0-1.0"
+      trade_active: "bool"
+      beneficiaries: "list[str]"
+      detractors: "list[str]"
+      confidence: "0.0-1.0"
+    prompt: |
+      Monitor the reflation trade. Reflation = rising growth expectations + rising
+      inflation expectations. Beneficiaries: value stocks, commodities, AUD,
+      steepening yield curve. Detractors: long-duration bonds, growth stocks,
+      JPY, gold (if real yields rise). The reflation trade activates when PMI
+      is accelerating above 50 and breakeven inflation is rising. Score 0-1
+      based on indicator alignment. Output JSON only. Never fabricate data.

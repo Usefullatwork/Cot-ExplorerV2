@@ -1,0 +1,43 @@
+name: Backtest
+
+on:
+  schedule:
+    - cron: "0 3 * * 0"  # Weekly Sunday 03:00 UTC
+  workflow_dispatch:
+
+jobs:
+  backtest:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: pip install -e ".[dev]"
+
+      - name: Restore SQLite cache
+        uses: actions/cache@v4
+        with:
+          path: data/cot-explorer.db
+          key: sqlite-${{ github.sha }}
+          restore-keys: |
+            sqlite-
+
+      - name: Run full backtest
+        run: python -m src.backtest.runner 2>&1 | tee backtest-report.txt
+
+      - name: Generate backtest report
+        run: |
+          mkdir -p reports
+          cp backtest-report.txt reports/backtest-$(date +%Y%m%d).txt
+
+      - name: Upload backtest artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: backtest-report-${{ github.run_id }}
+          path: reports/
+          retention-days: 90

@@ -1,0 +1,112 @@
+// =============================================================================
+// COT Reversal Strategy — Backtestbar strategi
+// Entry: COT flipper fra ekstrem (>90. / <10. persentil) med 2 pafolgende
+//        uker med reversal i netto-posisjon
+// Valgfritt: SMA200-filter for trendbekreftelse
+// =============================================================================
+//@version=5
+strategy("COT Explorer: Reversal", shorttitle="COT Rev", overlay=true,
+         default_qty_type=strategy.percent_of_equity, default_qty_value=2,
+         initial_capital=100000, commission_type=strategy.commission.percent,
+         commission_value=0.02, slippage=2)
+
+// ── Fargepalett (mork tema) ─────────────────────────────────────────────────
+var color C_GREEN  = #3fb950
+var color C_RED    = #f85149
+var color C_YELLOW = #d29922
+var color C_BLUE   = #58a6ff
+
+// ── Inputs ──────────────────────────────────────────────────────────────────
+cftc_code = input.string("099741", "CFTC-kode", options=[
+     "099741", "096742", "092741", "088691", "084691",
+     "067651", "13874A", "209742", "098662"],
+     tooltip="099741=EUR, 096742=JPY, 092741=GBP, 088691=Gold, 084691=Silver, 067651=Oil, 13874A=SPX, 209742=NAS, 098662=DXY")
+
+lookback     = input.int(52,  "Persentil-vindu (uker)", minval=10, maxval=260)
+extreme_hi   = input.float(90.0, "Ekstrem long persentil",  step=5.0)
+extreme_lo   = input.float(10.0, "Ekstrem short persentil", step=5.0)
+reversal_wks = input.int(2,   "Reversaluker pavkrevd", minval=1, maxval=5)
+use_sma200   = input.bool(true, "Bruk SMA200-filter")
+atr_mult_sl  = input.float(1.5, "SL ATR-multiplikator",  step=0.1)
+rr_ratio     = input.float(2.0, "R:R for TP",            step=0.1)
+
+// ── Hent COT-data ───────────────────────────────────────────────────────────
+spec_long  = request.security("COT:LEGACY:" + cftc_code + ":NC:L", "W", close, lookahead=barmerge.lookahead_on)
+spec_short = request.security("COT:LEGACY:" + cftc_code + ":NC:S", "W", close, lookahead=barmerge.lookahead_on)
+spec_net   = spec_long - spec_short
+
+// ── Persentilrangering ──────────────────────────────────────────────────────
+pct_rank(src, len) =>
+    count = 0
+    for i = 1 to len
+        if src[i] <= src
+            count += 1
+    result = (count / len) * 100
+    result
+
+percentile = pct_rank(spec_net, lookback)
+
+// ── Reversal-deteksjon ──────────────────────────────────────────────────────
+// Sjekk om spec_net har reversal i 'reversal_wks' pafolgende uker
+was_extreme_long  = ta.highest(percentile, lookback / 4) > extreme_hi
+was_extreme_short = ta.lowest(percentile, lookback / 4)  < extreme_lo
+
+// Teller pafolgende uker med nedgang (fra long) eller oppgang (fra short)
+consecutive_down() =>
+    count = 0
+    for i = 0 to reversal_wks - 1
+        if nz(spec_net[i]) < nz(spec_net[i + 1])
+            count += 1
+    count
+
+consecutive_up() =>
+    count = 0
+    for i = 0 to reversal_wks - 1
+        if nz(spec_net[i]) > nz(spec_net[i + 1])
+            count += 1
+    count
+
+long_reversal  = was_extreme_short and consecutive_up() >= reversal_wks
+short_reversal = was_extreme_long  and consecutive_down() >= reversal_wks
+
+// ── SMA200-filter ───────────────────────────────────────────────────────────
+sma200 = ta.sma(close, 200)
+sma_long_ok  = not use_sma200 or close > sma200
+sma_short_ok = not use_sma200 or close < sma200
+
+// ── ATR for SL/TP ───────────────────────────────────────────────────────────
+atr14 = ta.atr(14)
+
+// ── Entry-logikk ────────────────────────────────────────────────────────────
+long_signal  = long_reversal  and sma_long_ok
+short_signal = short_reversal and sma_short_ok
+
+// ── Posisjonshandtering ─────────────────────────────────────────────────────
+if long_signal and strategy.position_size == 0
+    sl_dist  = atr14 * atr_mult_sl
+    tp_dist  = sl_dist * rr_ratio
+    entry    = close
+    sl_price = entry - sl_dist
+    tp_price = entry + tp_dist
+    strategy.entry("Long", strategy.long)
+    strategy.exit("Long TP/SL", "Long", stop=sl_price, limit=tp_price)
+
+if short_signal and strategy.position_size == 0
+    sl_dist  = atr14 * atr_mult_sl
+    tp_dist  = sl_dist * rr_ratio
+    entry    = close
+    sl_price = entry + sl_dist
+    tp_price = entry - tp_dist
+    strategy.entry("Short", strategy.short)
+    strategy.exit("Short TP/SL", "Short", stop=sl_price, limit=tp_price)
+
+// ── Visuelt ─────────────────────────────────────────────────────────────────
+plotshape(long_signal  and strategy.position_size == 0, "Long Signal",  shape.triangleup,   location.belowbar, C_GREEN, size=size.small)
+plotshape(short_signal and strategy.position_size == 0, "Short Signal", shape.triangledown, location.abovebar, C_RED,   size=size.small)
+
+// SMA200 referanse
+plot(use_sma200 ? sma200 : na, "SMA200", color=color.new(C_YELLOW, 40), linewidth=1)
+
+// ── Bakgrunn for ekstremer ──────────────────────────────────────────────────
+bgcolor(percentile > extreme_hi ? color.new(C_GREEN, 92) : na, title="Ekstrem Long zone")
+bgcolor(percentile < extreme_lo ? color.new(C_RED, 92)   : na, title="Ekstrem Short zone")

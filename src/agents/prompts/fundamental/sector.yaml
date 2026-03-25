@@ -1,0 +1,111 @@
+prompts:
+  - id: energy_sector
+    name: "Energy Sector Analysis"
+    category: fundamental
+    subcategory: sector
+    instrument: null
+    model: sonnet
+    schedule: weekly
+    input_schema:
+      - opec_production
+      - us_production
+      - global_demand_forecast
+      - inventory_levels
+      - spare_capacity
+    output_schema:
+      supply_demand_balance: "SURPLUS | BALANCED | DEFICIT"
+      price_bias: "BULLISH | BEARISH | NEUTRAL"
+      brent_target_range: "list[float]"
+      wti_target_range: "list[float]"
+      confidence: "0.0-1.0"
+    prompt: |
+      Analyze the energy sector supply-demand balance. Key inputs: OPEC+
+      production and compliance, US shale production growth, global demand
+      forecasts (IEA/EIA), inventory levels (OECD days of cover), and spare
+      capacity. A supply deficit of >1 mb/d is bullish; surplus >1 mb/d is
+      bearish. Seasonal patterns: Q2-Q3 refinery demand, Q4 heating demand.
+      Output price range targets for Brent and WTI.
+      Output JSON only. Never fabricate data.
+
+  - id: precious_metals_sector
+    name: "Precious Metals Sector Analysis"
+    category: fundamental
+    subcategory: sector
+    instrument: null
+    model: sonnet
+    schedule: weekly
+    input_schema:
+      - central_bank_gold_buying
+      - etf_flows_gold
+      - etf_flows_silver
+      - mine_supply
+      - industrial_demand_silver
+      - real_yields
+    output_schema:
+      gold_outlook: "BULLISH | BEARISH | NEUTRAL"
+      silver_outlook: "BULLISH | BEARISH | NEUTRAL"
+      gold_silver_ratio_signal: "str"
+      key_drivers: "list[str]"
+      confidence: "0.0-1.0"
+    prompt: |
+      Analyze precious metals sector fundamentals. Gold drivers: central bank
+      buying (structural demand), ETF flows (investment demand), real yields
+      (opportunity cost). Silver drivers: industrial demand (solar, EV) +
+      investment demand. Gold/silver ratio above 80 = silver undervalued, below
+      70 = gold undervalued. Central bank buying above 1000 tonnes/year is
+      a structural bullish driver for gold. Output sector outlook.
+      Output JSON only. Never fabricate data.
+
+  - id: tech_rotation
+    name: "Tech Sector Rotation Analysis"
+    category: fundamental
+    subcategory: sector
+    instrument: null
+    model: sonnet
+    schedule: weekly
+    input_schema:
+      - nas100_vs_spx_ratio
+      - growth_vs_value_ratio
+      - semiconductor_index
+      - ai_narrative_strength
+      - rate_sensitivity
+    output_schema:
+      rotation_direction: "INTO_TECH | OUT_OF_TECH | NEUTRAL"
+      breadth_health: "BROAD | NARROW | DETERIORATING"
+      nas100_relative_bias: "OUTPERFORM | UNDERPERFORM | INLINE"
+      confidence: "0.0-1.0"
+    prompt: |
+      Analyze tech sector rotation dynamics. NAS100 outperforms SPX when: rates
+      are falling, growth is scarce, AI narrative is strong. NAS100 underperforms
+      when: rates rising, value rotation (financials/energy lead), breadth
+      narrows to <10 stocks. Monitor NAS100/SPX ratio for trend — declining
+      ratio signals rotation out of tech. Semiconductor index leads NAS100
+      by 2-4 weeks. Output JSON only. Never fabricate data.
+
+  - id: credit_stress
+    name: "Credit Stress Analysis"
+    category: fundamental
+    subcategory: sector
+    instrument: null
+    model: sonnet
+    schedule: daily
+    input_schema:
+      - high_yield_spread
+      - investment_grade_spread
+      - ted_spread
+      - libor_ois_spread
+      - credit_default_swaps
+    output_schema:
+      stress_level: "LOW | MODERATE | ELEVATED | CRISIS"
+      spread_trend: "TIGHTENING | STABLE | WIDENING"
+      leading_indicators: "list[dict]"
+      equity_warning: "bool"
+      confidence: "0.0-1.0"
+    prompt: |
+      Analyze credit market stress indicators. High-yield spread >500bps =
+      stress, >800bps = crisis. Investment grade spread widening precedes equity
+      weakness by 2-6 weeks. TED spread >50bps signals interbank stress.
+      Credit markets are "smarter" than equity markets — credit stress with
+      equities flat is a major warning (credit leads equities down). When credit
+      stress is ELEVATED or higher, recommend reducing all risk exposure.
+      Output JSON only. Never fabricate data.

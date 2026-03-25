@@ -1,0 +1,105 @@
+prompts:
+  - id: mean_reversion
+    name: "Mean Reversion Signal Detector"
+    category: pattern_recognition
+    subcategory: statistical
+    instrument: null
+    model: sonnet
+    schedule: every_run
+    input_schema:
+      - daily_ohlc_all
+      - bollinger_bands_all
+      - z_score_all
+      - rsi_14_all
+      - atr_percentile_all
+    output_schema:
+      reversion_candidates: "list[dict]"
+      z_score_extremes: "list[dict]"
+      expected_reversion_target: "dict[str, float]"
+      confidence: "0.0-1.0"
+    prompt: |
+      Scan all 12 instruments for mean reversion setups. Criteria: price >2
+      standard deviations from 20-day SMA (z-score >2 or <-2), RSI at extremes
+      (>75 or <25), and at Bollinger Band outer band. Best mean reversion
+      instruments: VIX (highly mean-reverting), range-bound FX pairs. Avoid
+      mean reversion in strong trending instruments (ADX >30). Calculate expected
+      reversion target (20-day SMA). Output JSON only. Never fabricate data.
+
+  - id: momentum_breakout
+    name: "Momentum Breakout Detector"
+    category: pattern_recognition
+    subcategory: statistical
+    instrument: null
+    model: sonnet
+    schedule: every_run
+    input_schema:
+      - daily_ohlc_all
+      - donchian_channels_all
+      - adx_all
+      - volume_all
+      - atr_all
+    output_schema:
+      breakout_candidates: "list[dict]"
+      breakout_type: "dict[str, str]"
+      momentum_score: "dict[str, float]"
+      confidence: "0.0-1.0"
+    prompt: |
+      Scan all 12 instruments for momentum breakouts. A valid breakout requires:
+      price closing beyond 20-day Donchian channel, ADX >25 and rising, volume
+      >1.5x 20-day average, and candle body >1x ATR. Breakouts from >20-day
+      consolidation ranges are highest conviction. Rank breakouts by momentum
+      score (ADX * volume_ratio * candle_range/ATR). False breakouts (price
+      returns within 2 bars) should be flagged.
+      Output JSON only. Never fabricate data.
+
+  - id: volatility_squeeze
+    name: "Volatility Squeeze Detector"
+    category: pattern_recognition
+    subcategory: statistical
+    instrument: null
+    model: haiku
+    schedule: every_run
+    input_schema:
+      - bollinger_bandwidth_all
+      - keltner_channels_all
+      - atr_percentile_all
+      - adx_all
+    output_schema:
+      squeeze_instruments: "list[dict]"
+      squeeze_duration: "dict[str, int]"
+      expected_expansion: "dict[str, str]"
+      confidence: "0.0-1.0"
+    prompt: |
+      Scan all 12 instruments for volatility squeezes. A squeeze occurs when
+      Bollinger Bands move inside Keltner Channels (BB width < KC width) AND
+      ATR is in the bottom 20th percentile. Squeezes lasting >10 bars typically
+      resolve with 2-3x ATR expansion moves. The longer the squeeze, the more
+      violent the breakout. ADX <20 during squeeze confirms consolidation. Flag
+      instruments ready to fire (squeeze releasing).
+      Output JSON only. Never fabricate data.
+
+  - id: range_expansion
+    name: "Range Expansion Detector"
+    category: pattern_recognition
+    subcategory: statistical
+    instrument: null
+    model: haiku
+    schedule: every_run
+    input_schema:
+      - daily_ranges_all
+      - atr_14_all
+      - average_true_range_5d
+      - volume_all
+    output_schema:
+      expanding_instruments: "list[dict]"
+      expansion_ratio: "dict[str, float]"
+      trend_following_candidates: "list[str]"
+      confidence: "0.0-1.0"
+    prompt: |
+      Scan all 12 instruments for range expansion. Range expansion is detected
+      when today's range exceeds the 5-day average range by >1.5x with supporting
+      volume (>1.3x average). Range expansion after a squeeze signals trend
+      initiation — these are the best trend-following entry points. Calculate
+      expansion ratio (today range / 5-day average). Instruments with 3+
+      consecutive expanding ranges are in momentum mode.
+      Output JSON only. Never fabricate data.

@@ -1,0 +1,110 @@
+prompts:
+  - id: black_swan
+    name: "Black Swan Risk Monitor"
+    category: risk_assessment
+    subcategory: tail_risk
+    instrument: null
+    model: sonnet
+    schedule: daily
+    input_schema:
+      - vix_current
+      - vix_term_structure
+      - credit_default_swaps
+      - geopolitical_risk_index
+      - news_severity_score
+    output_schema:
+      tail_risk_level: "LOW | ELEVATED | HIGH | EXTREME"
+      risk_factors: "list[dict]"
+      portfolio_impact_estimate: "str"
+      hedge_recommendations: "list[dict]"
+      confidence: "0.0-1.0"
+    prompt: |
+      Assess black swan tail risk probability. Indicators: VIX term structure
+      inversion (backwardation), sovereign CDS spreads widening, geopolitical
+      risk index >80th percentile, multiple high-severity news events. When 3+
+      indicators flash, tail risk is ELEVATED. Recommend hedges: long VIX calls,
+      long gold, reduce gross exposure by 50%, set hard stops on all positions.
+      Black swans cannot be predicted but their probability can be estimated.
+      Output JSON only. Never fabricate data.
+
+  - id: liquidity_crisis
+    name: "Liquidity Crisis Detector"
+    category: risk_assessment
+    subcategory: tail_risk
+    instrument: null
+    model: sonnet
+    schedule: daily
+    input_schema:
+      - bid_ask_spreads_all
+      - market_depth_all
+      - volume_vs_average_all
+      - repo_rate
+      - ted_spread
+    output_schema:
+      liquidity_status: "NORMAL | THINNING | STRESS | CRISIS"
+      affected_instruments: "list[dict]"
+      spread_widening: "dict[str, float]"
+      action: "str"
+      confidence: "0.0-1.0"
+    prompt: |
+      Monitor market liquidity across all instruments. Warning signs: bid-ask
+      spreads >2x normal, market depth declining >50%, volume <50% of 20-day
+      average during active hours, repo rate spikes, TED spread widening.
+      THINNING = reduce position sizes. STRESS = close illiquid positions.
+      CRISIS = flatten all and move to cash/gold. Silver and emerging market
+      pairs lose liquidity first. Output JSON only. Never fabricate data.
+
+  - id: flash_crash
+    name: "Flash Crash Risk Monitor"
+    category: risk_assessment
+    subcategory: tail_risk
+    instrument: null
+    model: haiku
+    schedule: every_run
+    input_schema:
+      - price_velocity_all
+      - volume_anomalies
+      - spread_widening_all
+      - time_of_day
+      - market_session
+    output_schema:
+      flash_risk_level: "LOW | ELEVATED | HIGH"
+      vulnerable_instruments: "list[str]"
+      current_anomalies: "list[dict]"
+      action: "str"
+      confidence: "0.0-1.0"
+    prompt: |
+      Monitor for flash crash conditions. High risk during: low-liquidity sessions
+      (Asian session for FX, pre-market for equities), end of month/quarter, and
+      holiday periods. Flash indicators: price velocity >5 ATR/minute, volume
+      spike >10x average, spread widening >3x. Vulnerable instruments: silver,
+      GBP/JPY crosses, NAS100 futures during off-hours. If conditions detected,
+      recommend widening stops and reducing size immediately.
+      Output JSON only. Never fabricate data.
+
+  - id: correlation_breakdown
+    name: "Correlation Breakdown Alert"
+    category: risk_assessment
+    subcategory: tail_risk
+    instrument: null
+    model: sonnet
+    schedule: daily
+    input_schema:
+      - correlation_matrix_5d
+      - correlation_matrix_30d
+      - correlation_matrix_90d
+      - historical_crisis_correlations
+    output_schema:
+      breakdown_detected: "bool"
+      broken_pairs: "list[dict]"
+      severity: "LOW | MEDIUM | HIGH | CRITICAL"
+      crisis_correlation_shift: "str"
+      confidence: "0.0-1.0"
+    prompt: |
+      Detect correlation breakdowns that signal regime change or crisis. In
+      normal markets, correlations are stable. In crisis, all correlations go
+      to +1 (everything falls together except safe havens). Compare 5-day rolling
+      correlations to 90-day baseline. If >50% of pairs have shifted by >0.3,
+      a regime change is underway. This invalidates portfolio diversification
+      assumptions and requires immediate risk reduction.
+      Output JSON only. Never fabricate data.

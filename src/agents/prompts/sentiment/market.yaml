@@ -1,0 +1,82 @@
+prompts:
+  - id: fear_greed_interpreter
+    name: "Fear & Greed Index Interpreter"
+    category: sentiment
+    subcategory: market
+    instrument: null
+    model: haiku
+    schedule: daily
+    input_schema:
+      - fear_greed_index
+      - fear_greed_components
+      - fear_greed_1w_change
+      - historical_extremes
+    output_schema:
+      reading: "EXTREME_FEAR | FEAR | NEUTRAL | GREED | EXTREME_GREED"
+      score: "0-100"
+      contrarian_signal: "BULLISH | BEARISH | NEUTRAL"
+      confidence: "0.0-1.0"
+    prompt: |
+      Interpret the CNN Fear & Greed Index and its components. EXTREME_FEAR (<20)
+      is contrarian bullish — historically the best time to buy equities. EXTREME
+      _GREED (>80) is contrarian bearish — tops within 2-4 weeks. Components:
+      market momentum, stock price strength, stock price breadth, put/call ratio,
+      junk bond demand, market volatility, safe haven demand. Rate changes matter
+      more than absolute level — rapid shift from greed to fear signals panic.
+      Output JSON only. Never fabricate data.
+
+  - id: put_call_ratio
+    name: "Put/Call Ratio Analysis"
+    category: sentiment
+    subcategory: market
+    instrument: null
+    model: haiku
+    schedule: daily
+    input_schema:
+      - equity_put_call_ratio
+      - index_put_call_ratio
+      - vix_put_call_ratio
+      - historical_percentiles
+    output_schema:
+      equity_pcr: "float"
+      index_pcr: "float"
+      sentiment: "EXTREME_FEAR | FEAR | NEUTRAL | GREED | EXTREME_GREED"
+      contrarian_signal: "str"
+      confidence: "0.0-1.0"
+    prompt: |
+      Analyze put/call ratios for sentiment signals. Equity P/C ratio >1.0 =
+      extreme fear (contrarian bullish). Equity P/C <0.5 = extreme greed
+      (contrarian bearish). Index P/C is structurally higher due to hedging.
+      5-day moving average smooths noise. Rapid spike in P/C ratio (>50% in one
+      week) signals capitulation. Compare current reading to 1-year percentile.
+      P/C ratio is a same-day indicator — no lag.
+      Output JSON only. Never fabricate data.
+
+  - id: vix_term_structure
+    name: "VIX Term Structure Analysis"
+    category: sentiment
+    subcategory: market
+    instrument: null
+    model: sonnet
+    schedule: daily
+    input_schema:
+      - vix_spot
+      - vix_1m_future
+      - vix_2m_future
+      - vix_3m_future
+      - vix_6m_future
+      - historical_term_structures
+    output_schema:
+      structure: "CONTANGO | FLAT | BACKWARDATION"
+      steepness: "float"
+      fear_duration: "SHORT_TERM | MEDIUM_TERM | SUSTAINED"
+      equity_implication: "str"
+      confidence: "0.0-1.0"
+    prompt: |
+      Analyze VIX term structure (contango vs backwardation). Normal = contango
+      (futures > spot) — calm markets, slight edge for equity longs. Backwardation
+      (spot > futures) = fear is acute and near-term — risk-off, reduce exposure.
+      The depth of backwardation indicates fear severity. Transition from contango
+      to backwardation is the most important volatility signal. Steepness of
+      contango indicates complacency — very steep contango + low VIX = potential
+      for violent correction. Output JSON only. Never fabricate data.

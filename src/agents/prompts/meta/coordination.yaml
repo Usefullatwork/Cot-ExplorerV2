@@ -1,0 +1,110 @@
+prompts:
+  - id: signal_aggregator
+    name: "Signal Aggregator"
+    category: meta
+    subcategory: coordination
+    instrument: null
+    model: sonnet
+    schedule: every_run
+    input_schema:
+      - trend_signals_all
+      - smc_signals_all
+      - pattern_signals_all
+      - sentiment_signals_all
+      - fundamental_signals_all
+      - risk_assessment_all
+    output_schema:
+      aggregated_signals: "list[dict]"
+      top_3_setups: "list[dict]"
+      no_trade_instruments: "list[str]"
+      portfolio_direction: "str"
+      confidence: "0.0-1.0"
+    prompt: |
+      Aggregate signals from all analysis layers into a unified view for each of
+      the 12 instruments. Apply the 12-point confluence scoring system: trend (2),
+      SMC structure (2), pattern (1), divergence (1), COT positioning (2),
+      fundamental (2), sentiment (1), risk assessment (1). Score each instrument
+      0-12. Output the top 3 setups (score >9) with entry, stop, and target.
+      Flag instruments where risk assessment overrides positive signals.
+      Output JSON only. Never fabricate data.
+
+  - id: confidence_calibrator
+    name: "Confidence Calibrator"
+    category: meta
+    subcategory: coordination
+    instrument: null
+    model: sonnet
+    schedule: every_run
+    input_schema:
+      - all_agent_confidence_scores
+      - historical_confidence_accuracy
+      - data_quality_scores
+    output_schema:
+      calibrated_confidence: "dict[str, float]"
+      overconfident_agents: "list[str]"
+      underconfident_agents: "list[str]"
+      system_confidence: "0.0-1.0"
+      confidence: "0.0-1.0"
+    prompt: |
+      Calibrate confidence scores across all agents. Compare each agent's stated
+      confidence to its historical accuracy — agents that say 0.9 confidence but
+      are only 60% accurate need downward calibration. Agents that say 0.5 but
+      are 75% accurate need upward calibration. Apply Bayesian calibration to
+      produce realistic confidence scores. System-level confidence is the
+      weighted average of calibrated individual scores.
+      Output JSON only. Never fabricate data.
+
+  - id: conflict_resolver
+    name: "Signal Conflict Resolver"
+    category: meta
+    subcategory: coordination
+    instrument: null
+    model: opus
+    schedule: every_run
+    input_schema:
+      - conflicting_signals
+      - signal_source_reliability
+      - timeframe_hierarchy
+      - historical_conflict_resolution
+    output_schema:
+      resolutions: "list[dict]"
+      resolution_method: "str"
+      overridden_signals: "list[dict]"
+      remaining_conflicts: "list[dict]"
+      confidence: "0.0-1.0"
+    prompt: |
+      Resolve conflicts between agent signals. Resolution hierarchy: (1) Higher
+      timeframe overrides lower (weekly > daily > intraday). (2) Risk assessment
+      overrides bullish signals (safety first). (3) COT positioning at extremes
+      overrides short-term technicals. (4) When equally weighted agents conflict,
+      default to no-trade. Never force a resolution — unresolvable conflicts
+      should result in sidelining the instrument. Document reasoning for each
+      resolution. Output JSON only. Never fabricate data.
+
+  - id: priority_ranker
+    name: "Trade Priority Ranker"
+    category: meta
+    subcategory: coordination
+    instrument: null
+    model: sonnet
+    schedule: every_run
+    input_schema:
+      - all_valid_signals
+      - confluence_scores
+      - risk_reward_ratios
+      - correlation_matrix
+      - available_capital
+    output_schema:
+      priority_ranking: "list[dict]"
+      recommended_portfolio: "list[dict]"
+      correlation_conflicts: "list[dict]"
+      capital_allocation: "dict[str, float]"
+      confidence: "0.0-1.0"
+    prompt: |
+      Rank all valid trade signals by priority for capital allocation. Criteria:
+      (1) Confluence score (higher = better), (2) Risk:reward ratio (higher =
+      better), (3) Correlation with existing positions (lower = better), (4)
+      Instrument liquidity. Construct the optimal portfolio of 3-5 simultaneous
+      trades that maximizes expected return while respecting correlation limits
+      (no two trades with >0.70 correlation). Output capital allocation per trade.
+      Output JSON only. Never fabricate data.

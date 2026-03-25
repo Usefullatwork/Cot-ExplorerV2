@@ -1,0 +1,674 @@
+prompts:
+  # ── Daily Trend (12 instruments) ────────────────────────────────────
+  - id: daily_trend_eurusd
+    name: "Daily Trend Analysis - EUR/USD"
+    category: market_analysis
+    subcategory: trend
+    instrument: EURUSD
+    model: haiku
+    schedule: every_run
+    input_schema:
+      - daily_ohlc_200
+      - sma200
+      - ema9_d1
+      - atr_d14
+      - current_price
+    output_schema:
+      trend: "BULLISH | BEARISH | NEUTRAL"
+      strength: "0.0-1.0"
+      key_levels: "list[float]"
+      confidence: "0.0-1.0"
+    prompt: |
+      Analyze EUR/USD daily price data. EUR/USD is quoted as euros per US dollar;
+      a rising price means EUR strengthening vs USD. Determine trend from SMA200
+      position, EMA9 slope, and 20-day momentum. Classify BULLISH/BEARISH/NEUTRAL.
+      Rate strength 0-1 based on slope steepness and price distance from SMA200.
+      Identify 3-5 key S/R levels from recent swing highs/lows.
+      Output JSON only. Never fabricate data.
+
+  - id: daily_trend_usdjpy
+    name: "Daily Trend Analysis - USD/JPY"
+    category: market_analysis
+    subcategory: trend
+    instrument: USDJPY
+    model: haiku
+    schedule: every_run
+    input_schema:
+      - daily_ohlc_200
+      - sma200
+      - ema9_d1
+      - atr_d14
+      - current_price
+    output_schema:
+      trend: "BULLISH | BEARISH | NEUTRAL"
+      strength: "0.0-1.0"
+      key_levels: "list[float]"
+      confidence: "0.0-1.0"
+    prompt: |
+      Analyze USD/JPY daily price data. USD/JPY reflects US dollar strength vs
+      Japanese yen; heavily influenced by BoJ policy and US-Japan yield differential.
+      Determine trend from SMA200 position, EMA9 slope, and 20-day momentum.
+      Classify BULLISH/BEARISH/NEUTRAL. Rate strength 0-1. Watch for BoJ
+      intervention zones (historically 150-160 and below 130). Identify key S/R
+      from swing points. Output JSON only. Never fabricate data.
+
+  - id: daily_trend_gbpusd
+    name: "Daily Trend Analysis - GBP/USD"
+    category: market_analysis
+    subcategory: trend
+    instrument: GBPUSD
+    model: haiku
+    schedule: every_run
+    input_schema:
+      - daily_ohlc_200
+      - sma200
+      - ema9_d1
+      - atr_d14
+      - current_price
+    output_schema:
+      trend: "BULLISH | BEARISH | NEUTRAL"
+      strength: "0.0-1.0"
+      key_levels: "list[float]"
+      confidence: "0.0-1.0"
+    prompt: |
+      Analyze GBP/USD daily price data. Cable is quoted as pounds per dollar;
+      sensitive to BoE rate decisions and UK economic data. Determine trend from
+      SMA200 position, EMA9 slope, and 20-day momentum. Classify
+      BULLISH/BEARISH/NEUTRAL. Rate strength 0-1. Note London session open
+      as key liquidity window. Identify key S/R from swing points.
+      Output JSON only. Never fabricate data.
+
+  - id: daily_trend_audusd
+    name: "Daily Trend Analysis - AUD/USD"
+    category: market_analysis
+    subcategory: trend
+    instrument: AUDUSD
+    model: haiku
+    schedule: every_run
+    input_schema:
+      - daily_ohlc_200
+      - sma200
+      - ema9_d1
+      - atr_d14
+      - current_price
+    output_schema:
+      trend: "BULLISH | BEARISH | NEUTRAL"
+      strength: "0.0-1.0"
+      key_levels: "list[float]"
+      confidence: "0.0-1.0"
+    prompt: |
+      Analyze AUD/USD daily price data. Aussie is a commodity currency correlated
+      with iron ore prices and China PMI data. Determine trend from SMA200 position,
+      EMA9 slope, and 20-day momentum. Classify BULLISH/BEARISH/NEUTRAL. Rate
+      strength 0-1. Watch for RBA rate decision impacts and China trade data
+      sensitivity. Identify key S/R from swing points.
+      Output JSON only. Never fabricate data.
+
+  - id: daily_trend_gold
+    name: "Daily Trend Analysis - Gold"
+    category: market_analysis
+    subcategory: trend
+    instrument: Gold
+    model: haiku
+    schedule: every_run
+    input_schema:
+      - daily_ohlc_200
+      - sma200
+      - ema9_d1
+      - atr_d14
+      - current_price
+    output_schema:
+      trend: "BULLISH | BEARISH | NEUTRAL"
+      strength: "0.0-1.0"
+      key_levels: "list[float]"
+      confidence: "0.0-1.0"
+    prompt: |
+      Analyze Gold (XAU/USD) daily price data. Gold is a safe-haven asset inversely
+      correlated with real yields and DXY. Determine trend from SMA200 position,
+      EMA9 slope, and 20-day momentum. Classify BULLISH/BEARISH/NEUTRAL. Rate
+      strength 0-1. Watch century levels ($1900, $2000, $2100) as psychological
+      S/R. Identify key S/R from swing points.
+      Output JSON only. Never fabricate data.
+
+  - id: daily_trend_silver
+    name: "Daily Trend Analysis - Silver"
+    category: market_analysis
+    subcategory: trend
+    instrument: Silver
+    model: haiku
+    schedule: every_run
+    input_schema:
+      - daily_ohlc_200
+      - sma200
+      - ema9_d1
+      - atr_d14
+      - current_price
+    output_schema:
+      trend: "BULLISH | BEARISH | NEUTRAL"
+      strength: "0.0-1.0"
+      key_levels: "list[float]"
+      confidence: "0.0-1.0"
+    prompt: |
+      Analyze Silver (XAG/USD) daily price data. Silver has dual safe-haven and
+      industrial demand characteristics; typically more volatile than gold with a
+      higher beta. Determine trend from SMA200, EMA9 slope, and 20-day momentum.
+      Classify BULLISH/BEARISH/NEUTRAL. Rate strength 0-1. Monitor gold/silver
+      ratio for relative value signals. Identify key S/R from swing points.
+      Output JSON only. Never fabricate data.
+
+  - id: daily_trend_brent
+    name: "Daily Trend Analysis - Brent Crude"
+    category: market_analysis
+    subcategory: trend
+    instrument: Brent
+    model: haiku
+    schedule: every_run
+    input_schema:
+      - daily_ohlc_200
+      - sma200
+      - ema9_d1
+      - atr_d14
+      - current_price
+    output_schema:
+      trend: "BULLISH | BEARISH | NEUTRAL"
+      strength: "0.0-1.0"
+      key_levels: "list[float]"
+      confidence: "0.0-1.0"
+    prompt: |
+      Analyze Brent Crude daily price data. Brent is the international oil benchmark;
+      driven by OPEC+ production decisions, global demand, and geopolitical risk.
+      Determine trend from SMA200 position, EMA9 slope, and 20-day momentum.
+      Classify BULLISH/BEARISH/NEUTRAL. Rate strength 0-1. Watch $70-80 as
+      historical OPEC+ defense zone. Identify key S/R from swing points.
+      Output JSON only. Never fabricate data.
+
+  - id: daily_trend_wti
+    name: "Daily Trend Analysis - WTI Crude"
+    category: market_analysis
+    subcategory: trend
+    instrument: WTI
+    model: haiku
+    schedule: every_run
+    input_schema:
+      - daily_ohlc_200
+      - sma200
+      - ema9_d1
+      - atr_d14
+      - current_price
+    output_schema:
+      trend: "BULLISH | BEARISH | NEUTRAL"
+      strength: "0.0-1.0"
+      key_levels: "list[float]"
+      confidence: "0.0-1.0"
+    prompt: |
+      Analyze WTI Crude daily price data. WTI is the US oil benchmark; sensitive to
+      EIA inventory data, US production, and Cushing storage levels. Typically trades
+      at a discount to Brent. Determine trend from SMA200, EMA9 slope, and 20-day
+      momentum. Classify BULLISH/BEARISH/NEUTRAL. Rate strength 0-1. Monitor
+      Brent-WTI spread for anomalies. Identify key S/R from swing points.
+      Output JSON only. Never fabricate data.
+
+  - id: daily_trend_spx
+    name: "Daily Trend Analysis - S&P 500"
+    category: market_analysis
+    subcategory: trend
+    instrument: SPX
+    model: haiku
+    schedule: every_run
+    input_schema:
+      - daily_ohlc_200
+      - sma200
+      - ema9_d1
+      - atr_d14
+      - current_price
+    output_schema:
+      trend: "BULLISH | BEARISH | NEUTRAL"
+      strength: "0.0-1.0"
+      key_levels: "list[float]"
+      confidence: "0.0-1.0"
+    prompt: |
+      Analyze S&P 500 daily price data. SPX is the broad US equity benchmark;
+      sensitive to earnings season, Fed policy, and risk sentiment. Determine trend
+      from SMA200 position, EMA9 slope, and 20-day momentum. Classify
+      BULLISH/BEARISH/NEUTRAL. Rate strength 0-1. Century levels (e.g. 5000, 5500)
+      act as psychological S/R. Monitor VIX as inverse sentiment gauge.
+      Output JSON only. Never fabricate data.
+
+  - id: daily_trend_nas100
+    name: "Daily Trend Analysis - NASDAQ 100"
+    category: market_analysis
+    subcategory: trend
+    instrument: NAS100
+    model: haiku
+    schedule: every_run
+    input_schema:
+      - daily_ohlc_200
+      - sma200
+      - ema9_d1
+      - atr_d14
+      - current_price
+    output_schema:
+      trend: "BULLISH | BEARISH | NEUTRAL"
+      strength: "0.0-1.0"
+      key_levels: "list[float]"
+      confidence: "0.0-1.0"
+    prompt: |
+      Analyze NASDAQ 100 daily price data. NAS100 is tech-heavy; driven by mega-cap
+      earnings (AAPL, MSFT, NVDA), AI narrative, and growth/value rotation. Higher
+      beta than SPX. Determine trend from SMA200, EMA9 slope, and 20-day momentum.
+      Classify BULLISH/BEARISH/NEUTRAL. Rate strength 0-1. Watch NAS100/SPX ratio
+      for rotation signals. Identify key S/R from swing points.
+      Output JSON only. Never fabricate data.
+
+  - id: daily_trend_dxy
+    name: "Daily Trend Analysis - US Dollar Index"
+    category: market_analysis
+    subcategory: trend
+    instrument: DXY
+    model: haiku
+    schedule: every_run
+    input_schema:
+      - daily_ohlc_200
+      - sma200
+      - ema9_d1
+      - atr_d14
+      - current_price
+    output_schema:
+      trend: "BULLISH | BEARISH | NEUTRAL"
+      strength: "0.0-1.0"
+      key_levels: "list[float]"
+      confidence: "0.0-1.0"
+    prompt: |
+      Analyze DXY (US Dollar Index) daily price data. DXY is EUR-weighted (57.6%);
+      a rising DXY is bearish for EUR, GBP, commodities. Determine trend from SMA200,
+      EMA9 slope, and 20-day momentum. Classify BULLISH/BEARISH/NEUTRAL. Rate
+      strength 0-1. The 100 level is critical psychological S/R. DXY trend is a
+      primary input for all other FX and commodity signals.
+      Output JSON only. Never fabricate data.
+
+  - id: daily_trend_vix
+    name: "Daily Trend Analysis - VIX"
+    category: market_analysis
+    subcategory: trend
+    instrument: VIX
+    model: haiku
+    schedule: every_run
+    input_schema:
+      - daily_ohlc_200
+      - sma200
+      - ema9_d1
+      - atr_d14
+      - current_price
+    output_schema:
+      trend: "BULLISH | BEARISH | NEUTRAL"
+      strength: "0.0-1.0"
+      key_levels: "list[float]"
+      confidence: "0.0-1.0"
+    prompt: |
+      Analyze VIX daily data. VIX measures S&P 500 implied volatility; mean-reverting
+      with a long-term average near 18-20. VIX below 15 signals complacency; above
+      30 signals fear. Determine trend from SMA200, EMA9 slope, and 20-day momentum.
+      Classify BULLISH/BEARISH/NEUTRAL (bullish VIX = rising fear). Rate strength
+      0-1. Monitor VIX term structure (contango vs backwardation) for regime cues.
+      Output JSON only. Never fabricate data.
+
+  # ── Weekly Trend (12 instruments) ───────────────────────────────────
+  - id: weekly_trend_eurusd
+    name: "Weekly Trend Analysis - EUR/USD"
+    category: market_analysis
+    subcategory: trend
+    instrument: EURUSD
+    model: haiku
+    schedule: weekly
+    input_schema:
+      - weekly_ohlc_104
+      - sma50_w
+      - ema9_w
+      - atr_w14
+      - current_price
+    output_schema:
+      trend: "BULLISH | BEARISH | NEUTRAL"
+      strength: "0.0-1.0"
+      key_levels: "list[float]"
+      confidence: "0.0-1.0"
+    prompt: |
+      Analyze EUR/USD weekly chart for structural trend. Weekly trend overrides
+      daily for swing positioning. EUR/USD multi-year range is typically 1.05-1.25.
+      Determine trend from 50-week SMA, EMA9 slope, and 3-month momentum. Classify
+      BULLISH/BEARISH/NEUTRAL. Rate strength 0-1. Identify major weekly S/R zones.
+      Weekly closes above/below key MAs are high-conviction signals.
+      Output JSON only. Never fabricate data.
+
+  - id: weekly_trend_usdjpy
+    name: "Weekly Trend Analysis - USD/JPY"
+    category: market_analysis
+    subcategory: trend
+    instrument: USDJPY
+    model: haiku
+    schedule: weekly
+    input_schema:
+      - weekly_ohlc_104
+      - sma50_w
+      - ema9_w
+      - atr_w14
+      - current_price
+    output_schema:
+      trend: "BULLISH | BEARISH | NEUTRAL"
+      strength: "0.0-1.0"
+      key_levels: "list[float]"
+      confidence: "0.0-1.0"
+    prompt: |
+      Analyze USD/JPY weekly chart for structural trend. USD/JPY is driven by
+      US-Japan rate differential and BoJ policy shifts. Multi-decade range was
+      100-150; recent breakout above 150 changed the regime. Determine trend from
+      50-week SMA, EMA9 slope, and 3-month momentum. Classify
+      BULLISH/BEARISH/NEUTRAL. Watch for MoF intervention signals near extremes.
+      Output JSON only. Never fabricate data.
+
+  - id: weekly_trend_gbpusd
+    name: "Weekly Trend Analysis - GBP/USD"
+    category: market_analysis
+    subcategory: trend
+    instrument: GBPUSD
+    model: haiku
+    schedule: weekly
+    input_schema:
+      - weekly_ohlc_104
+      - sma50_w
+      - ema9_w
+      - atr_w14
+      - current_price
+    output_schema:
+      trend: "BULLISH | BEARISH | NEUTRAL"
+      strength: "0.0-1.0"
+      key_levels: "list[float]"
+      confidence: "0.0-1.0"
+    prompt: |
+      Analyze GBP/USD weekly chart for structural trend. Cable has post-Brexit
+      structural range of 1.15-1.40. Sensitive to UK gilt market stress and BoE
+      policy divergence from Fed. Determine trend from 50-week SMA, EMA9 slope,
+      and 3-month momentum. Classify BULLISH/BEARISH/NEUTRAL. Rate strength 0-1.
+      Identify weekly swing S/R zones. Output JSON only. Never fabricate data.
+
+  - id: weekly_trend_audusd
+    name: "Weekly Trend Analysis - AUD/USD"
+    category: market_analysis
+    subcategory: trend
+    instrument: AUDUSD
+    model: haiku
+    schedule: weekly
+    input_schema:
+      - weekly_ohlc_104
+      - sma50_w
+      - ema9_w
+      - atr_w14
+      - current_price
+    output_schema:
+      trend: "BULLISH | BEARISH | NEUTRAL"
+      strength: "0.0-1.0"
+      key_levels: "list[float]"
+      confidence: "0.0-1.0"
+    prompt: |
+      Analyze AUD/USD weekly chart for structural trend. Aussie is a risk-on
+      commodity currency with strong China correlation. Multi-year range 0.60-0.80.
+      Determine trend from 50-week SMA, EMA9 slope, and 3-month momentum. Classify
+      BULLISH/BEARISH/NEUTRAL. Rate strength 0-1. Iron ore price and China PMI
+      are leading indicators for weekly direction.
+      Output JSON only. Never fabricate data.
+
+  - id: weekly_trend_gold
+    name: "Weekly Trend Analysis - Gold"
+    category: market_analysis
+    subcategory: trend
+    instrument: Gold
+    model: haiku
+    schedule: weekly
+    input_schema:
+      - weekly_ohlc_104
+      - sma50_w
+      - ema9_w
+      - atr_w14
+      - current_price
+    output_schema:
+      trend: "BULLISH | BEARISH | NEUTRAL"
+      strength: "0.0-1.0"
+      key_levels: "list[float]"
+      confidence: "0.0-1.0"
+    prompt: |
+      Analyze Gold weekly chart for structural trend. Gold is in a secular bull
+      market driven by central bank buying and de-dollarization. Weekly closes
+      above century levels ($2000, $2100, $2200) are highly significant. Determine
+      trend from 50-week SMA, EMA9 slope, and 3-month momentum. Classify
+      BULLISH/BEARISH/NEUTRAL. Rate strength 0-1. Identify macro support zones.
+      Output JSON only. Never fabricate data.
+
+  - id: weekly_trend_silver
+    name: "Weekly Trend Analysis - Silver"
+    category: market_analysis
+    subcategory: trend
+    instrument: Silver
+    model: haiku
+    schedule: weekly
+    input_schema:
+      - weekly_ohlc_104
+      - sma50_w
+      - ema9_w
+      - atr_w14
+      - current_price
+    output_schema:
+      trend: "BULLISH | BEARISH | NEUTRAL"
+      strength: "0.0-1.0"
+      key_levels: "list[float]"
+      confidence: "0.0-1.0"
+    prompt: |
+      Analyze Silver weekly chart for structural trend. Silver has strong industrial
+      demand from solar/EV sectors overlaying monetary demand. More volatile than
+      gold; tends to outperform gold in late-cycle rallies. Determine trend from
+      50-week SMA, EMA9 slope, and 3-month momentum. Classify
+      BULLISH/BEARISH/NEUTRAL. Rate strength 0-1. Monitor $25 and $30 as key zones.
+      Output JSON only. Never fabricate data.
+
+  - id: weekly_trend_brent
+    name: "Weekly Trend Analysis - Brent Crude"
+    category: market_analysis
+    subcategory: trend
+    instrument: Brent
+    model: haiku
+    schedule: weekly
+    input_schema:
+      - weekly_ohlc_104
+      - sma50_w
+      - ema9_w
+      - atr_w14
+      - current_price
+    output_schema:
+      trend: "BULLISH | BEARISH | NEUTRAL"
+      strength: "0.0-1.0"
+      key_levels: "list[float]"
+      confidence: "0.0-1.0"
+    prompt: |
+      Analyze Brent Crude weekly chart for structural trend. Brent is range-bound
+      by OPEC+ production cuts (floor) and demand destruction (ceiling). $70-$90
+      has been the recent structural range. Determine trend from 50-week SMA, EMA9
+      slope, and 3-month momentum. Classify BULLISH/BEARISH/NEUTRAL. Rate strength
+      0-1. Watch for breakouts of the multi-year range.
+      Output JSON only. Never fabricate data.
+
+  - id: weekly_trend_wti
+    name: "Weekly Trend Analysis - WTI Crude"
+    category: market_analysis
+    subcategory: trend
+    instrument: WTI
+    model: haiku
+    schedule: weekly
+    input_schema:
+      - weekly_ohlc_104
+      - sma50_w
+      - ema9_w
+      - atr_w14
+      - current_price
+    output_schema:
+      trend: "BULLISH | BEARISH | NEUTRAL"
+      strength: "0.0-1.0"
+      key_levels: "list[float]"
+      confidence: "0.0-1.0"
+    prompt: |
+      Analyze WTI Crude weekly chart for structural trend. WTI trades at a variable
+      discount to Brent; US production record highs cap upside. Determine trend from
+      50-week SMA, EMA9 slope, and 3-month momentum. Classify
+      BULLISH/BEARISH/NEUTRAL. Rate strength 0-1. Watch EIA weekly inventory data
+      for supply-side signals. Identify structural weekly S/R zones.
+      Output JSON only. Never fabricate data.
+
+  - id: weekly_trend_spx
+    name: "Weekly Trend Analysis - S&P 500"
+    category: market_analysis
+    subcategory: trend
+    instrument: SPX
+    model: haiku
+    schedule: weekly
+    input_schema:
+      - weekly_ohlc_104
+      - sma50_w
+      - ema9_w
+      - atr_w14
+      - current_price
+    output_schema:
+      trend: "BULLISH | BEARISH | NEUTRAL"
+      strength: "0.0-1.0"
+      key_levels: "list[float]"
+      confidence: "0.0-1.0"
+    prompt: |
+      Analyze S&P 500 weekly chart for structural trend. SPX has a long-term upward
+      bias; weekly closes below 50-week SMA are historically rare and significant.
+      Determine trend from 50-week SMA, EMA9 slope, and 3-month momentum. Classify
+      BULLISH/BEARISH/NEUTRAL. Rate strength 0-1. 10% and 20% drawdowns from highs
+      mark correction and bear market thresholds.
+      Output JSON only. Never fabricate data.
+
+  - id: weekly_trend_nas100
+    name: "Weekly Trend Analysis - NASDAQ 100"
+    category: market_analysis
+    subcategory: trend
+    instrument: NAS100
+    model: haiku
+    schedule: weekly
+    input_schema:
+      - weekly_ohlc_104
+      - sma50_w
+      - ema9_w
+      - atr_w14
+      - current_price
+    output_schema:
+      trend: "BULLISH | BEARISH | NEUTRAL"
+      strength: "0.0-1.0"
+      key_levels: "list[float]"
+      confidence: "0.0-1.0"
+    prompt: |
+      Analyze NASDAQ 100 weekly chart for structural trend. NAS100 leads in
+      risk-on environments; underperforms in rate-hiking cycles. Monitor relative
+      performance vs SPX for growth/value rotation. Determine trend from 50-week
+      SMA, EMA9 slope, and 3-month momentum. Classify BULLISH/BEARISH/NEUTRAL.
+      Rate strength 0-1. Identify century-level S/R zones.
+      Output JSON only. Never fabricate data.
+
+  - id: weekly_trend_dxy
+    name: "Weekly Trend Analysis - US Dollar Index"
+    category: market_analysis
+    subcategory: trend
+    instrument: DXY
+    model: haiku
+    schedule: weekly
+    input_schema:
+      - weekly_ohlc_104
+      - sma50_w
+      - ema9_w
+      - atr_w14
+      - current_price
+    output_schema:
+      trend: "BULLISH | BEARISH | NEUTRAL"
+      strength: "0.0-1.0"
+      key_levels: "list[float]"
+      confidence: "0.0-1.0"
+    prompt: |
+      Analyze DXY weekly chart for structural trend. DXY multi-year range is 90-115;
+      the 100 level is the critical pivot. Weekly DXY direction is the single most
+      important input for cross-asset positioning. Determine trend from 50-week SMA,
+      EMA9 slope, and 3-month momentum. Classify BULLISH/BEARISH/NEUTRAL. Rate
+      strength 0-1. A DXY breakout above 105 or below 100 shifts all FX trades.
+      Output JSON only. Never fabricate data.
+
+  - id: weekly_trend_vix
+    name: "Weekly Trend Analysis - VIX"
+    category: market_analysis
+    subcategory: trend
+    instrument: VIX
+    model: haiku
+    schedule: weekly
+    input_schema:
+      - weekly_ohlc_104
+      - sma50_w
+      - ema9_w
+      - atr_w14
+      - current_price
+    output_schema:
+      trend: "BULLISH | BEARISH | NEUTRAL"
+      strength: "0.0-1.0"
+      key_levels: "list[float]"
+      confidence: "0.0-1.0"
+    prompt: |
+      Analyze VIX weekly data for volatility regime. VIX is mean-reverting; extended
+      periods below 15 often precede spikes. Weekly closes above 25 signal sustained
+      fear regime. Determine trend from 50-week SMA, EMA9 slope, and 3-month
+      pattern. Classify BULLISH/BEARISH/NEUTRAL (bullish VIX = rising vol). Rate
+      strength 0-1. Compare current VIX to its 1-year percentile rank.
+      Output JSON only. Never fabricate data.
+
+  # ── Cross-instrument trend agents ──────────────────────────────────
+  - id: multi_tf_alignment
+    name: "Multi-Timeframe Trend Alignment"
+    category: market_analysis
+    subcategory: trend
+    instrument: null
+    model: sonnet
+    schedule: every_run
+    input_schema:
+      - all_daily_trends
+      - all_weekly_trends
+      - monthly_candle_data
+    output_schema:
+      aligned_instruments: "list[dict]"
+      conflicting_instruments: "list[dict]"
+      strongest_alignment: "str"
+      confidence: "0.0-1.0"
+    prompt: |
+      Compare daily and weekly trend outputs for all 12 instruments. Identify which
+      instruments have aligned trends across both timeframes (high conviction) and
+      which have conflicting signals (caution). Rank by alignment strength. Flag
+      instruments where weekly is transitioning while daily lags. Multi-TF alignment
+      is a prerequisite for Grade-A trade signals. Output instruments sorted by
+      conviction. Output JSON only. Never fabricate data.
+
+  - id: trend_strength
+    name: "Trend Strength Ranking"
+    category: market_analysis
+    subcategory: trend
+    instrument: null
+    model: haiku
+    schedule: every_run
+    input_schema:
+      - all_daily_trends
+      - adx_14_all
+      - atr_percentile_all
+    output_schema:
+      ranking: "list[dict]"
+      strongest_trend: "str"
+      weakest_trend: "str"
+      avg_strength: "0.0-1.0"
+    prompt: |
+      Rank all 12 instruments by trend strength using ADX(14), ATR percentile, and
+      daily trend strength scores. Identify the strongest trending instrument and
+      the weakest/most range-bound. Flag instruments where ADX is rising above 25
+      (trend emerging) or falling below 20 (trend exhausting). This ranking informs
+      position sizing — stronger trends warrant larger allocations.
+      Output JSON only. Never fabricate data.

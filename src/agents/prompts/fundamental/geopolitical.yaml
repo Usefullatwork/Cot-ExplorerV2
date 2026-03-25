@@ -1,0 +1,107 @@
+prompts:
+  - id: trade_war
+    name: "Trade War Impact Assessment"
+    category: fundamental
+    subcategory: geopolitical
+    instrument: null
+    model: sonnet
+    schedule: weekly
+    input_schema:
+      - tariff_announcements
+      - trade_negotiations_status
+      - supply_chain_disruptions
+      - affected_sectors
+    output_schema:
+      risk_level: "LOW | MODERATE | HIGH | ESCALATING"
+      affected_instruments: "dict[str, str]"
+      safe_haven_demand: "float"
+      trade_opportunities: "list[dict]"
+      confidence: "0.0-1.0"
+    prompt: |
+      Assess trade war impact on instruments. US-China trade tensions: bearish
+      AUD/USD (China proxy), bearish NAS100 (tech supply chains), bullish gold
+      (safe haven), mixed DXY (tariff revenue vs growth drag). Escalation phases
+      create trending opportunities; de-escalation creates reversal trades.
+      Monitor tariff implementation dates as catalyst points. Quantify supply
+      chain disruption severity for tech and commodity sectors.
+      Output JSON only. Never fabricate data.
+
+  - id: sanctions
+    name: "Sanctions Impact Assessment"
+    category: fundamental
+    subcategory: geopolitical
+    instrument: null
+    model: sonnet
+    schedule: weekly
+    input_schema:
+      - active_sanctions
+      - new_sanctions_announced
+      - sanctions_evasion_reports
+      - commodity_supply_impact
+    output_schema:
+      risk_level: "LOW | MODERATE | HIGH"
+      commodity_impact: "dict[str, str]"
+      fx_impact: "dict[str, str]"
+      duration_estimate: "str"
+      confidence: "0.0-1.0"
+    prompt: |
+      Assess sanctions impact on trading instruments. Russia sanctions: bullish
+      oil/gas (supply restriction), bullish gold (reserve diversification), mixed
+      EUR (energy cost vs geopolitical risk). Iran sanctions: bullish oil (supply
+      reduction). New sanctions create supply shocks; sanctions easing creates
+      supply relief. Monitor secondary sanctions affecting trade flows and
+      payment systems. Output JSON only. Never fabricate data.
+
+  - id: oil_disruption
+    name: "Oil Supply Disruption Assessment"
+    category: fundamental
+    subcategory: geopolitical
+    instrument: null
+    model: sonnet
+    schedule: daily
+    input_schema:
+      - middle_east_tensions
+      - shipping_lane_status
+      - production_outages
+      - strategic_reserve_status
+      - spare_capacity
+    output_schema:
+      disruption_level: "NONE | MINOR | MODERATE | SEVERE"
+      supply_at_risk_mbd: "float"
+      oil_price_impact: "dict[str, float]"
+      safe_haven_impact: "str"
+      confidence: "0.0-1.0"
+    prompt: |
+      Assess oil supply disruption risk. Key chokepoints: Strait of Hormuz (21
+      mb/d), Suez Canal (7 mb/d), Strait of Malacca (16 mb/d). Production outage
+      risk from Libya, Nigeria, Iraq, Iran, Russia. OPEC+ spare capacity provides
+      buffer — if spare capacity <2 mb/d, disruptions have outsized price impact.
+      A 1 mb/d disruption typically moves Brent $5-10. Map to oil, gold, and
+      safe-haven currency impacts. Output JSON only. Never fabricate data.
+
+  - id: election_cycle
+    name: "Election Cycle Impact"
+    category: fundamental
+    subcategory: geopolitical
+    instrument: null
+    model: sonnet
+    schedule: weekly
+    input_schema:
+      - election_calendar
+      - polling_data
+      - policy_platform_analysis
+      - historical_election_markets
+    output_schema:
+      upcoming_elections: "list[dict]"
+      market_impact: "dict[str, str]"
+      uncertainty_premium: "float"
+      positioning_advice: "str"
+      confidence: "0.0-1.0"
+    prompt: |
+      Assess election cycle impact on markets. US presidential cycle: year 3
+      (pre-election) is historically strongest for equities. Election uncertainty
+      increases VIX 2-3 months before. Policy platforms affect sectors differently:
+      pro-energy vs pro-green impacts oil; trade policy impacts FX; fiscal policy
+      impacts bonds. Non-US elections (EU, UK, Japan, Australia) affect local
+      currencies. Map election risks to instrument positioning.
+      Output JSON only. Never fabricate data.

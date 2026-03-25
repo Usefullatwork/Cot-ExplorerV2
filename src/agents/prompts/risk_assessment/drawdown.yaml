@@ -1,0 +1,80 @@
+prompts:
+  - id: max_drawdown_monitor
+    name: "Maximum Drawdown Monitor"
+    category: risk_assessment
+    subcategory: drawdown
+    instrument: null
+    model: haiku
+    schedule: every_run
+    input_schema:
+      - equity_curve
+      - peak_equity
+      - current_equity
+      - open_positions_all
+      - unrealized_pnl_all
+    output_schema:
+      current_drawdown_pct: "float"
+      max_drawdown_pct: "float"
+      drawdown_duration_days: "int"
+      action: "CONTINUE | REDUCE_SIZE | HALT_NEW | FLATTEN_ALL"
+      confidence: "0.0-1.0"
+    prompt: |
+      Monitor portfolio drawdown relative to equity peak. Thresholds: <5% =
+      CONTINUE normal trading. 5-10% = REDUCE_SIZE by 50%. 10-15% = HALT_NEW
+      positions, manage existing only. >15% = FLATTEN_ALL and review strategy.
+      Track drawdown duration — drawdowns lasting >20 trading days signal
+      systematic edge degradation, not just variance. Include unrealized P&L
+      in calculations. Output JSON only. Never fabricate data.
+
+  - id: consecutive_loss_alert
+    name: "Consecutive Loss Alert"
+    category: risk_assessment
+    subcategory: drawdown
+    instrument: null
+    model: haiku
+    schedule: every_run
+    input_schema:
+      - recent_trades_50
+      - consecutive_losses
+      - win_rate_rolling_20
+      - strategy_by_trade
+    output_schema:
+      consecutive_losses: "int"
+      current_streak: "str"
+      win_rate_deviation: "float"
+      action: "CONTINUE | REDUCE | PAUSE | REVIEW"
+      confidence: "0.0-1.0"
+    prompt: |
+      Monitor consecutive losing trades. Thresholds: 3 consecutive = REDUCE size
+      by 25%. 5 consecutive = PAUSE new trades for 24 hours. 7+ consecutive =
+      REVIEW strategy — this exceeds normal variance for most edge-based systems.
+      Compare current win rate (rolling 20 trades) to historical baseline. If
+      win rate has dropped >15% from baseline, the edge may be degraded.
+      Output JSON only. Never fabricate data.
+
+  - id: equity_curve_analysis
+    name: "Equity Curve Analysis"
+    category: risk_assessment
+    subcategory: drawdown
+    instrument: null
+    model: sonnet
+    schedule: daily
+    input_schema:
+      - equity_curve_90d
+      - equity_sma_20
+      - monthly_returns
+      - sharpe_ratio_rolling
+    output_schema:
+      curve_health: "HEALTHY | DETERIORATING | BROKEN"
+      equity_vs_sma: "ABOVE | BELOW"
+      sharpe_rolling: "float"
+      regime_assessment: "str"
+      confidence: "0.0-1.0"
+    prompt: |
+      Analyze the equity curve for health signals. Equity above its 20-period
+      SMA = HEALTHY, trade normally. Equity below SMA = DETERIORATING, reduce
+      size by 50%. Equity below SMA for >10 periods = BROKEN, halt trading and
+      review. Calculate rolling Sharpe ratio — if it drops below 0.5, the
+      risk-adjusted returns no longer justify the drawdown risk. Monthly return
+      analysis identifies if losses are concentrated or distributed.
+      Output JSON only. Never fabricate data.

@@ -1,0 +1,54 @@
+"""Macro data routes — Dollar Smile, VIX regime, indicators."""
+
+from __future__ import annotations
+
+import json
+from pathlib import Path
+
+from fastapi import APIRouter
+
+from src.db import repository as repo
+
+router = APIRouter(prefix="/api/v1", tags=["macro"])
+
+_DATA_DIR = Path(__file__).resolve().parents[3] / "data"
+
+
+@router.get("/macro")
+def macro_panel() -> dict:
+    """Full macro panel: Dollar Smile, VIX regime, conflicts, prices.
+
+    Prefers the DB snapshot; falls back to data/macro/latest.json.
+    """
+    snap = repo.get_latest_macro()
+    if snap and snap.full_json:
+        return json.loads(snap.full_json)
+
+    macro_path = _DATA_DIR / "macro" / "latest.json"
+    if macro_path.exists():
+        with open(macro_path) as f:
+            return json.load(f)
+
+    return {"error": "No macro data available. Run the pipeline first."}
+
+
+@router.get("/macro/indicators")
+def macro_indicators() -> dict:
+    """Subset of macro indicators: HYG, TIP, TNX, IRX, Copper, EEM.
+
+    Falls back to reading from data/macro/latest.json prices dict.
+    """
+    snap = repo.get_latest_macro()
+    if snap and snap.full_json:
+        full = json.loads(snap.full_json)
+        prices = full.get("prices", {})
+    else:
+        macro_path = _DATA_DIR / "macro" / "latest.json"
+        if macro_path.exists():
+            with open(macro_path) as f:
+                prices = json.load(f).get("prices", {})
+        else:
+            return {}
+
+    indicator_keys = ["HYG", "TIP", "TNX", "IRX", "Copper", "EEM"]
+    return {k: prices[k] for k in indicator_keys if k in prices}

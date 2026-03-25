@@ -1,0 +1,130 @@
+prompts:
+  - id: cot_data_quality
+    name: "COT Data Quality Check"
+    category: market_analysis
+    subcategory: validation
+    instrument: null
+    model: haiku
+    schedule: every_run
+    input_schema:
+      - cot_latest_all
+      - cot_previous_all
+      - cot_release_timestamp
+      - expected_instruments
+    output_schema:
+      data_quality: "GOOD | DEGRADED | STALE | MISSING"
+      missing_instruments: "list[str]"
+      stale_data_age_hours: "float"
+      anomalies: "list[dict]"
+      confidence: "0.0-1.0"
+    prompt: |
+      Validate COT data quality for all instruments. Check: (1) all expected
+      instruments present, (2) data freshness (COT is released Friday 3:30 PM ET
+      for Tuesday positions — flag if >7 days old), (3) no null or zero values
+      in key fields, (4) week-over-week changes within historical norms (flag
+      >3 std dev changes as potential data errors). Report GOOD/DEGRADED/STALE/
+      MISSING status. Output JSON only. Never fabricate data.
+
+  - id: price_data_quality
+    name: "Price Data Quality Check"
+    category: market_analysis
+    subcategory: validation
+    instrument: null
+    model: haiku
+    schedule: every_run
+    input_schema:
+      - latest_prices_all
+      - price_timestamps
+      - expected_instruments
+      - market_hours_status
+    output_schema:
+      data_quality: "GOOD | DEGRADED | STALE | MISSING"
+      missing_instruments: "list[str]"
+      stale_feeds: "list[dict]"
+      price_anomalies: "list[dict]"
+      confidence: "0.0-1.0"
+    prompt: |
+      Validate price data quality for all 12 instruments. Check: (1) all feeds
+      active, (2) timestamps within expected freshness (real-time during market
+      hours, last close during off-hours), (3) no stuck prices (same OHLC for
+      consecutive bars during active hours), (4) no spike anomalies (>5 ATR
+      single-bar moves without reversal). Flag weekend/holiday gaps as expected.
+      Output JSON only. Never fabricate data.
+
+  - id: signal_consistency
+    name: "Signal Consistency Checker"
+    category: market_analysis
+    subcategory: validation
+    instrument: null
+    model: haiku
+    schedule: every_run
+    input_schema:
+      - all_agent_outputs
+      - previous_run_outputs
+      - time_since_last_run
+    output_schema:
+      consistency_score: "0.0-1.0"
+      flipped_signals: "list[dict]"
+      stable_signals: "list[dict]"
+      suspicious_flips: "list[dict]"
+      confidence: "0.0-1.0"
+    prompt: |
+      Compare current agent outputs to the previous run. Flag any signal that
+      flipped direction (BULLISH to BEARISH or vice versa) without a significant
+      price move (>1 ATR). Rapid signal flipping indicates noise, not signal.
+      Calculate a consistency score (0-1) based on the percentage of stable
+      signals. Signals that flip without price justification should be held at
+      the previous value. Output JSON only. Never fabricate data.
+
+  - id: anomaly_detection
+    name: "Market Anomaly Detection"
+    category: market_analysis
+    subcategory: validation
+    instrument: null
+    model: sonnet
+    schedule: every_run
+    input_schema:
+      - all_prices
+      - all_volumes
+      - historical_norms
+      - news_feed
+      - correlation_matrix
+    output_schema:
+      anomalies: "list[dict]"
+      severity: "LOW | MEDIUM | HIGH | CRITICAL"
+      recommended_action: "str"
+      confidence: "0.0-1.0"
+    prompt: |
+      Detect market anomalies that may indicate data errors, flash crashes,
+      intervention events, or black swan conditions. Check for: (1) prices
+      >5 ATR from previous close, (2) volume >3x 20-day average, (3) correlation
+      breakdown (normal correlations inverting), (4) multiple instruments moving
+      in the same direction simultaneously (risk event). Classify severity and
+      recommend action (continue/pause/halt signals).
+      Output JSON only. Never fabricate data.
+
+  - id: stale_data_checker
+    name: "Stale Data Checker"
+    category: market_analysis
+    subcategory: validation
+    instrument: null
+    model: haiku
+    schedule: every_run
+    input_schema:
+      - all_data_timestamps
+      - current_time
+      - market_schedule
+      - data_source_status
+    output_schema:
+      stale_sources: "list[dict]"
+      freshness_by_source: "dict[str, str]"
+      impact_assessment: "str"
+      proceed_recommendation: "bool"
+      confidence: "0.0-1.0"
+    prompt: |
+      Check all data sources for staleness. Each source has expected freshness:
+      price data (real-time during hours, last close off-hours), COT (weekly,
+      max 7 days), economic calendar (daily update), news (continuous). Flag
+      any source exceeding its freshness threshold. Assess impact of stale data
+      on signal reliability. Recommend whether to proceed with analysis or wait
+      for fresh data. Output JSON only. Never fabricate data.

@@ -1,0 +1,425 @@
+prompts:
+  - id: grade_a_trades
+    name: "Grade-A Trade Evaluator"
+    category: backtesting
+    subcategory: evaluation
+    instrument: null
+    model: sonnet
+    schedule: weekly
+    input_schema:
+      - completed_trades_grade_a
+      - entry_confluence_scores
+      - exit_quality
+      - risk_reward_achieved
+    output_schema:
+      total_grade_a: "int"
+      win_rate: "float"
+      avg_rr: "float"
+      best_setups: "list[dict]"
+      worst_setups: "list[dict]"
+      improvement_areas: "list[str]"
+      confidence: "0.0-1.0"
+    prompt: |
+      Evaluate all Grade-A trades (confluence score >9/12). Analyze win rate,
+      average R:R achieved, and identify patterns in winners vs losers. Grade-A
+      trades should have >65% win rate and >2.0 avg RR. If not, the confluence
+      scoring needs recalibration. Identify the top 3 setup patterns that work
+      best and the top 3 that underperform. Recommend specific adjustments to
+      the 12-point confluence scoring system.
+      Output JSON only. Never fabricate data.
+
+  - id: macro_signals_evaluation
+    name: "Macro Signal Evaluation"
+    category: backtesting
+    subcategory: evaluation
+    instrument: null
+    model: sonnet
+    schedule: weekly
+    input_schema:
+      - macro_signals_generated
+      - signal_outcomes
+      - lead_time_to_move
+      - false_signal_rate
+    output_schema:
+      signal_accuracy: "float"
+      avg_lead_time_days: "float"
+      false_signal_rate: "float"
+      best_signal_types: "list[dict]"
+      confidence: "0.0-1.0"
+    prompt: |
+      Evaluate macro signal accuracy over the review period. Macro signals
+      (COT extremes, fundamental shifts, intermarket divergences) should have
+      >55% accuracy over 2-6 week horizons. Track lead time — a signal that
+      fires 2 weeks before the move is ideal; 6 weeks is too early. Identify
+      which macro signal types have the best accuracy and which generate false
+      signals. Recommend eliminating signals with <45% accuracy.
+      Output JSON only. Never fabricate data.
+
+  - id: swing_signals_evaluation
+    name: "Swing Signal Evaluation"
+    category: backtesting
+    subcategory: evaluation
+    instrument: null
+    model: sonnet
+    schedule: weekly
+    input_schema:
+      - swing_signals_generated
+      - signal_outcomes
+      - hold_time_days
+      - drawdown_per_trade
+    output_schema:
+      signal_accuracy: "float"
+      avg_hold_days: "float"
+      avg_max_drawdown: "float"
+      best_instruments: "list[str]"
+      confidence: "0.0-1.0"
+    prompt: |
+      Evaluate swing signal accuracy (4H/daily setups, 2-10 day holds). Swing
+      signals should achieve >55% win rate with >1.5 R:R. Track average hold
+      time — if trades consistently reach target in <2 days, targets may be
+      too tight. If average hold >10 days, signals may be too early. Identify
+      instruments where swing signals work best and worst.
+      Output JSON only. Never fabricate data.
+
+  - id: scalp_signals_evaluation
+    name: "Scalp Signal Evaluation"
+    category: backtesting
+    subcategory: evaluation
+    instrument: null
+    model: sonnet
+    schedule: weekly
+    input_schema:
+      - scalp_signals_generated
+      - signal_outcomes
+      - execution_quality
+      - slippage_data
+    output_schema:
+      signal_accuracy: "float"
+      avg_slippage: "float"
+      net_after_costs: "float"
+      session_performance: "dict[str, float]"
+      confidence: "0.0-1.0"
+    prompt: |
+      Evaluate scalp signal accuracy (15m/1H setups, intraday). Scalp signals
+      need >60% win rate to overcome transaction costs. Track slippage and
+      spread costs. Net P&L after costs must be positive. Identify which session
+      (London, NY, Asian) produces the best scalp results. Scalp signals in
+      low-liquidity conditions (Asian session for FX) should be flagged for
+      removal if slippage exceeds 20% of average target.
+      Output JSON only. Never fabricate data.
+
+  # ── Evaluation by instrument (12) ──────────────────────────────────
+  - id: by_instrument_eurusd
+    name: "Instrument Performance - EUR/USD"
+    category: backtesting
+    subcategory: evaluation
+    instrument: EURUSD
+    model: haiku
+    schedule: weekly
+    input_schema:
+      - all_eurusd_trades
+      - eurusd_signals_generated
+      - eurusd_market_conditions
+    output_schema:
+      total_trades: "int"
+      win_rate: "float"
+      avg_rr: "float"
+      best_setup_type: "str"
+      worst_setup_type: "str"
+      regime_performance: "dict[str, float]"
+      confidence: "0.0-1.0"
+    prompt: |
+      Evaluate all EUR/USD trade performance. Break down by setup type (trend,
+      reversal, scalp, macro), session (London, NY), and market regime (trending,
+      ranging). EUR/USD should be one of the highest-performing instruments due
+      to tight spreads and clean price action. If win rate <50%, investigate
+      whether DXY alignment is being properly checked.
+      Output JSON only. Never fabricate data.
+
+  - id: by_instrument_usdjpy
+    name: "Instrument Performance - USD/JPY"
+    category: backtesting
+    subcategory: evaluation
+    instrument: USDJPY
+    model: haiku
+    schedule: weekly
+    input_schema:
+      - all_usdjpy_trades
+      - usdjpy_signals_generated
+      - usdjpy_market_conditions
+    output_schema:
+      total_trades: "int"
+      win_rate: "float"
+      avg_rr: "float"
+      best_setup_type: "str"
+      worst_setup_type: "str"
+      regime_performance: "dict[str, float]"
+      confidence: "0.0-1.0"
+    prompt: |
+      Evaluate all USD/JPY trade performance. Break down by setup type and session.
+      USD/JPY performance should be cross-referenced with BoJ intervention events
+      — trades around intervention are unreliable. Check if carry-aligned trades
+      (long USD/JPY in positive carry environment) outperform counter-carry.
+      Output JSON only. Never fabricate data.
+
+  - id: by_instrument_gbpusd
+    name: "Instrument Performance - GBP/USD"
+    category: backtesting
+    subcategory: evaluation
+    instrument: GBPUSD
+    model: haiku
+    schedule: weekly
+    input_schema:
+      - all_gbpusd_trades
+      - gbpusd_signals_generated
+      - gbpusd_market_conditions
+    output_schema:
+      total_trades: "int"
+      win_rate: "float"
+      avg_rr: "float"
+      best_setup_type: "str"
+      worst_setup_type: "str"
+      regime_performance: "dict[str, float]"
+      confidence: "0.0-1.0"
+    prompt: |
+      Evaluate all GBP/USD trade performance. Cable has higher volatility than
+      EUR/USD — check if stop widths are appropriately sized. London session
+      trades should significantly outperform other sessions. If GBP/USD lags
+      EUR/USD in performance, consider EUR/USD as the primary dollar pair.
+      Output JSON only. Never fabricate data.
+
+  - id: by_instrument_audusd
+    name: "Instrument Performance - AUD/USD"
+    category: backtesting
+    subcategory: evaluation
+    instrument: AUDUSD
+    model: haiku
+    schedule: weekly
+    input_schema:
+      - all_audusd_trades
+      - audusd_signals_generated
+      - audusd_market_conditions
+    output_schema:
+      total_trades: "int"
+      win_rate: "float"
+      avg_rr: "float"
+      best_setup_type: "str"
+      worst_setup_type: "str"
+      regime_performance: "dict[str, float]"
+      confidence: "0.0-1.0"
+    prompt: |
+      Evaluate all AUD/USD trade performance. Check if commodity correlation
+      signals improve AUD/USD results. Asian session AUD/USD trades may
+      underperform due to wider spreads. Risk-on/risk-off regime alignment is
+      critical for AUD — trades against the risk regime should underperform.
+      Output JSON only. Never fabricate data.
+
+  - id: by_instrument_gold
+    name: "Instrument Performance - Gold"
+    category: backtesting
+    subcategory: evaluation
+    instrument: Gold
+    model: haiku
+    schedule: weekly
+    input_schema:
+      - all_gold_trades
+      - gold_signals_generated
+      - gold_market_conditions
+    output_schema:
+      total_trades: "int"
+      win_rate: "float"
+      avg_rr: "float"
+      best_setup_type: "str"
+      worst_setup_type: "str"
+      regime_performance: "dict[str, float]"
+      confidence: "0.0-1.0"
+    prompt: |
+      Evaluate all Gold trade performance. Gold should be one of the best
+      performers — it trends well and respects technical levels. Check if COT
+      extreme signals add value (they historically do for gold). DXY-aligned
+      gold trades should outperform non-aligned. If gold underperforms, check
+      real yield correlation tracking.
+      Output JSON only. Never fabricate data.
+
+  - id: by_instrument_silver
+    name: "Instrument Performance - Silver"
+    category: backtesting
+    subcategory: evaluation
+    instrument: Silver
+    model: haiku
+    schedule: weekly
+    input_schema:
+      - all_silver_trades
+      - silver_signals_generated
+      - silver_market_conditions
+    output_schema:
+      total_trades: "int"
+      win_rate: "float"
+      avg_rr: "float"
+      best_setup_type: "str"
+      worst_setup_type: "str"
+      regime_performance: "dict[str, float]"
+      confidence: "0.0-1.0"
+    prompt: |
+      Evaluate all Silver trade performance. Silver typically underperforms gold
+      on risk-adjusted basis due to higher slippage. If silver performance is
+      significantly worse than gold, consider reducing silver allocation.
+      Check if gold-confirmed silver trades outperform standalone silver signals.
+      Output JSON only. Never fabricate data.
+
+  - id: by_instrument_brent
+    name: "Instrument Performance - Brent Crude"
+    category: backtesting
+    subcategory: evaluation
+    instrument: Brent
+    model: haiku
+    schedule: weekly
+    input_schema:
+      - all_brent_trades
+      - brent_signals_generated
+      - brent_market_conditions
+    output_schema:
+      total_trades: "int"
+      win_rate: "float"
+      avg_rr: "float"
+      best_setup_type: "str"
+      worst_setup_type: "str"
+      regime_performance: "dict[str, float]"
+      confidence: "0.0-1.0"
+    prompt: |
+      Evaluate all Brent Crude trade performance. Oil has event-driven volatility
+      that can distort metrics. Exclude OPEC-day trades from base statistics.
+      Check if fundamental signals (inventory, OPEC compliance) add value over
+      pure technical signals. Oil trades should be profitable in trending regimes
+      and breakeven in ranging. Output JSON only. Never fabricate data.
+
+  - id: by_instrument_wti
+    name: "Instrument Performance - WTI Crude"
+    category: backtesting
+    subcategory: evaluation
+    instrument: WTI
+    model: haiku
+    schedule: weekly
+    input_schema:
+      - all_wti_trades
+      - wti_signals_generated
+      - wti_market_conditions
+    output_schema:
+      total_trades: "int"
+      win_rate: "float"
+      avg_rr: "float"
+      best_setup_type: "str"
+      worst_setup_type: "str"
+      regime_performance: "dict[str, float]"
+      confidence: "0.0-1.0"
+    prompt: |
+      Evaluate all WTI Crude trade performance. Compare WTI vs Brent performance
+      — if one consistently outperforms, allocate more to the better instrument.
+      EIA-day trades should be analyzed separately. WTI often has similar
+      performance to Brent but with slightly different timing.
+      Output JSON only. Never fabricate data.
+
+  - id: by_instrument_spx
+    name: "Instrument Performance - S&P 500"
+    category: backtesting
+    subcategory: evaluation
+    instrument: SPX
+    model: haiku
+    schedule: weekly
+    input_schema:
+      - all_spx_trades
+      - spx_signals_generated
+      - spx_market_conditions
+    output_schema:
+      total_trades: "int"
+      win_rate: "float"
+      avg_rr: "float"
+      best_setup_type: "str"
+      worst_setup_type: "str"
+      regime_performance: "dict[str, float]"
+      confidence: "0.0-1.0"
+    prompt: |
+      Evaluate all S&P 500 trade performance. SPX has a long-term upward bias —
+      long signals should outperform short signals. Check if VIX integration
+      improves performance (it should). FOMC-week trades may have different
+      characteristics. SPX should be one of the highest-performing instruments
+      due to its trending nature. Output JSON only. Never fabricate data.
+
+  - id: by_instrument_nas100
+    name: "Instrument Performance - NASDAQ 100"
+    category: backtesting
+    subcategory: evaluation
+    instrument: NAS100
+    model: haiku
+    schedule: weekly
+    input_schema:
+      - all_nas100_trades
+      - nas100_signals_generated
+      - nas100_market_conditions
+    output_schema:
+      total_trades: "int"
+      win_rate: "float"
+      avg_rr: "float"
+      best_setup_type: "str"
+      worst_setup_type: "str"
+      regime_performance: "dict[str, float]"
+      confidence: "0.0-1.0"
+    prompt: |
+      Evaluate all NASDAQ 100 trade performance. Compare to SPX — NAS100 should
+      have higher returns but also higher drawdowns. If NAS100 risk-adjusted
+      performance (Sharpe) is worse than SPX, consider reducing NAS100 allocation.
+      Earnings season performance should be analyzed separately.
+      Output JSON only. Never fabricate data.
+
+  - id: by_instrument_dxy
+    name: "Instrument Performance - DXY"
+    category: backtesting
+    subcategory: evaluation
+    instrument: DXY
+    model: haiku
+    schedule: weekly
+    input_schema:
+      - all_dxy_trades
+      - dxy_signals_generated
+      - dxy_market_conditions
+    output_schema:
+      total_trades: "int"
+      win_rate: "float"
+      avg_rr: "float"
+      best_setup_type: "str"
+      worst_setup_type: "str"
+      regime_performance: "dict[str, float]"
+      confidence: "0.0-1.0"
+    prompt: |
+      Evaluate all DXY trade performance. DXY trades should be compared against
+      direct FX pair trades for the same dollar view. If EUR/USD trades outperform
+      DXY trades for the same directional bet, DXY direct trading adds no value.
+      DXY is primarily useful as a confirmation tool.
+      Output JSON only. Never fabricate data.
+
+  - id: by_instrument_vix
+    name: "Instrument Performance - VIX"
+    category: backtesting
+    subcategory: evaluation
+    instrument: VIX
+    model: haiku
+    schedule: weekly
+    input_schema:
+      - all_vix_trades
+      - vix_signals_generated
+      - vix_market_conditions
+    output_schema:
+      total_trades: "int"
+      win_rate: "float"
+      avg_rr: "float"
+      best_setup_type: "str"
+      worst_setup_type: "str"
+      regime_performance: "dict[str, float]"
+      confidence: "0.0-1.0"
+    prompt: |
+      Evaluate all VIX trade performance. VIX is primarily a hedge instrument —
+      evaluate as both standalone P&L and portfolio-level impact (does VIX
+      hedging reduce max drawdown?). Short VIX trades should have high win
+      rate but occasional large losses. Long VIX should be evaluated as
+      insurance cost, not profit center.
+      Output JSON only. Never fabricate data.

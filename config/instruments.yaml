@@ -1,0 +1,180 @@
+# Cot-ExplorerV2 Instrument Configuration
+# 12 tracked instruments with all provider symbol mappings
+
+instruments:
+  - key: EURUSD
+    name: EUR/USD
+    symbol: EURUSD=X
+    label: Valuta
+    category: valuta
+    class: A
+    session: "London 08:00-12:00 CET"
+    cot_market: "euro fx"
+    stooq: eurusd
+    twelvedata: EUR/USD
+    finnhub: null
+    news_risk_on_dir: bull
+    news_risk_off_dir: bear
+
+  - key: USDJPY
+    name: USD/JPY
+    symbol: JPY=X
+    label: Valuta
+    category: valuta
+    class: A
+    session: "London 08:00-12:00 CET"
+    cot_market: "japanese yen"
+    stooq: usdjpy
+    twelvedata: USD/JPY
+    finnhub: null
+    news_risk_on_dir: bull
+    news_risk_off_dir: bear
+
+  - key: GBPUSD
+    name: GBP/USD
+    symbol: GBPUSD=X
+    label: Valuta
+    category: valuta
+    class: A
+    session: "London 08:00-12:00 CET"
+    cot_market: "british pound"
+    stooq: gbpusd
+    twelvedata: GBP/USD
+    finnhub: null
+    news_risk_on_dir: bull
+    news_risk_off_dir: bear
+
+  - key: AUDUSD
+    name: AUD/USD
+    symbol: AUDUSD=X
+    label: Valuta
+    category: valuta
+    class: A
+    session: "London 08:00-12:00 CET"
+    cot_market: null
+    stooq: audusd
+    twelvedata: AUD/USD
+    finnhub: null
+    news_risk_on_dir: bull
+    news_risk_off_dir: bear
+
+  - key: Gold
+    name: Gull
+    symbol: GC=F
+    label: "Råvare"
+    category: ravarer
+    class: B
+    session: "London Fix 10:30 / NY Fix 15:00 CET"
+    cot_market: gold
+    stooq: xauusd
+    twelvedata: XAU/USD
+    finnhub: null
+    news_risk_on_dir: bear
+    news_risk_off_dir: bull
+
+  - key: Silver
+    name: "Sølv"
+    symbol: SI=F
+    label: "Råvare"
+    category: ravarer
+    class: B
+    session: "London Fix 10:30 / NY Fix 15:00 CET"
+    cot_market: silver
+    stooq: xagusd
+    twelvedata: null
+    finnhub: SI1!
+    news_risk_on_dir: bear
+    news_risk_off_dir: bull
+
+  - key: Brent
+    name: Brent
+    symbol: BZ=F
+    label: "Råvare"
+    category: ravarer
+    class: B
+    session: "London Fix 10:30 / NY Fix 15:00 CET"
+    cot_market: "crude oil, light sweet"
+    stooq: co.f
+    twelvedata: null
+    finnhub: UKOIL
+    news_risk_on_dir: null
+    news_risk_off_dir: null
+
+  - key: WTI
+    name: WTI
+    symbol: CL=F
+    label: "Råvare"
+    category: ravarer
+    class: B
+    session: "London Fix 10:30 / NY Fix 15:00 CET"
+    cot_market: "crude oil, light sweet"
+    stooq: cl.f
+    twelvedata: null
+    finnhub: USOIL
+    news_risk_on_dir: null
+    news_risk_off_dir: null
+
+  - key: SPX
+    name: S&P 500
+    symbol: "^GSPC"
+    label: Aksjer
+    category: aksjer
+    class: C
+    session: "NY Open 14:30-17:00 CET"
+    cot_market: "s&p 500 consolidated"
+    stooq: "^spx"
+    twelvedata: null
+    finnhub: "^GSPC"
+    news_risk_on_dir: bull
+    news_risk_off_dir: bear
+
+  - key: NAS100
+    name: Nasdaq
+    symbol: "^NDX"
+    label: Aksjer
+    category: aksjer
+    class: C
+    session: "NY Open 14:30-17:00 CET"
+    cot_market: "nasdaq mini"
+    stooq: "^ndx"
+    twelvedata: null
+    finnhub: "^NDX"
+    news_risk_on_dir: bull
+    news_risk_off_dir: bear
+
+  - key: VIX
+    name: VIX
+    symbol: "^VIX"
+    label: Vol
+    category: aksjer
+    class: C
+    session: "NY Open 14:30-17:00 CET"
+    cot_market: null
+    stooq: "^vix"
+    twelvedata: null
+    finnhub: "^VIX"
+    news_risk_on_dir: bear
+    news_risk_off_dir: bull
+
+  - key: DXY
+    name: DXY
+    symbol: DX-Y.NYB
+    label: Valuta
+    category: valuta
+    class: A
+    session: "London 08:00-12:00 CET"
+    cot_market: "usd index"
+    stooq: dxy.f
+    twelvedata: null
+    finnhub: null
+    news_risk_on_dir: bear
+    news_risk_off_dir: bull
+
+# Macro indicator symbols (for Dollar Smile, yield curve, etc.)
+macro_symbols:
+  HYG: HYG           # High Yield Corp Bond ETF — credit risk
+  TIP: TIP           # TIPS Bond ETF — inflation expectations
+  TNX: "^TNX"        # 10-year Treasury yield
+  IRX: "^IRX"        # 3-month Treasury bill
+  Copper: HG=F       # Copper futures — growth indicator
+  EEM: EEM           # Emerging Markets ETF — risk appetite

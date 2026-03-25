@@ -1,0 +1,143 @@
+// =============================================================================
+// Dollar Smile — USD-styrkeindikator med regimeklassifisering
+// VENSTRE (risk-off, sterk USD) / MIDTEN (Goldilocks, svak USD) / HOYRE (vekst, moderat USD)
+// =============================================================================
+//@version=5
+indicator("COT Explorer: Dollar Smile", shorttitle="$Smile", overlay=false)
+
+// ── Fargepalett (mork tema) ─────────────────────────────────────────────────
+var color C_GREEN  = #3fb950
+var color C_RED    = #f85149
+var color C_YELLOW = #d29922
+var color C_BLUE   = #58a6ff
+var color C_BG     = #161b22
+var color C_TEXT   = #c9d1d9
+
+// ── Inputs ──────────────────────────────────────────────────────────────────
+show_labels = input.bool(true, "Vis regime-labels")
+smooth_len  = input.int(5, "Utglatting (dager)", minval=1, maxval=20)
+
+// ── Hent data ───────────────────────────────────────────────────────────────
+vix = request.security("CBOE:VIX", "D", close, lookahead=barmerge.lookahead_on)
+dxy = request.security("TVC:DXY",  "D", close, lookahead=barmerge.lookahead_on)
+hyg = request.security("AMEX:HYG", "D", close, lookahead=barmerge.lookahead_on)
+
+// Forrige verdier for momentum
+dxy_prev_20 = request.security("TVC:DXY", "D", close[20], lookahead=barmerge.lookahead_on)
+hyg_prev_5  = request.security("AMEX:HYG", "D", close[5],  lookahead=barmerge.lookahead_on)
+
+// ── Beregn USD-styrke (-1 til +1) ───────────────────────────────────────────
+// Normalisering: VIX-komponent + DXY momentum + HY stress
+// Hoy VIX (>30) = sterk USD (risk-off), lav VIX (<18) = svak USD (Goldilocks)
+// Mellom = moderate USD (vekstdrevet)
+
+vix_score() =>
+    if vix > 35
+        1.0
+    else if vix > 30
+        0.8
+    else if vix > 25
+        0.3
+    else if vix > 20
+        -0.2
+    else if vix > 15
+        -0.6
+    else
+        -0.3   // Ekstremt lav VIX -> markedet snur
+
+dxy_mom = dxy_prev_20 != 0 ? (dxy / dxy_prev_20 - 1) * 100 : 0.0
+dxy_score() =>
+    if dxy_mom > 2.0
+        0.8
+    else if dxy_mom > 0.5
+        0.4
+    else if dxy_mom > -0.5
+        0.0
+    else if dxy_mom > -2.0
+        -0.4
+    else
+        -0.8
+
+hyg_chg = hyg_prev_5 != 0 ? (hyg / hyg_prev_5 - 1) * 100 : 0.0
+hyg_score() =>
+    if hyg_chg < -2.0
+        0.5    // HY stress = risk-off = USD sterkere
+    else if hyg_chg < -0.5
+        0.2
+    else if hyg_chg > 1.0
+        -0.3   // HY rally = risk-on = USD svakere
+    else
+        0.0
+
+// Vektet sammensatt score
+raw_usd = vix_score() * 0.50 + dxy_score() * 0.30 + hyg_score() * 0.20
+usd_strength = ta.sma(math.max(-1.0, math.min(1.0, raw_usd)), smooth_len)
+
+// ── Regime-klassifisering ───────────────────────────────────────────────────
+regime() =>
+    if vix > 30
+        "VENSTRE"
+    else if vix < 18
+        "MIDTEN"
+    else
+        "HOYRE"
+
+regime_label() =>
+    r = regime()
+    if r == "VENSTRE"
+        "Risk-Off (Sterk USD)"
+    else if r == "MIDTEN"
+        "Goldilocks (Svak USD)"
+    else
+        "Vekst (Moderat USD)"
+
+usd_bias_label() =>
+    r = regime()
+    if r == "VENSTRE"
+        "USD BULL"
+    else if r == "MIDTEN"
+        "USD BEAR"
+    else
+        "USD MODERAT"
+
+curr_regime = regime()
+
+// ── Plotting ────────────────────────────────────────────────────────────────
+// USD-styrke som area chart
+fill_col = usd_strength > 0 ? color.new(C_GREEN, 60) : color.new(C_RED, 60)
+p_usd  = plot(usd_strength, "USD Styrke", color=usd_strength > 0 ? C_GREEN : C_RED, linewidth=2)
+p_zero = plot(0.0, "Null", color=color.gray, linewidth=1, display=display.none)
+fill(p_usd, p_zero, color=fill_col, title="USD Styrke fyll")
+
+// Referanselinjer
+hline(0.0,  "Null",    color=color.gray, linestyle=hline.style_solid)
+hline(0.5,  "+0.5",    color=color.new(C_GREEN, 70), linestyle=hline.style_dotted)
+hline(-0.5, "-0.5",    color=color.new(C_RED, 70),   linestyle=hline.style_dotted)
+hline(1.0,  "Max",     color=color.new(C_GREEN, 85), linestyle=hline.style_dotted)
+hline(-1.0, "Min",     color=color.new(C_RED, 85),   linestyle=hline.style_dotted)
+
+// ── Regime-label pa siste bar ───────────────────────────────────────────────
+if show_labels and barstate.islast
+    lbl_col = curr_regime == "VENSTRE" ? C_RED : curr_regime == "MIDTEN" ? C_GREEN : C_YELLOW
+    var label r_lbl = na
+    label.delete(r_lbl)
+    r_lbl := label.new(bar_index + 3, usd_strength, regime_label() + "\n" + usd_bias_label(), color=color.new(lbl_col, 70), textcolor=lbl_col, style=label.style_label_left, size=size.normal)
+
+// ── Infotabell ──────────────────────────────────────────────────────────────
+if barstate.islast
+    var table dt = table.new(position.top_right, 2, 5, bgcolor=C_BG, border_width=1, border_color=color.new(C_TEXT, 70))
+
+    table.cell(dt, 0, 0, "Dollar Smile", text_color=C_BLUE, text_size=size.small, text_halign=text.align_left)
+    table.cell(dt, 1, 0, curr_regime,    text_color=curr_regime == "VENSTRE" ? C_RED : curr_regime == "MIDTEN" ? C_GREEN : C_YELLOW, text_size=size.small)
+
+    table.cell(dt, 0, 1, "USD Styrke", text_color=C_TEXT, text_size=size.tiny, text_halign=text.align_left)
+    table.cell(dt, 1, 1, str.tostring(usd_strength, "+#0.00"), text_color=usd_strength > 0 ? C_GREEN : C_RED, text_size=size.small)
+
+    table.cell(dt, 0, 2, "VIX",  text_color=C_TEXT, text_size=size.tiny, text_halign=text.align_left)
+    table.cell(dt, 1, 2, str.tostring(vix, "#0.1"), text_color=vix > 30 ? C_RED : vix > 20 ? C_YELLOW : C_GREEN, text_size=size.tiny)
+
+    table.cell(dt, 0, 3, "DXY 20d", text_color=C_TEXT, text_size=size.tiny, text_halign=text.align_left)
+    table.cell(dt, 1, 3, str.tostring(dxy_mom, "+#0.1") + "%", text_color=dxy_mom > 0 ? C_GREEN : C_RED, text_size=size.tiny)
+
+    table.cell(dt, 0, 4, "HYG 5d", text_color=C_TEXT, text_size=size.tiny, text_halign=text.align_left)
+    table.cell(dt, 1, 4, str.tostring(hyg_chg, "+#0.1") + "%", text_color=hyg_chg < -1 ? C_RED : C_GREEN, text_size=size.tiny)

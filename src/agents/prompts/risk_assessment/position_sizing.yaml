@@ -1,0 +1,400 @@
+prompts:
+  - id: vix_based_sizing
+    name: "VIX-Based Position Sizing"
+    category: risk_assessment
+    subcategory: position_sizing
+    instrument: null
+    model: haiku
+    schedule: every_run
+    input_schema:
+      - vix_current
+      - vix_20d_avg
+      - vix_percentile_1y
+      - account_equity
+      - max_risk_per_trade
+    output_schema:
+      size_multiplier: "0.0-2.0"
+      max_position_pct: "float"
+      reasoning: "str"
+      confidence: "0.0-1.0"
+    prompt: |
+      Calculate position size multiplier based on VIX level. Base sizing is 1.0x
+      at VIX 15-20. Scale: VIX <12 = 1.5x (low vol, widen stops), VIX 12-15 =
+      1.25x, VIX 20-25 = 0.75x, VIX 25-30 = 0.5x, VIX >30 = 0.25x (crisis).
+      Compare current VIX to 20-day average — sudden VIX spikes warrant
+      additional reduction. Never exceed 2% account risk per trade regardless
+      of multiplier. Output JSON only. Never fabricate data.
+
+  - id: atr_based_sizing
+    name: "ATR-Based Position Sizing"
+    category: risk_assessment
+    subcategory: position_sizing
+    instrument: null
+    model: haiku
+    schedule: every_run
+    input_schema:
+      - atr_14_all
+      - atr_percentile_all
+      - account_equity
+      - risk_per_trade_pct
+    output_schema:
+      position_sizes: "dict[str, dict]"
+      lot_sizes: "dict[str, float]"
+      confidence: "0.0-1.0"
+    prompt: |
+      Calculate ATR-based position sizes for all 12 instruments. Position size =
+      (Account * Risk%) / (ATR * multiplier). Use 1.5x ATR for stop distance on
+      trend trades, 1.0x ATR for scalps. When ATR percentile >80 (high volatility),
+      reduce lot size by 30%. When ATR percentile <20 (compression), this signals
+      potential breakout — size normally but tighten stops post-entry.
+      Output JSON only. Never fabricate data.
+
+  - id: kelly_criterion
+    name: "Kelly Criterion Calculator"
+    category: risk_assessment
+    subcategory: position_sizing
+    instrument: null
+    model: haiku
+    schedule: daily
+    input_schema:
+      - win_rate_by_instrument
+      - avg_win_loss_ratio
+      - recent_trade_history
+      - account_equity
+    output_schema:
+      kelly_pct: "dict[str, float]"
+      half_kelly: "dict[str, float]"
+      recommended_risk: "dict[str, float]"
+      confidence: "0.0-1.0"
+    prompt: |
+      Calculate Kelly Criterion optimal bet size for each instrument. Kelly% =
+      W - [(1-W)/R] where W=win rate, R=avg win/loss ratio. Always use half-Kelly
+      (Kelly/2) for practical sizing to reduce variance. Cap at 3% max per trade.
+      If Kelly is negative for any instrument, recommend zero allocation (no edge).
+      Use rolling 50-trade window for win rate calculation.
+      Output JSON only. Never fabricate data.
+
+  # ── Portfolio Heat per instrument (12) ─────────────────────────────
+  - id: portfolio_heat_eurusd
+    name: "Portfolio Heat - EUR/USD"
+    category: risk_assessment
+    subcategory: position_sizing
+    instrument: EURUSD
+    model: haiku
+    schedule: every_run
+    input_schema:
+      - open_positions_eurusd
+      - unrealized_pnl
+      - atr_14
+      - account_equity
+      - correlated_positions
+    output_schema:
+      heat_pct: "float"
+      risk_at_stop: "float"
+      correlated_risk: "float"
+      action: "HOLD | REDUCE | CLOSE | ADD_OK"
+      confidence: "0.0-1.0"
+    prompt: |
+      Calculate portfolio heat for EUR/USD positions. Heat = total risk at stop
+      as percentage of equity. Include correlated risk from GBP/USD and DXY
+      positions (EUR/USD has ~0.85 correlation with GBP/USD). If combined
+      correlated heat exceeds 4%, recommend reducing the weaker setup. EUR/USD
+      max single-instrument heat is 2%. Output action recommendation.
+      Output JSON only. Never fabricate data.
+
+  - id: portfolio_heat_usdjpy
+    name: "Portfolio Heat - USD/JPY"
+    category: risk_assessment
+    subcategory: position_sizing
+    instrument: USDJPY
+    model: haiku
+    schedule: every_run
+    input_schema:
+      - open_positions_usdjpy
+      - unrealized_pnl
+      - atr_14
+      - account_equity
+      - correlated_positions
+    output_schema:
+      heat_pct: "float"
+      risk_at_stop: "float"
+      correlated_risk: "float"
+      action: "HOLD | REDUCE | CLOSE | ADD_OK"
+      confidence: "0.0-1.0"
+    prompt: |
+      Calculate portfolio heat for USD/JPY positions. Include correlated risk
+      from DXY and other USD pairs. USD/JPY has intervention risk — if price is
+      within 200 pips of known intervention zones (150, 155, 160), add 50% risk
+      buffer. USD/JPY overnight gaps can be large during Tokyo session. Max
+      single-instrument heat is 2%.
+      Output JSON only. Never fabricate data.
+
+  - id: portfolio_heat_gbpusd
+    name: "Portfolio Heat - GBP/USD"
+    category: risk_assessment
+    subcategory: position_sizing
+    instrument: GBPUSD
+    model: haiku
+    schedule: every_run
+    input_schema:
+      - open_positions_gbpusd
+      - unrealized_pnl
+      - atr_14
+      - account_equity
+      - correlated_positions
+    output_schema:
+      heat_pct: "float"
+      risk_at_stop: "float"
+      correlated_risk: "float"
+      action: "HOLD | REDUCE | CLOSE | ADD_OK"
+      confidence: "0.0-1.0"
+    prompt: |
+      Calculate portfolio heat for GBP/USD positions. Cable is highly correlated
+      with EUR/USD (~0.85); carrying both in the same direction effectively doubles
+      USD exposure. If both EUR/USD and GBP/USD positions are open in the same
+      direction, treat combined heat as 1.7x (not 2x due to imperfect correlation).
+      Max single-instrument heat is 2%.
+      Output JSON only. Never fabricate data.
+
+  - id: portfolio_heat_audusd
+    name: "Portfolio Heat - AUD/USD"
+    category: risk_assessment
+    subcategory: position_sizing
+    instrument: AUDUSD
+    model: haiku
+    schedule: every_run
+    input_schema:
+      - open_positions_audusd
+      - unrealized_pnl
+      - atr_14
+      - account_equity
+      - correlated_positions
+    output_schema:
+      heat_pct: "float"
+      risk_at_stop: "float"
+      correlated_risk: "float"
+      action: "HOLD | REDUCE | CLOSE | ADD_OK"
+      confidence: "0.0-1.0"
+    prompt: |
+      Calculate portfolio heat for AUD/USD positions. AUD/USD is correlated with
+      risk assets (SPX ~0.5) and commodities. If long AUD/USD and long SPX,
+      combined risk-on exposure may be excessive. Check correlation with open
+      equity and commodity positions. AUD/USD has wider spreads during Asian
+      session lulls — account for slippage risk. Max heat 2%.
+      Output JSON only. Never fabricate data.
+
+  - id: portfolio_heat_gold
+    name: "Portfolio Heat - Gold"
+    category: risk_assessment
+    subcategory: position_sizing
+    instrument: Gold
+    model: haiku
+    schedule: every_run
+    input_schema:
+      - open_positions_gold
+      - unrealized_pnl
+      - atr_14
+      - account_equity
+      - correlated_positions
+    output_schema:
+      heat_pct: "float"
+      risk_at_stop: "float"
+      correlated_risk: "float"
+      action: "HOLD | REDUCE | CLOSE | ADD_OK"
+      confidence: "0.0-1.0"
+    prompt: |
+      Calculate portfolio heat for Gold positions. Gold is inversely correlated
+      with DXY and real yields. If short DXY and long gold, the trade is
+      effectively doubled USD-weakness exposure. Gold ATR can spike on FOMC days
+      — recalculate stop distance if FOMC is within 24 hours. Gold $10 moves
+      are ~1 ATR in normal conditions. Max single-instrument heat is 2%.
+      Output JSON only. Never fabricate data.
+
+  - id: portfolio_heat_silver
+    name: "Portfolio Heat - Silver"
+    category: risk_assessment
+    subcategory: position_sizing
+    instrument: Silver
+    model: haiku
+    schedule: every_run
+    input_schema:
+      - open_positions_silver
+      - unrealized_pnl
+      - atr_14
+      - account_equity
+      - correlated_positions
+    output_schema:
+      heat_pct: "float"
+      risk_at_stop: "float"
+      correlated_risk: "float"
+      action: "HOLD | REDUCE | CLOSE | ADD_OK"
+      confidence: "0.0-1.0"
+    prompt: |
+      Calculate portfolio heat for Silver positions. Silver is correlated with
+      gold (~0.80) but with 1.5-2x the volatility. If holding both gold and silver
+      longs, treat as ~1.6x combined precious metals exposure. Silver spreads
+      widen significantly during low-liquidity periods. Add 20% slippage buffer
+      to stop-loss risk calculations. Max single-instrument heat is 1.5% (lower
+      due to volatility). Output JSON only. Never fabricate data.
+
+  - id: portfolio_heat_brent
+    name: "Portfolio Heat - Brent Crude"
+    category: risk_assessment
+    subcategory: position_sizing
+    instrument: Brent
+    model: haiku
+    schedule: every_run
+    input_schema:
+      - open_positions_brent
+      - unrealized_pnl
+      - atr_14
+      - account_equity
+      - correlated_positions
+    output_schema:
+      heat_pct: "float"
+      risk_at_stop: "float"
+      correlated_risk: "float"
+      action: "HOLD | REDUCE | CLOSE | ADD_OK"
+      confidence: "0.0-1.0"
+    prompt: |
+      Calculate portfolio heat for Brent Crude positions. Brent and WTI are ~0.95
+      correlated; holding both is essentially doubling oil exposure. If long both,
+      treat as single position for heat calculation. Oil has gap risk on OPEC
+      headlines and geopolitical events. Weekend gap risk is elevated during
+      Middle East tensions. Max single-instrument heat is 2%.
+      Output JSON only. Never fabricate data.
+
+  - id: portfolio_heat_wti
+    name: "Portfolio Heat - WTI Crude"
+    category: risk_assessment
+    subcategory: position_sizing
+    instrument: WTI
+    model: haiku
+    schedule: every_run
+    input_schema:
+      - open_positions_wti
+      - unrealized_pnl
+      - atr_14
+      - account_equity
+      - correlated_positions
+    output_schema:
+      heat_pct: "float"
+      risk_at_stop: "float"
+      correlated_risk: "float"
+      action: "HOLD | REDUCE | CLOSE | ADD_OK"
+      confidence: "0.0-1.0"
+    prompt: |
+      Calculate portfolio heat for WTI Crude positions. WTI has EIA inventory
+      risk every Wednesday; if holding into EIA, add 30% volatility buffer.
+      WTI is ~0.95 correlated with Brent — check for combined oil exposure.
+      Also check AUD/USD correlation (commodity demand proxy). WTI can have
+      contract-roll volatility near expiry. Max single-instrument heat is 2%.
+      Output JSON only. Never fabricate data.
+
+  - id: portfolio_heat_spx
+    name: "Portfolio Heat - S&P 500"
+    category: risk_assessment
+    subcategory: position_sizing
+    instrument: SPX
+    model: haiku
+    schedule: every_run
+    input_schema:
+      - open_positions_spx
+      - unrealized_pnl
+      - atr_14
+      - account_equity
+      - correlated_positions
+    output_schema:
+      heat_pct: "float"
+      risk_at_stop: "float"
+      correlated_risk: "float"
+      action: "HOLD | REDUCE | CLOSE | ADD_OK"
+      confidence: "0.0-1.0"
+    prompt: |
+      Calculate portfolio heat for S&P 500 positions. SPX is correlated with
+      NAS100 (~0.90), AUD/USD (~0.50), and inversely with VIX (~-0.85). Combined
+      equity + risk-on FX exposure can create outsized drawdowns in risk-off
+      events. If total correlated risk-on heat exceeds 5%, recommend reducing
+      the weakest setup. Max single-instrument heat is 2%.
+      Output JSON only. Never fabricate data.
+
+  - id: portfolio_heat_nas100
+    name: "Portfolio Heat - NASDAQ 100"
+    category: risk_assessment
+    subcategory: position_sizing
+    instrument: NAS100
+    model: haiku
+    schedule: every_run
+    input_schema:
+      - open_positions_nas100
+      - unrealized_pnl
+      - atr_14
+      - account_equity
+      - correlated_positions
+    output_schema:
+      heat_pct: "float"
+      risk_at_stop: "float"
+      correlated_risk: "float"
+      action: "HOLD | REDUCE | CLOSE | ADD_OK"
+      confidence: "0.0-1.0"
+    prompt: |
+      Calculate portfolio heat for NASDAQ 100 positions. NAS100 has ~1.3x beta
+      to SPX; a 1% SPX move = ~1.3% NAS100 move. If holding both SPX and NAS100
+      longs, treat NAS100 at 1.3x for correlation-adjusted heat. After-hours
+      earnings from mega-caps can cause 2-3% gaps. Max single-instrument heat
+      is 1.5% (reduced due to higher beta).
+      Output JSON only. Never fabricate data.
+
+  - id: portfolio_heat_dxy
+    name: "Portfolio Heat - US Dollar Index"
+    category: risk_assessment
+    subcategory: position_sizing
+    instrument: DXY
+    model: haiku
+    schedule: every_run
+    input_schema:
+      - open_positions_dxy
+      - unrealized_pnl
+      - atr_14
+      - account_equity
+      - correlated_positions
+    output_schema:
+      heat_pct: "float"
+      risk_at_stop: "float"
+      correlated_risk: "float"
+      action: "HOLD | REDUCE | CLOSE | ADD_OK"
+      confidence: "0.0-1.0"
+    prompt: |
+      Calculate portfolio heat for DXY positions. DXY is inversely correlated
+      with EUR/USD (-0.97), GBP/USD (-0.85), gold (-0.40), and positively with
+      USD/JPY (+0.60). A DXY long with EUR/USD shorts is highly redundant.
+      Sum all USD-directional exposure across FX pairs, gold, and DXY itself
+      for true portfolio USD heat. Max DXY-specific heat is 2%.
+      Output JSON only. Never fabricate data.
+
+  - id: portfolio_heat_vix
+    name: "Portfolio Heat - VIX"
+    category: risk_assessment
+    subcategory: position_sizing
+    instrument: VIX
+    model: haiku
+    schedule: every_run
+    input_schema:
+      - open_positions_vix
+      - unrealized_pnl
+      - atr_14
+      - account_equity
+      - correlated_positions
+    output_schema:
+      heat_pct: "float"
+      risk_at_stop: "float"
+      correlated_risk: "float"
+      action: "HOLD | REDUCE | CLOSE | ADD_OK"
+      confidence: "0.0-1.0"
+    prompt: |
+      Calculate portfolio heat for VIX positions. VIX is a hedge instrument;
+      long VIX positions should offset equity risk. If long SPX and long VIX,
+      the VIX position is a hedge — net heat should be reduced. Short VIX is
+      extremely dangerous due to unlimited upside; max short VIX heat is 0.5%.
+      VIX can double overnight in crisis events. Factor in VIX futures
+      contango/backwardation for roll cost. Output JSON only. Never fabricate data.

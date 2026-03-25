@@ -1,0 +1,133 @@
+prompts:
+  - id: head_shoulders
+    name: "Head and Shoulders Pattern Detector"
+    category: pattern_recognition
+    subcategory: chart_patterns
+    instrument: null
+    model: sonnet
+    schedule: daily
+    input_schema:
+      - daily_ohlc_all_60
+      - h4_ohlc_all_100
+      - swing_highs_lows_all
+      - volume_all
+    output_schema:
+      patterns_found: "list[dict]"
+      completion_status: "FORMING | NECKLINE_TEST | CONFIRMED | INVALIDATED"
+      measured_move_targets: "list[dict]"
+      confidence: "0.0-1.0"
+    prompt: |
+      Scan all 12 instruments for head and shoulders (H&S) and inverse H&S
+      patterns on daily and 4H timeframes. Validate: left shoulder, head, right
+      shoulder symmetry (within 20% height), neckline slope, volume pattern
+      (declining on right shoulder). Calculate measured move target (head-to-
+      neckline projected from break). H&S patterns have 65-70% accuracy when
+      volume confirms. Report forming, testing, and confirmed patterns.
+      Output JSON only. Never fabricate data.
+
+  - id: double_top_bottom
+    name: "Double Top/Bottom Pattern Detector"
+    category: pattern_recognition
+    subcategory: chart_patterns
+    instrument: null
+    model: sonnet
+    schedule: daily
+    input_schema:
+      - daily_ohlc_all_60
+      - h4_ohlc_all_100
+      - swing_highs_lows_all
+      - volume_all
+    output_schema:
+      patterns_found: "list[dict]"
+      pattern_type: "DOUBLE_TOP | DOUBLE_BOTTOM"
+      measured_move_target: "float"
+      confidence: "0.0-1.0"
+    prompt: |
+      Scan all 12 instruments for double top and double bottom patterns. Valid
+      double patterns require: two touches within 0.5% of the same level,
+      separated by 10-50 candles, with a minimum 3% pullback between touches.
+      Volume should decline on the second touch. Calculate measured move target
+      (pattern height projected from neckline break). Double bottom at SMA200
+      is one of the most reliable bullish patterns.
+      Output JSON only. Never fabricate data.
+
+  - id: triangle
+    name: "Triangle Pattern Detector"
+    category: pattern_recognition
+    subcategory: chart_patterns
+    instrument: null
+    model: sonnet
+    schedule: daily
+    input_schema:
+      - daily_ohlc_all_40
+      - h4_ohlc_all_80
+      - swing_highs_lows_all
+      - volume_all
+      - atr_all
+    output_schema:
+      patterns_found: "list[dict]"
+      triangle_type: "ASCENDING | DESCENDING | SYMMETRIC"
+      breakout_direction: "UP | DOWN | PENDING"
+      measured_move: "float"
+      confidence: "0.0-1.0"
+    prompt: |
+      Scan all 12 instruments for triangle patterns (ascending, descending,
+      symmetric). Valid triangles need 4+ touches of trendlines with converging
+      price action. Volume should contract within the triangle. Breakout occurs
+      at 50-75% of triangle length (not at the apex). Ascending triangles in
+      uptrends break up 70% of the time. Descending in downtrends break down
+      70%. Symmetric triangles break in trend direction 55%.
+      Output JSON only. Never fabricate data.
+
+  - id: flag_pennant
+    name: "Flag and Pennant Pattern Detector"
+    category: pattern_recognition
+    subcategory: chart_patterns
+    instrument: null
+    model: sonnet
+    schedule: every_run
+    input_schema:
+      - daily_ohlc_all_30
+      - h4_ohlc_all_60
+      - volume_all
+      - atr_all
+      - trend_direction_all
+    output_schema:
+      patterns_found: "list[dict]"
+      pattern_type: "BULL_FLAG | BEAR_FLAG | PENNANT"
+      measured_move: "float"
+      confidence: "0.0-1.0"
+    prompt: |
+      Scan all 12 instruments for flag and pennant continuation patterns. Valid
+      flags require: a strong impulse move (flagpole >2 ATR), followed by a
+      counter-trend consolidation (flag body) lasting 5-15 candles with declining
+      volume. Pennants are triangular consolidations after impulse moves. Measured
+      move = flagpole length projected from breakout. Flags in strong trends
+      have 65-70% continuation rate. Output JSON only. Never fabricate data.
+
+  - id: channel
+    name: "Channel Pattern Detector"
+    category: pattern_recognition
+    subcategory: chart_patterns
+    instrument: null
+    model: sonnet
+    schedule: daily
+    input_schema:
+      - daily_ohlc_all_60
+      - h4_ohlc_all_120
+      - swing_highs_lows_all
+      - trend_all
+    output_schema:
+      channels_found: "list[dict]"
+      channel_type: "ASCENDING | DESCENDING | HORIZONTAL"
+      position_in_channel: "UPPER | MIDDLE | LOWER"
+      breakout_risk: "LOW | MEDIUM | HIGH"
+      confidence: "0.0-1.0"
+    prompt: |
+      Scan all 12 instruments for price channels on daily and 4H. Identify
+      ascending, descending, and horizontal channels using parallel trendlines
+      through swing highs and lows. Requires 3+ touches on each boundary. Report
+      current position within the channel (buy at lower boundary, sell at upper
+      in ranges; trade breakouts in trends). Flag channels narrowing toward
+      apex as potential breakout setups.
+      Output JSON only. Never fabricate data.

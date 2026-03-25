@@ -1,0 +1,107 @@
+prompts:
+  - id: macro_conflict
+    name: "Macro Signal Conflict Detector"
+    category: risk_assessment
+    subcategory: conflict_detection
+    instrument: null
+    model: sonnet
+    schedule: every_run
+    input_schema:
+      - trend_signals_all
+      - cot_signals_all
+      - fundamental_bias_all
+      - intermarket_signals
+    output_schema:
+      conflicts: "list[dict]"
+      conflict_severity: "LOW | MEDIUM | HIGH"
+      affected_instruments: "list[str]"
+      resolution_suggestion: "str"
+      confidence: "0.0-1.0"
+    prompt: |
+      Detect conflicts between macro analysis layers: trend analysis, COT
+      positioning, fundamental outlook, and intermarket signals. A HIGH conflict
+      is when 3+ layers disagree (e.g., bullish trend + bearish COT extreme +
+      bearish fundamentals). MEDIUM is 2 layers conflicting. LOW is all aligned.
+      For each conflict, suggest resolution — typically defer to the higher
+      timeframe or the layer with the best historical accuracy.
+      Output JSON only. Never fabricate data.
+
+  - id: sentiment_price_divergence
+    name: "Sentiment-Price Divergence"
+    category: risk_assessment
+    subcategory: conflict_detection
+    instrument: null
+    model: sonnet
+    schedule: daily
+    input_schema:
+      - price_trend_all
+      - news_sentiment_all
+      - social_sentiment_all
+      - institutional_positioning
+    output_schema:
+      divergences: "list[dict]"
+      contrarian_signals: "list[dict]"
+      confirmation_signals: "list[dict]"
+      confidence: "0.0-1.0"
+    prompt: |
+      Detect divergences between price action and sentiment. When price is rising
+      but sentiment is deteriorating, smart money may be distributing (bearish
+      divergence). When price is falling but sentiment is improving, accumulation
+      may be occurring. Cross-reference with institutional positioning (COT) to
+      distinguish retail vs smart money sentiment. Strong contrarian signals
+      occur at sentiment extremes with price divergence.
+      Output JSON only. Never fabricate data.
+
+  - id: cot_price_divergence
+    name: "COT-Price Divergence"
+    category: risk_assessment
+    subcategory: conflict_detection
+    instrument: null
+    model: sonnet
+    schedule: weekly
+    input_schema:
+      - cot_net_positioning_all
+      - price_trend_all
+      - cot_extremes_all
+      - historical_cot_reversals
+    output_schema:
+      divergences: "list[dict]"
+      reversal_warnings: "list[dict]"
+      aligned_signals: "list[dict]"
+      confidence: "0.0-1.0"
+    prompt: |
+      Detect divergences between COT positioning and price trends. Key patterns:
+      (1) Price making new highs while commercial hedgers increase shorts = top
+      warning. (2) Price falling while large specs reduce shorts = bottom signal.
+      (3) Record net long/short by any category at price extremes = reversal
+      imminent. Historical accuracy of COT extremes for reversals is 65-75% over
+      2-6 week horizons. Flag all instruments with active divergences.
+      Output JSON only. Never fabricate data.
+
+  - id: intermarket_warning
+    name: "Intermarket Warning System"
+    category: risk_assessment
+    subcategory: conflict_detection
+    instrument: null
+    model: sonnet
+    schedule: daily
+    input_schema:
+      - dxy_trend
+      - gold_trend
+      - spx_trend
+      - vix_level
+      - yield_curve
+      - credit_spreads
+    output_schema:
+      warnings: "list[dict]"
+      risk_level: "LOW | ELEVATED | HIGH | CRITICAL"
+      cross_asset_narrative: "str"
+      confidence: "0.0-1.0"
+    prompt: |
+      Monitor intermarket relationships for warning signals. Red flags: (1) Yield
+      curve inverting while equities rally (recession risk), (2) Credit spreads
+      widening while VIX stays low (complacency), (3) Gold rallying with equities
+      (uncertainty), (4) DXY and equities both falling (loss of confidence in US
+      assets). Multiple simultaneous warnings escalate risk level. Provide a
+      narrative synthesizing the cross-asset picture.
+      Output JSON only. Never fabricate data.

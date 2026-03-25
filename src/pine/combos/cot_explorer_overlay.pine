@@ -1,0 +1,258 @@
+// =============================================================================
+// COT Explorer Overlay COMBO — Slot 1 (overlay=true, free account)
+// Kombinerer: SMC Zones + L2L Levels + VIX bakgrunn + PDH/PDL/PWH/PWL
+// =============================================================================
+//@version=5
+indicator("COT Explorer: Overlay Combo", shorttitle="CE Overlay", overlay=true,
+         max_boxes_count=50, max_lines_count=50, max_labels_count=50)
+
+// ── Fargepalett (mork tema) ─────────────────────────────────────────────────
+var color C_GREEN      = #3fb950
+var color C_RED        = #f85149
+var color C_YELLOW     = #d29922
+var color C_BLUE       = #58a6ff
+var color C_BG         = #161b22
+var color C_TEXT       = #c9d1d9
+var color C_SUPPLY     = color.new(#f85149, 75)
+var color C_SUPPLY_BRD = color.new(#f85149, 40)
+var color C_DEMAND     = color.new(#3fb950, 75)
+var color C_DEMAND_BRD = color.new(#3fb950, 40)
+
+// ══════════════════════════════════════════════════════════════════════════════
+// MODUL 1: VIX REGIME BAKGRUNN
+// ══════════════════════════════════════════════════════════════════════════════
+grp_vix = "VIX Regime"
+show_vix    = input.bool(true, "Aktiver VIX bakgrunn", group=grp_vix)
+extreme_thr = input.float(30.0, "Ekstrem VIX",   group=grp_vix, step=1.0)
+elevated_thr= input.float(25.0, "Forhoyet VIX",  group=grp_vix, step=1.0)
+normal_thr  = input.float(20.0, "Normal VIX",    group=grp_vix, step=1.0)
+
+vix = request.security("CBOE:VIX", "D", close, lookahead=barmerge.lookahead_on)
+
+bg_col = show_vix ? (vix >= extreme_thr ? color.new(C_RED, 85) :
+                     vix >= elevated_thr ? color.new(C_YELLOW, 88) :
+                     vix >= normal_thr   ? color.new(C_YELLOW, 93) : na) : na
+bgcolor(bg_col, title="VIX Regime")
+
+// VIX-label
+vix_regime_str = vix >= extreme_thr ? "EXTREME" : vix >= elevated_thr ? "ELEVATED" : vix >= normal_thr ? "FORHOY" : "NORMAL"
+pos_size_str   = vix >= extreme_thr ? "QUARTER" : vix >= normal_thr ? "HALF" : "FULL"
+
+// ══════════════════════════════════════════════════════════════════════════════
+// MODUL 2: PDH/PDL/PWH/PWL LINJER
+// ══════════════════════════════════════════════════════════════════════════════
+grp_levels = "Nivaer"
+show_pdhl = input.bool(true, "Vis PDH/PDL",  group=grp_levels)
+show_pwhl = input.bool(true, "Vis PWH/PWL",  group=grp_levels)
+
+pdh = request.security(syminfo.tickerid, "D", high[1],  lookahead=barmerge.lookahead_on)
+pdl = request.security(syminfo.tickerid, "D", low[1],   lookahead=barmerge.lookahead_on)
+pwh = request.security(syminfo.tickerid, "W", high[1],  lookahead=barmerge.lookahead_on)
+pwl = request.security(syminfo.tickerid, "W", low[1],   lookahead=barmerge.lookahead_on)
+
+if barstate.islast
+    if show_pdhl
+        var line pdh_ln = na, var line pdl_ln = na
+        var label pdh_lb = na, var label pdl_lb = na
+        line.delete(pdh_ln), line.delete(pdl_ln)
+        label.delete(pdh_lb), label.delete(pdl_lb)
+        pdh_ln := line.new(bar_index - 60, pdh, bar_index + 10, pdh, color=color.new(C_YELLOW, 30), style=line.style_dashed, width=1)
+        pdl_ln := line.new(bar_index - 60, pdl, bar_index + 10, pdl, color=color.new(C_YELLOW, 30), style=line.style_dashed, width=1)
+        pdh_lb := label.new(bar_index + 12, pdh, "PDH", color=na, textcolor=C_YELLOW, style=label.style_label_left, size=size.tiny)
+        pdl_lb := label.new(bar_index + 12, pdl, "PDL", color=na, textcolor=C_YELLOW, style=label.style_label_left, size=size.tiny)
+
+    if show_pwhl
+        var line pwh_ln = na, var line pwl_ln = na
+        var label pwh_lb = na, var label pwl_lb = na
+        line.delete(pwh_ln), line.delete(pwl_ln)
+        label.delete(pwh_lb), label.delete(pwl_lb)
+        pwh_ln := line.new(bar_index - 60, pwh, bar_index + 10, pwh, color=color.new(C_BLUE, 30), style=line.style_solid, width=1)
+        pwl_ln := line.new(bar_index - 60, pwl, bar_index + 10, pwl, color=color.new(C_BLUE, 30), style=line.style_solid, width=1)
+        pwh_lb := label.new(bar_index + 12, pwh, "PWH", color=na, textcolor=C_BLUE, style=label.style_label_left, size=size.tiny)
+        pwl_lb := label.new(bar_index + 12, pwl, "PWL", color=na, textcolor=C_BLUE, style=label.style_label_left, size=size.tiny)
+
+// ══════════════════════════════════════════════════════════════════════════════
+// MODUL 3: SMC SUPPLY/DEMAND ZONES
+// ══════════════════════════════════════════════════════════════════════════════
+grp_smc = "SMC Zones"
+show_smc      = input.bool(true, "Aktiver SMC soner",  group=grp_smc)
+swing_len     = input.int(10,    "Swing-lengde",        group=grp_smc, minval=3, maxval=50)
+zone_atr_frac = input.float(2.5, "Sonebredde (ATR/10)", group=grp_smc, step=0.5)
+max_zones     = input.int(5,     "Maks soner per side", group=grp_smc, minval=1, maxval=15)
+show_bos      = input.bool(true, "Vis BOS-linjer",      group=grp_smc)
+
+atr_val = ta.atr(50)
+atr_buf = atr_val * (zone_atr_frac / 10)
+
+ph = ta.pivothigh(high, swing_len, swing_len)
+pl = ta.pivotlow(low, swing_len, swing_len)
+
+// Swing-klassifisering for strukturlabel
+var float prev_ph_val = na, var float curr_ph_val = na
+var float prev_pl_val = na, var float curr_pl_val = na
+var string hi_label = "", var string lo_label = ""
+
+if not na(ph)
+    prev_ph_val := curr_ph_val
+    curr_ph_val := ph
+    hi_label := not na(prev_ph_val) ? (curr_ph_val > prev_ph_val ? "HH" : "LH") : "HH"
+if not na(pl)
+    prev_pl_val := curr_pl_val
+    curr_pl_val := pl
+    lo_label := not na(prev_pl_val) ? (curr_pl_val > prev_pl_val ? "HL" : "LL") : "HL"
+
+struct_str = hi_label == "HH" and lo_label == "HL" ? "BULLISH" : hi_label == "LH" and lo_label == "LL" ? "BEARISH" : "MIXED"
+
+// Supply/Demand bokser
+var box[]   s_boxes = array.new_box()
+var float[] s_tops  = array.new_float()
+var float[] s_bots  = array.new_float()
+var box[]   d_boxes = array.new_box()
+var float[] d_tops  = array.new_float()
+var float[] d_bots  = array.new_float()
+
+if show_smc
+    // Rens brutte supply-soner
+    if array.size(s_boxes) > 0
+        for i = array.size(s_boxes) - 1 to 0
+            if close > array.get(s_tops, i)
+                if show_bos
+                    mid = (array.get(s_tops, i) + array.get(s_bots, i)) / 2
+                    line.new(bar_index - swing_len * 2, mid, bar_index, mid, color=C_GREEN, style=line.style_solid, width=2)
+                box.delete(array.get(s_boxes, i))
+                array.remove(s_boxes, i)
+                array.remove(s_tops, i)
+                array.remove(s_bots, i)
+
+    // Rens brutte demand-soner
+    if array.size(d_boxes) > 0
+        for i = array.size(d_boxes) - 1 to 0
+            if close < array.get(d_bots, i)
+                if show_bos
+                    mid = (array.get(d_tops, i) + array.get(d_bots, i)) / 2
+                    line.new(bar_index - swing_len * 2, mid, bar_index, mid, color=C_RED, style=line.style_solid, width=2)
+                box.delete(array.get(d_boxes, i))
+                array.remove(d_boxes, i)
+                array.remove(d_tops, i)
+                array.remove(d_bots, i)
+
+    // Ny supply-sone
+    if not na(ph)
+        s_top = ph
+        s_bot = ph - atr_buf
+        overlap = false
+        if array.size(s_tops) > 0
+            for i = 0 to array.size(s_tops) - 1
+                if math.abs(s_top - array.get(s_tops, i)) < atr_val * 2
+                    overlap := true
+                    break
+        if not overlap
+            if array.size(s_boxes) >= max_zones
+                box.delete(array.get(s_boxes, 0))
+                array.remove(s_boxes, 0)
+                array.remove(s_tops, 0)
+                array.remove(s_bots, 0)
+            array.push(s_boxes, box.new(bar_index - swing_len, s_top, bar_index + 100, s_bot, bgcolor=C_SUPPLY, border_color=C_SUPPLY_BRD))
+            array.push(s_tops, s_top)
+            array.push(s_bots, s_bot)
+
+    // Ny demand-sone
+    if not na(pl)
+        d_bot = pl
+        d_top = pl + atr_buf
+        overlap = false
+        if array.size(d_bots) > 0
+            for i = 0 to array.size(d_bots) - 1
+                if math.abs(d_bot - array.get(d_bots, i)) < atr_val * 2
+                    overlap := true
+                    break
+        if not overlap
+            if array.size(d_boxes) >= max_zones
+                box.delete(array.get(d_boxes, 0))
+                array.remove(d_boxes, 0)
+                array.remove(d_tops, 0)
+                array.remove(d_bots, 0)
+            array.push(d_boxes, box.new(bar_index - swing_len, d_top, bar_index + 100, d_bot, bgcolor=C_DEMAND, border_color=C_DEMAND_BRD))
+            array.push(d_tops, d_top)
+            array.push(d_bots, d_bot)
+
+    // Forleng bokser
+    if array.size(s_boxes) > 0
+        for i = 0 to array.size(s_boxes) - 1
+            box.set_right(array.get(s_boxes, i), bar_index + 20)
+    if array.size(d_boxes) > 0
+        for i = 0 to array.size(d_boxes) - 1
+            box.set_right(array.get(d_boxes, i), bar_index + 20)
+
+// ══════════════════════════════════════════════════════════════════════════════
+// MODUL 4: L2L SETUP-LINJER
+// ══════════════════════════════════════════════════════════════════════════════
+grp_l2l = "L2L Setup"
+show_l2l     = input.bool(false, "Aktiver L2L linjer",  group=grp_l2l)
+entry_price  = input.float(0.0,  "Entry",               group=grp_l2l, step=0.0001)
+sl_price     = input.float(0.0,  "SL",                  group=grp_l2l, step=0.0001)
+t1_price     = input.float(0.0,  "T1",                  group=grp_l2l, step=0.0001)
+t2_price     = input.float(0.0,  "T2",                  group=grp_l2l, step=0.0001)
+l2l_dir      = input.string("LONG", "Retning",          group=grp_l2l, options=["LONG", "SHORT"])
+l2l_src      = input.string("PDL",  "Entry-kilde",      group=grp_l2l, options=["PDL","PDH","PWL","PWH","SMC_demand","SMC_supply"])
+
+has_l2l = show_l2l and entry_price != 0.0 and sl_price != 0.0 and t1_price != 0.0
+l2l_risk = math.abs(entry_price - sl_price)
+l2l_rr1  = l2l_risk != 0 ? math.abs(t1_price - entry_price) / l2l_risk : 0.0
+l2l_rr2  = (l2l_risk != 0 and t2_price != 0.0) ? math.abs(t2_price - entry_price) / l2l_risk : 0.0
+l2l_long = l2l_dir == "LONG"
+
+if has_l2l and barstate.islast
+    e_col = l2l_long ? C_GREEN : C_RED
+
+    var line e_ln = na, var line s_ln = na, var line t1_ln = na, var line t2_ln = na
+    var label e_lb = na, var label s_lb = na, var label t1_lb = na, var label t2_lb = na
+    var box risk_bx = na
+    line.delete(e_ln), line.delete(s_ln), line.delete(t1_ln), line.delete(t2_ln)
+    label.delete(e_lb), label.delete(s_lb), label.delete(t1_lb), label.delete(t2_lb)
+    box.delete(risk_bx)
+
+    e_ln  := line.new(bar_index - 30, entry_price, bar_index + 15, entry_price, color=e_col, style=line.style_solid, width=2)
+    e_lb  := label.new(bar_index + 16, entry_price, "ENTRY [" + l2l_src + "]", color=na, textcolor=e_col, style=label.style_label_left, size=size.tiny)
+
+    s_ln  := line.new(bar_index - 30, sl_price, bar_index + 15, sl_price, color=C_RED, style=line.style_dotted, width=2)
+    s_lb  := label.new(bar_index + 16, sl_price, "SL", color=na, textcolor=C_RED, style=label.style_label_left, size=size.tiny)
+
+    t1_ln := line.new(bar_index - 30, t1_price, bar_index + 15, t1_price, color=C_GREEN, style=line.style_dashed, width=1)
+    t1_lb := label.new(bar_index + 16, t1_price, "T1  R:R " + str.tostring(l2l_rr1, "#0.0"), color=na, textcolor=C_GREEN, style=label.style_label_left, size=size.tiny)
+
+    if t2_price != 0.0
+        t2_ln := line.new(bar_index - 30, t2_price, bar_index + 15, t2_price, color=C_BLUE, style=line.style_dashed, width=1)
+        t2_lb := label.new(bar_index + 16, t2_price, "T2  R:R " + str.tostring(l2l_rr2, "#0.0"), color=na, textcolor=C_BLUE, style=label.style_label_left, size=size.tiny)
+
+    // Risikosone
+    risk_bx := box.new(bar_index - 30, math.max(entry_price, sl_price), bar_index + 15, math.min(entry_price, sl_price), bgcolor=color.new(C_RED, 90), border_color=na)
+
+// ══════════════════════════════════════════════════════════════════════════════
+// INFOTABELL (ovre venstre)
+// ══════════════════════════════════════════════════════════════════════════════
+if barstate.islast
+    var table it = table.new(position.top_left, 2, 4, bgcolor=C_BG, border_width=1, border_color=color.new(C_TEXT, 70))
+
+    // VIX
+    v_col = vix >= extreme_thr ? C_RED : vix >= normal_thr ? C_YELLOW : C_GREEN
+    table.cell(it, 0, 0, "VIX",      text_color=C_TEXT, text_size=size.tiny, text_halign=text.align_left)
+    table.cell(it, 1, 0, str.tostring(vix, "#0.1") + " " + vix_regime_str, text_color=v_col, text_size=size.tiny)
+
+    // Posisjon
+    ps_col = pos_size_str == "FULL" ? C_GREEN : pos_size_str == "HALF" ? C_YELLOW : C_RED
+    table.cell(it, 0, 1, "Storrelse", text_color=C_TEXT, text_size=size.tiny, text_halign=text.align_left)
+    table.cell(it, 1, 1, pos_size_str, text_color=ps_col, text_size=size.tiny)
+
+    // Struktur
+    s_col = struct_str == "BULLISH" ? C_GREEN : struct_str == "BEARISH" ? C_RED : C_YELLOW
+    table.cell(it, 0, 2, "SMC",      text_color=C_TEXT, text_size=size.tiny, text_halign=text.align_left)
+    table.cell(it, 1, 2, struct_str,  text_color=s_col, text_size=size.tiny)
+
+    // L2L status
+    if has_l2l
+        table.cell(it, 0, 3, "L2L",  text_color=C_TEXT, text_size=size.tiny, text_halign=text.align_left)
+        table.cell(it, 1, 3, l2l_dir + " R:R " + str.tostring(l2l_rr1, "#0.0"), text_color=l2l_long ? C_GREEN : C_RED, text_size=size.tiny)
+    else
+        table.cell(it, 0, 3, "L2L",  text_color=C_TEXT,   text_size=size.tiny, text_halign=text.align_left)
+        table.cell(it, 1, 3, "---",  text_color=color.gray, text_size=size.tiny)

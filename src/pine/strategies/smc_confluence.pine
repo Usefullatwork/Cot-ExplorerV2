@@ -1,0 +1,156 @@
+// =============================================================================
+// SMC + Confluence Strategy — Backtestbar strategi
+// Entry: Confluence score >= min_score OG pris i demand-sone (long) / supply-sone (short)
+// SL: Sonegrense + 0.3x ATR buffer
+// TP: min_rr x risiko
+// =============================================================================
+//@version=5
+strategy("COT Explorer: SMC Confluence", shorttitle="SMC+Score", overlay=true,
+         default_qty_type=strategy.percent_of_equity, default_qty_value=2,
+         initial_capital=100000, commission_type=strategy.commission.percent,
+         commission_value=0.02, slippage=2, max_boxes_count=50)
+
+// ── Fargepalett (mork tema) ─────────────────────────────────────────────────
+var color C_GREEN  = #3fb950
+var color C_RED    = #f85149
+var color C_YELLOW = #d29922
+var color C_BLUE   = #58a6ff
+
+// ── Inputs — Strategi ───────────────────────────────────────────────────────
+min_score    = input.int(8,    "Minimum score for entry",   minval=1, maxval=12)
+min_rr       = input.float(1.5, "Minimum R:R for TP",       step=0.1)
+atr_sl_buf   = input.float(0.3, "SL buffer (xATR)",         step=0.05)
+swing_len    = input.int(10,   "Swing-lengde for SMC",      minval=3, maxval=50)
+zone_atr_frac = input.float(2.5, "Sonebredde (ATR/10)",     step=0.5)
+use_sma200   = input.bool(true, "SMA200-trendfilter")
+
+// ── Manuelle inputs (COT/fundamental fra Python) ────────────────────────────
+in_cot_confirms    = input.bool(false, "COT bekrefter retning")
+in_cot_strong      = input.bool(false, "COT sterk (>10%)")
+in_no_event_risk   = input.bool(true,  "Ingen event-risiko")
+in_news_confirms   = input.bool(false, "Nyheter bekrefter")
+in_fund_confirms   = input.bool(false, "Fundamental bekrefter")
+
+// ── ATR ─────────────────────────────────────────────────────────────────────
+atr14  = ta.atr(14)
+atr50  = ta.atr(50)
+atr_buf = atr50 * (zone_atr_frac / 10)
+
+// ── SMA200 ──────────────────────────────────────────────────────────────────
+sma200 = ta.sma(close, 200)
+
+// ── SMC: Pivot highs/lows ───────────────────────────────────────────────────
+ph = ta.pivothigh(high, swing_len, swing_len)
+pl = ta.pivotlow(low, swing_len, swing_len)
+
+// Swing-klassifisering
+var float prev_ph = na
+var float curr_ph = na
+var float prev_pl = na
+var float curr_pl = na
+var string last_hi_label = ""
+var string last_lo_label = ""
+
+if not na(ph)
+    prev_ph := curr_ph
+    curr_ph := ph
+    last_hi_label := not na(prev_ph) ? (curr_ph > prev_ph ? "HH" : "LH") : "HH"
+
+if not na(pl)
+    prev_pl := curr_pl
+    curr_pl := pl
+    last_lo_label := not na(prev_pl) ? (curr_pl > prev_pl ? "HL" : "LL") : "HL"
+
+// ── Supply/Demand soner (forenklet — naermeste sone) ────────────────────────
+var float nearest_supply_top = na
+var float nearest_supply_bot = na
+var float nearest_demand_top = na
+var float nearest_demand_bot = na
+
+if not na(ph)
+    s_top = ph
+    s_bot = ph - atr_buf
+    if na(nearest_supply_top) or math.abs(s_top - close) < math.abs(nearest_supply_top - close)
+        nearest_supply_top := s_top
+        nearest_supply_bot := s_bot
+
+if not na(pl)
+    d_bot = pl
+    d_top = pl + atr_buf
+    if na(nearest_demand_bot) or math.abs(d_bot - close) < math.abs(nearest_demand_bot - close)
+        nearest_demand_top := d_top
+        nearest_demand_bot := d_bot
+
+// ── Sjekk om pris er i sone ────────────────────────────────────────────────
+in_demand_zone = not na(nearest_demand_bot) and close >= nearest_demand_bot and close <= nearest_demand_top
+in_supply_zone = not na(nearest_supply_bot) and close >= nearest_supply_bot and close <= nearest_supply_top
+
+// ── Confluence Score (forenklet — 12 kriterier) ─────────────────────────────
+// Auto-beregnede (7 av 12)
+c1_sma200    = close > sma200
+c2_momentum  = (close - close[20]) / close[20] * 100 > 0
+
+// PDH/PDL
+pdh = request.security(syminfo.tickerid, "D", high[1], lookahead=barmerge.lookahead_on)
+pdl = request.security(syminfo.tickerid, "D", low[1],  lookahead=barmerge.lookahead_on)
+nearest_dist = math.min(math.abs(close - pdh), math.abs(close - pdl))
+c5_at_level = nearest_dist <= atr14 * 0.45
+
+// PWH/PWL
+pwh = request.security(syminfo.tickerid, "W", high[1], lookahead=barmerge.lookahead_on)
+pwl = request.security(syminfo.tickerid, "W", low[1],  lookahead=barmerge.lookahead_on)
+c6_htf = math.min(math.abs(close - pwh), math.abs(close - pwl)) <= atr14 * 3.0
+
+// Trend
+ema9_d  = request.security(syminfo.tickerid, "D",   ta.ema(close, 9), lookahead=barmerge.lookahead_off)
+ema9_4h = request.security(syminfo.tickerid, "240", ta.ema(close, 9), lookahead=barmerge.lookahead_off)
+
+// For long
+long_score = (c1_sma200 ? 1 : 0) + (c2_momentum ? 1 : 0) +
+             (in_cot_confirms ? 1 : 0) + (in_cot_strong ? 1 : 0) +
+             (c5_at_level ? 1 : 0) + (c6_htf ? 1 : 0) +
+             (close > ema9_d and close > ema9_4h ? 1 : 0) +
+             (in_no_event_risk ? 1 : 0) + (in_news_confirms ? 1 : 0) + (in_fund_confirms ? 1 : 0) +
+             (not na(curr_ph) and close > curr_ph ? 1 : 0) +
+             (last_hi_label == "HH" and last_lo_label == "HL" ? 1 : 0)
+
+// For short
+short_score = (not c1_sma200 ? 1 : 0) + (not c2_momentum ? 1 : 0) +
+              (in_cot_confirms ? 1 : 0) + (in_cot_strong ? 1 : 0) +
+              (c5_at_level ? 1 : 0) + (c6_htf ? 1 : 0) +
+              (close < ema9_d and close < ema9_4h ? 1 : 0) +
+              (in_no_event_risk ? 1 : 0) + (in_news_confirms ? 1 : 0) + (in_fund_confirms ? 1 : 0) +
+              (not na(curr_pl) and close < curr_pl ? 1 : 0) +
+              (last_hi_label == "LH" and last_lo_label == "LL" ? 1 : 0)
+
+// ── Entry-signaler ──────────────────────────────────────────────────────────
+sma_long_ok  = not use_sma200 or close > sma200
+sma_short_ok = not use_sma200 or close < sma200
+
+long_signal  = long_score >= min_score and in_demand_zone and sma_long_ok
+short_signal = short_score >= min_score and in_supply_zone and sma_short_ok
+
+// ── Posisjonshandtering ─────────────────────────────────────────────────────
+if long_signal and strategy.position_size == 0
+    sl_price = nearest_demand_bot - atr14 * atr_sl_buf
+    risk     = close - sl_price
+    tp_price = close + risk * min_rr
+    strategy.entry("Long", strategy.long)
+    strategy.exit("Long TP/SL", "Long", stop=sl_price, limit=tp_price)
+
+if short_signal and strategy.position_size == 0
+    sl_price = nearest_supply_top + atr14 * atr_sl_buf
+    risk     = sl_price - close
+    tp_price = close - risk * min_rr
+    strategy.entry("Short", strategy.short)
+    strategy.exit("Short TP/SL", "Short", stop=sl_price, limit=tp_price)
+
+// ── Visuelt ─────────────────────────────────────────────────────────────────
+plotshape(long_signal  and strategy.position_size == 0, "Long",  shape.triangleup,   location.belowbar, C_GREEN, size=size.small)
+plotshape(short_signal and strategy.position_size == 0, "Short", shape.triangledown, location.abovebar, C_RED,   size=size.small)
+
+plot(use_sma200 ? sma200 : na, "SMA200", color=color.new(C_YELLOW, 40), linewidth=1)
+
+// Score-bakgrunn
+curr_score = strategy.position_size > 0 ? long_score : strategy.position_size < 0 ? short_score : math.max(long_score, short_score)
+bgcolor(curr_score >= 11 ? color.new(C_GREEN, 93) : curr_score >= 9 ? color.new(C_YELLOW, 93) : na, title="Score bakgrunn")

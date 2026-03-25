@@ -1,0 +1,387 @@
+prompts:
+  - id: calendar_scanner
+    name: "Economic Calendar Scanner"
+    category: risk_assessment
+    subcategory: event_risk
+    instrument: null
+    model: haiku
+    schedule: daily
+    input_schema:
+      - economic_calendar_7d
+      - high_impact_events
+      - historical_event_impact
+    output_schema:
+      upcoming_events: "list[dict]"
+      risk_windows: "list[dict]"
+      instruments_at_risk: "dict[str, list[str]]"
+      confidence: "0.0-1.0"
+    prompt: |
+      Scan the economic calendar for the next 7 days. Classify events by impact
+      (HIGH/MEDIUM/LOW) and map to affected instruments. Key events: NFP (all),
+      CPI (all), FOMC (all), ECB (EUR), BoJ (JPY), BoE (GBP), RBA (AUD), EIA
+      (oil), GDP (equities). Create risk windows (30 min before to 60 min after)
+      where new positions should not be opened. Flag any event clusters (multiple
+      high-impact same day). Output JSON only. Never fabricate data.
+
+  - id: central_bank_risk
+    name: "Central Bank Event Risk"
+    category: risk_assessment
+    subcategory: event_risk
+    instrument: null
+    model: sonnet
+    schedule: daily
+    input_schema:
+      - central_bank_calendar
+      - rate_expectations
+      - recent_speeches
+      - market_pricing
+    output_schema:
+      upcoming_decisions: "list[dict]"
+      surprise_probability: "dict[str, float]"
+      instruments_at_risk: "list[dict]"
+      positioning_advice: "str"
+      confidence: "0.0-1.0"
+    prompt: |
+      Assess central bank event risk for the next 2 weeks. Compare market-priced
+      rate expectations (fed funds futures, OIS) to recent rhetoric. Identify
+      where markets may be mispriced — a hawkish surprise when market expects
+      dovish creates the largest moves. Rate surprise probability for each bank.
+      Recommend position adjustments: flatten ahead of high-surprise-probability
+      events, or position for expected outcome if market is clearly mispriced.
+      Output JSON only. Never fabricate data.
+
+  - id: geopolitical_risk
+    name: "Geopolitical Risk Scanner"
+    category: risk_assessment
+    subcategory: event_risk
+    instrument: null
+    model: sonnet
+    schedule: daily
+    input_schema:
+      - news_headlines
+      - geopolitical_risk_index
+      - oil_supply_disruption_risk
+      - safe_haven_flows
+    output_schema:
+      risk_level: "LOW | ELEVATED | HIGH | CRITICAL"
+      active_risks: "list[dict]"
+      affected_instruments: "dict[str, str]"
+      hedge_recommendations: "list[dict]"
+      confidence: "0.0-1.0"
+    prompt: |
+      Assess geopolitical risk impact on trading instruments. Key risk vectors:
+      Middle East (oil supply, safe havens), US-China (tech, AUD, commodities),
+      Russia-Ukraine (energy, EUR), Taiwan (semiconductors, NAS100). Classify
+      risk level and map to instrument impact. In CRITICAL risk, recommend:
+      long gold, long VIX, reduce commodity and equity exposure, favor USD.
+      Output JSON only. Never fabricate data.
+
+  # ── Pre-event risk per instrument (12) ─────────────────────────────
+  - id: pre_event_eurusd
+    name: "Pre-Event Risk - EUR/USD"
+    category: risk_assessment
+    subcategory: event_risk
+    instrument: EURUSD
+    model: haiku
+    schedule: every_run
+    input_schema:
+      - upcoming_events_eur_usd
+      - open_positions_eurusd
+      - implied_vol_eurusd
+      - historical_event_moves
+    output_schema:
+      events_next_24h: "list[dict]"
+      expected_move: "float"
+      position_action: "HOLD | REDUCE | CLOSE | HEDGE"
+      risk_reward_impact: "str"
+      confidence: "0.0-1.0"
+    prompt: |
+      Assess pre-event risk for EUR/USD open positions. Check for ECB decisions,
+      Eurozone CPI/PMI, US NFP/CPI/FOMC within 24 hours. Calculate expected move
+      from implied volatility and historical event reactions. If expected move >
+      current stop distance, recommend reducing or closing. EUR/USD average NFP
+      move is 50-80 pips; FOMC is 80-120 pips.
+      Output JSON only. Never fabricate data.
+
+  - id: pre_event_usdjpy
+    name: "Pre-Event Risk - USD/JPY"
+    category: risk_assessment
+    subcategory: event_risk
+    instrument: USDJPY
+    model: haiku
+    schedule: every_run
+    input_schema:
+      - upcoming_events_usd_jpy
+      - open_positions_usdjpy
+      - implied_vol_usdjpy
+      - historical_event_moves
+    output_schema:
+      events_next_24h: "list[dict]"
+      expected_move: "float"
+      position_action: "HOLD | REDUCE | CLOSE | HEDGE"
+      risk_reward_impact: "str"
+      confidence: "0.0-1.0"
+    prompt: |
+      Assess pre-event risk for USD/JPY. Critical events: BoJ decisions (can move
+      300+ pips), US CPI/NFP (100-150 pips), MoF intervention (500+ pips sudden).
+      USD/JPY has asymmetric event risk — BoJ hawkish surprise creates much larger
+      moves than expected. If near intervention zones and event is imminent,
+      strongly recommend closing or tight hedging.
+      Output JSON only. Never fabricate data.
+
+  - id: pre_event_gbpusd
+    name: "Pre-Event Risk - GBP/USD"
+    category: risk_assessment
+    subcategory: event_risk
+    instrument: GBPUSD
+    model: haiku
+    schedule: every_run
+    input_schema:
+      - upcoming_events_gbp_usd
+      - open_positions_gbpusd
+      - implied_vol_gbpusd
+      - historical_event_moves
+    output_schema:
+      events_next_24h: "list[dict]"
+      expected_move: "float"
+      position_action: "HOLD | REDUCE | CLOSE | HEDGE"
+      risk_reward_impact: "str"
+      confidence: "0.0-1.0"
+    prompt: |
+      Assess pre-event risk for GBP/USD. Key events: BoE rate decisions (80-120
+      pip average move), UK CPI (60-80 pips), UK employment (50-70 pips). Cable
+      is also sensitive to fiscal announcements (budget, mini-budget risk). If
+      BoE decision within 24 hours and position is >1% of equity, recommend
+      reducing by 50%. Output JSON only. Never fabricate data.
+
+  - id: pre_event_audusd
+    name: "Pre-Event Risk - AUD/USD"
+    category: risk_assessment
+    subcategory: event_risk
+    instrument: AUDUSD
+    model: haiku
+    schedule: every_run
+    input_schema:
+      - upcoming_events_aud_usd
+      - open_positions_audusd
+      - implied_vol_audusd
+      - historical_event_moves
+    output_schema:
+      events_next_24h: "list[dict]"
+      expected_move: "float"
+      position_action: "HOLD | REDUCE | CLOSE | HEDGE"
+      risk_reward_impact: "str"
+      confidence: "0.0-1.0"
+    prompt: |
+      Assess pre-event risk for AUD/USD. Key events: RBA decisions (50-80 pip
+      average), China PMI/GDP (40-60 pips), Australian employment (40-60 pips).
+      AUD/USD is also sensitive to iron ore price swings and risk sentiment shifts.
+      China data releases occur during Australian trading hours and can gap AUD/USD
+      at Asian open. Output JSON only. Never fabricate data.
+
+  - id: pre_event_gold
+    name: "Pre-Event Risk - Gold"
+    category: risk_assessment
+    subcategory: event_risk
+    instrument: Gold
+    model: haiku
+    schedule: every_run
+    input_schema:
+      - upcoming_events_gold
+      - open_positions_gold
+      - implied_vol_gold
+      - historical_event_moves
+    output_schema:
+      events_next_24h: "list[dict]"
+      expected_move: "float"
+      position_action: "HOLD | REDUCE | CLOSE | HEDGE"
+      risk_reward_impact: "str"
+      confidence: "0.0-1.0"
+    prompt: |
+      Assess pre-event risk for Gold positions. Gold reacts to: FOMC ($20-40
+      average move), NFP ($15-25), CPI ($15-30), geopolitical escalation ($30-50+).
+      Gold has asymmetric event risk — dovish surprises create larger rallies than
+      hawkish surprises create declines (safe-haven floor). If FOMC within 24h
+      and position is >1% equity, recommend reducing by 50%.
+      Output JSON only. Never fabricate data.
+
+  - id: pre_event_silver
+    name: "Pre-Event Risk - Silver"
+    category: risk_assessment
+    subcategory: event_risk
+    instrument: Silver
+    model: haiku
+    schedule: every_run
+    input_schema:
+      - upcoming_events_silver
+      - open_positions_silver
+      - implied_vol_silver
+      - historical_event_moves
+    output_schema:
+      events_next_24h: "list[dict]"
+      expected_move: "float"
+      position_action: "HOLD | REDUCE | CLOSE | HEDGE"
+      risk_reward_impact: "str"
+      confidence: "0.0-1.0"
+    prompt: |
+      Assess pre-event risk for Silver positions. Silver moves 1.5-2x gold on
+      the same events but with wider spreads and more slippage. Average FOMC move
+      is $0.50-$1.00. Silver has additional industrial demand risk from PMI and
+      manufacturing data. Recommend closing Silver positions before high-impact
+      events unless stop is wider than 2x expected move.
+      Output JSON only. Never fabricate data.
+
+  - id: pre_event_brent
+    name: "Pre-Event Risk - Brent Crude"
+    category: risk_assessment
+    subcategory: event_risk
+    instrument: Brent
+    model: haiku
+    schedule: every_run
+    input_schema:
+      - upcoming_events_brent
+      - open_positions_brent
+      - implied_vol_brent
+      - historical_event_moves
+    output_schema:
+      events_next_24h: "list[dict]"
+      expected_move: "float"
+      position_action: "HOLD | REDUCE | CLOSE | HEDGE"
+      risk_reward_impact: "str"
+      confidence: "0.0-1.0"
+    prompt: |
+      Assess pre-event risk for Brent Crude positions. Key events: OPEC meetings
+      ($2-5 moves), EIA inventory ($1-2), geopolitical escalation ($3-10+).
+      Brent has significant weekend gap risk during geopolitical tensions. If
+      OPEC meeting within 48 hours, recommend half-size positions. Brent can
+      gap $5+ on surprise OPEC+ production cut/hike announcements.
+      Output JSON only. Never fabricate data.
+
+  - id: pre_event_wti
+    name: "Pre-Event Risk - WTI Crude"
+    category: risk_assessment
+    subcategory: event_risk
+    instrument: WTI
+    model: haiku
+    schedule: every_run
+    input_schema:
+      - upcoming_events_wti
+      - open_positions_wti
+      - implied_vol_wti
+      - historical_event_moves
+    output_schema:
+      events_next_24h: "list[dict]"
+      expected_move: "float"
+      position_action: "HOLD | REDUCE | CLOSE | HEDGE"
+      risk_reward_impact: "str"
+      confidence: "0.0-1.0"
+    prompt: |
+      Assess pre-event risk for WTI Crude positions. WTI-specific events: EIA
+      weekly inventory (Wednesday 10:30 ET, $1-2 average move), API data (Tuesday
+      4:30 PM ET, $0.50-1), monthly OPEC report. WTI also has contract roll risk
+      near expiry — avoid holding through roll if position is speculative.
+      Recommend closing short-term WTI positions before EIA.
+      Output JSON only. Never fabricate data.
+
+  - id: pre_event_spx
+    name: "Pre-Event Risk - S&P 500"
+    category: risk_assessment
+    subcategory: event_risk
+    instrument: SPX
+    model: haiku
+    schedule: every_run
+    input_schema:
+      - upcoming_events_spx
+      - open_positions_spx
+      - implied_vol_spx
+      - historical_event_moves
+    output_schema:
+      events_next_24h: "list[dict]"
+      expected_move: "float"
+      position_action: "HOLD | REDUCE | CLOSE | HEDGE"
+      risk_reward_impact: "str"
+      confidence: "0.0-1.0"
+    prompt: |
+      Assess pre-event risk for S&P 500 positions. Key events: FOMC (1-2% average
+      move), NFP (0.5-1%), CPI (0.5-1.5%), earnings season (individual mega-cap
+      can move SPX 1%+). Options expiry weeks (especially quad witching) increase
+      intraday volatility. If VIX is already elevated (>25) ahead of FOMC,
+      recommend maximum 50% normal position size.
+      Output JSON only. Never fabricate data.
+
+  - id: pre_event_nas100
+    name: "Pre-Event Risk - NASDAQ 100"
+    category: risk_assessment
+    subcategory: event_risk
+    instrument: NAS100
+    model: haiku
+    schedule: every_run
+    input_schema:
+      - upcoming_events_nas100
+      - open_positions_nas100
+      - implied_vol_nas100
+      - historical_event_moves
+    output_schema:
+      events_next_24h: "list[dict]"
+      expected_move: "float"
+      position_action: "HOLD | REDUCE | CLOSE | HEDGE"
+      risk_reward_impact: "str"
+      confidence: "0.0-1.0"
+    prompt: |
+      Assess pre-event risk for NASDAQ 100 positions. NAS100 has 1.3x beta to
+      SPX on macro events. Mega-cap earnings (AAPL, MSFT, NVDA, AMZN, META, GOOG)
+      can individually move NAS100 2-3%. If 2+ mega-caps report in the same week,
+      recommend reducing to 50% normal size. After-hours earnings create overnight
+      gap risk. Output JSON only. Never fabricate data.
+
+  - id: pre_event_dxy
+    name: "Pre-Event Risk - DXY"
+    category: risk_assessment
+    subcategory: event_risk
+    instrument: DXY
+    model: haiku
+    schedule: every_run
+    input_schema:
+      - upcoming_events_dxy
+      - open_positions_dxy
+      - implied_vol_dxy
+      - historical_event_moves
+    output_schema:
+      events_next_24h: "list[dict]"
+      expected_move: "float"
+      position_action: "HOLD | REDUCE | CLOSE | HEDGE"
+      risk_reward_impact: "str"
+      confidence: "0.0-1.0"
+    prompt: |
+      Assess pre-event risk for DXY positions. DXY reacts to: FOMC (0.5-1.5%),
+      NFP (0.3-0.7%), CPI (0.3-1.0%), ECB (0.3-0.5% due to EUR weight). DXY
+      is the composite of USD-FX pairs — event risk should also consider all
+      FX pair positions as USD-directional trades. If combined USD-directional
+      exposure is >3% of equity and FOMC within 24h, recommend reducing.
+      Output JSON only. Never fabricate data.
+
+  - id: pre_event_vix
+    name: "Pre-Event Risk - VIX"
+    category: risk_assessment
+    subcategory: event_risk
+    instrument: VIX
+    model: haiku
+    schedule: every_run
+    input_schema:
+      - upcoming_events_vix
+      - open_positions_vix
+      - vix_term_structure
+      - historical_event_moves
+    output_schema:
+      events_next_24h: "list[dict]"
+      expected_move: "float"
+      position_action: "HOLD | REDUCE | CLOSE | HEDGE"
+      risk_reward_impact: "str"
+      confidence: "0.0-1.0"
+    prompt: |
+      Assess pre-event risk for VIX positions. VIX has unique event dynamics:
+      it typically rises into events (uncertainty premium) and drops after
+      (resolution). FOMC days: VIX drops 2-4 points post-announcement on average.
+      Short VIX into events is extremely dangerous — VIX can spike 50-100% in
+      hours. Long VIX positions benefit from pre-event premium but lose on
+      resolution. Output JSON only. Never fabricate data.
