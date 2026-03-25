@@ -1,0 +1,66 @@
+/* ── Main layout & grid systems ───────────────────────────── */
+.main {
+  padding: 18px 20px;
+  max-width: 1400px;
+  margin: 0 auto;
+}
+
+.panel {
+  display: none;
+}
+.panel.active {
+  display: block;
+}
+
+/* Grid utilities */
+.g2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-bottom: 18px;
+}
+
+.g3 {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+  margin-bottom: 18px;
+}
+
+.g4 {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+  margin-bottom: 18px;
+}
+
+.g21 {
+  display: grid;
+  grid-template-columns: 2fr 1fr;
+  gap: 12px;
+  margin-bottom: 18px;
+}
+
+/* Section headers */
+.sh {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 14px;
+}
+
+.sh-t {
+  font-family: 'Playfair Display', serif;
+  font-size: 17px;
+  font-weight: 700;
+}
+
+.sh-b {
+  font-size: 10px;
+  font-family: 'DM Mono', monospace;
+  color: var(--m);
+  background: var(--s2);
+  padding: 2px 7px;
+  border-radius: 4px;
+  border: 1px solid var(--b);
+}

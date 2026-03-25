@@ -1,0 +1,259 @@
+/* ── Panel-specific overrides (macro, calendar, pine) ─────── */
+
+/* Dollar Smile model */
+.smile {
+  display: flex;
+  margin: 14px 0;
+}
+
+.sseg {
+  flex: 1;
+  padding: 10px 8px;
+  text-align: center;
+  border: 1px solid var(--b);
+}
+.sseg:first-child { border-radius: 8px 0 0 8px; }
+.sseg:last-child  { border-radius: 0 8px 8px 0; }
+.sseg.al { background: var(--rbg); border-color: var(--bear); }
+.sseg.am { background: var(--bbg); border-color: var(--bull); }
+.sseg.ar { background: var(--wbg); border-color: var(--warn); }
+
+.sp {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: var(--m);
+  margin-bottom: 3px;
+}
+.sl2 { font-size: 12px; font-weight: 600; }
+.sd  { font-size: 10px; color: var(--m); margin-top: 2px; line-height: 1.3; }
+
+/* Macro input items */
+.sinp {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 12px;
+}
+
+.sii {
+  background: var(--s2);
+  border: 1px solid var(--b);
+  border-radius: 6px;
+  padding: 7px 10px;
+  flex: 1;
+  min-width: 80px;
+}
+
+.sil {
+  font-size: 9px;
+  color: var(--m);
+  font-weight: 600;
+  text-transform: uppercase;
+  margin-bottom: 3px;
+}
+
+.siv {
+  font-family: 'DM Mono', monospace;
+  font-size: 14px;
+  font-weight: 500;
+}
+.siv.bull { color: var(--bull); }
+.siv.bear { color: var(--bear); }
+.siv.warn { color: var(--warn); }
+
+/* Score section */
+.score-section {
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--b);
+}
+
+.score-bar-wrap { margin: 8px 0; }
+
+.score-bar {
+  height: 6px;
+  background: var(--b);
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.score-fill {
+  height: 100%;
+  border-radius: 3px;
+  transition: width 0.5s;
+}
+
+.score-items {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 4px;
+  margin-top: 8px;
+}
+
+.score-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  color: var(--m);
+}
+
+.score-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+/* Levels section */
+.levels-section {
+  padding: 12px 16px;
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 12px;
+  border-bottom: 1px solid var(--b);
+}
+
+.lgt {
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: var(--m);
+  margin-bottom: 8px;
+}
+
+.lr {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 4px 0;
+  border-bottom: 1px solid var(--b);
+}
+.lr:last-child { border-bottom: none; }
+
+.ln { font-size: 11px; color: var(--m); }
+.lv { font-family: 'DM Mono', monospace; font-size: 12px; font-weight: 500; }
+.ld { font-size: 10px; color: var(--m); }
+
+.lr.ar .ln, .lr.ar .lv { color: var(--bear); }
+.lr.as .ln, .lr.as .lv { color: var(--bull); }
+
+/* Price line */
+.pline {
+  padding: 6px 16px;
+  background: var(--s2);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+}
+
+.pcurr {
+  font-family: 'DM Mono', monospace;
+  font-weight: 600;
+  color: var(--blue);
+}
+.pm { color: var(--m); }
+.psma.above { color: var(--bull); }
+.psma.below { color: var(--bear); }
+
+/* Meta row */
+.tmeta {
+  padding: 10px 16px;
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 10px;
+}
+
+.ml {
+  font-size: 10px;
+  color: var(--m);
+  font-weight: 600;
+  text-transform: uppercase;
+  margin-bottom: 4px;
+}
+
+.mv { font-size: 12px; font-weight: 500; }
+.mv.bull    { color: var(--bull); }
+.mv.bear    { color: var(--bear); }
+.mv.warn    { color: var(--warn); }
+.mv.neutral { color: var(--m); }
+
+/* Binary risk banner */
+.binrisk {
+  padding: 8px 16px;
+  background: rgba(248, 81, 73, 0.07);
+  border-top: 1px solid rgba(248, 81, 73, 0.2);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  color: var(--bear);
+}
+
+/* Calendar items */
+.cali {
+  display: grid;
+  grid-template-columns: 80px 1fr auto;
+  gap: 10px;
+  align-items: center;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--b);
+}
+.cali:last-child { border-bottom: none; }
+
+.calt {
+  font-family: 'DM Mono', monospace;
+  font-size: 11px;
+  color: var(--m);
+}
+
+.calti { font-size: 13px; font-weight: 500; }
+.calcc { font-size: 10px; color: var(--m); margin-top: 1px; }
+
+.calimp {
+  font-size: 10px;
+  font-weight: 700;
+  padding: 2px 6px;
+  border-radius: 4px;
+  text-transform: uppercase;
+}
+.calimp.High   { background: var(--rbg); color: var(--bear); }
+.calimp.Medium { background: var(--wbg); color: var(--warn); }
+
+/* Prices grid */
+.pcg {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+  gap: 8px;
+  margin-bottom: 18px;
+}
+
+.pc2 {
+  background: var(--s);
+  border: 1px solid var(--b);
+  border-radius: 6px;
+  padding: 10px 12px;
+}
+
+.pcn {
+  font-size: 10px;
+  color: var(--m);
+  font-weight: 600;
+  margin-bottom: 3px;
+}
+
+.pcp {
+  font-family: 'DM Mono', monospace;
+  font-size: 15px;
+  font-weight: 500;
+}
+
+.pcc {
+  font-family: 'DM Mono', monospace;
+  font-size: 10px;
+  margin-top: 2px;
+}
+.pcc.up { color: var(--bull); }
+.pcc.dn { color: var(--bear); }

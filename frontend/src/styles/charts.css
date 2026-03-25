@@ -1,0 +1,118 @@
+/* ── Chart containers & COT modal ─────────────────────────── */
+.cot-modal {
+  display: none;
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.85);
+  z-index: 1000;
+  align-items: center;
+  justify-content: center;
+}
+.cot-modal.open {
+  display: flex;
+}
+
+.cot-modal-inner {
+  background: var(--s);
+  border: 1px solid var(--b);
+  border-radius: 12px;
+  padding: 20px;
+  width: 90%;
+  max-width: 800px;
+  max-height: 90vh;
+  overflow-y: auto;
+}
+
+.cot-modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+}
+
+.cot-modal-title {
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.cot-modal-close {
+  cursor: pointer;
+  font-size: 20px;
+  color: var(--m);
+  padding: 4px 8px;
+  border-radius: 4px;
+  border: 1px solid var(--b);
+  background: none;
+}
+.cot-modal-close:hover {
+  background: var(--s2);
+}
+
+.cot-chart-wrap {
+  width: 100%;
+  height: 300px;
+  position: relative;
+}
+
+canvas.cot-chart {
+  width: 100% !important;
+  height: 300px !important;
+}
+
+/* COT stat row (below chart) */
+.cot-stat-row {
+  display: flex;
+  gap: 16px;
+  margin-top: 12px;
+  flex-wrap: wrap;
+}
+
+.cot-stat {
+  background: var(--s2);
+  border: 1px solid var(--b);
+  border-radius: 8px;
+  padding: 10px 14px;
+  flex: 1;
+  min-width: 100px;
+}
+
+.cot-stat-label {
+  font-size: 10px;
+  color: var(--m);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.cot-stat-val {
+  font-size: 18px;
+  font-weight: 700;
+  font-family: 'DM Mono', monospace;
+  margin-top: 4px;
+}
+
+/* COT bar (in instrument cards) */
+.tcotbar {
+  padding: 10px 16px;
+  border-top: 1px solid var(--b);
+  background: var(--s2);
+}
+
+.cbt {
+  height: 6px;
+  background: var(--b);
+  border-radius: 3px;
+  position: relative;
+  overflow: hidden;
+  margin-top: 6px;
+}
+
+.cbf {
+  height: 100%;
+  border-radius: 3px;
+  position: absolute;
+  top: 0;
+  left: 0;
+}

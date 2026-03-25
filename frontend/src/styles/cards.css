@@ -1,0 +1,140 @@
+/* ── Cards & setup instrument tiles ───────────────────────── */
+.card {
+  background: var(--s);
+  border: 1px solid var(--b);
+  border-radius: 8px;
+  padding: 16px 18px;
+}
+
+.ct {
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: var(--m);
+  margin-bottom: 12px;
+}
+
+/* Stat numbers */
+.snum {
+  font-family: 'DM Mono', monospace;
+  font-size: 26px;
+  font-weight: 500;
+  line-height: 1;
+}
+.snum.bull  { color: var(--bull); }
+.snum.bear  { color: var(--bear); }
+.snum.warn  { color: var(--warn); }
+
+.slabel {
+  font-size: 12px;
+  color: var(--m);
+  margin-top: 4px;
+}
+
+/* ── Instrument card (tic) ───────────────────────────────── */
+.tic {
+  background: var(--s);
+  border: 1px solid var(--b);
+  border-radius: 8px;
+  overflow: hidden;
+  margin-bottom: 10px;
+}
+
+.tic-head {
+  padding: 12px 16px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+}
+.tic-head:hover {
+  background: var(--s2);
+}
+
+.tgrade {
+  font-size: 11px;
+  font-weight: 700;
+  padding: 3px 8px;
+  border-radius: 4px;
+  font-family: 'DM Mono', monospace;
+  flex-shrink: 0;
+}
+.tgrade.bull { background: var(--bbg); color: var(--bull); border: 1px solid var(--bull); }
+.tgrade.warn { background: var(--wbg); color: var(--warn); border: 1px solid var(--warn); }
+.tgrade.bear { background: var(--rbg); color: var(--bear); border: 1px solid var(--bear); }
+
+.tbias {
+  font-size: 11px;
+  font-weight: 700;
+  padding: 3px 10px;
+  border-radius: 20px;
+  text-transform: uppercase;
+  flex-shrink: 0;
+}
+.tbias.bull    { background: var(--bbg); color: var(--bull); }
+.tbias.bear    { background: var(--rbg); color: var(--bear); }
+.tbias.neutral { background: var(--s2);  color: var(--m); }
+
+.tprice {
+  font-family: 'DM Mono', monospace;
+  font-size: 14px;
+  font-weight: 500;
+  margin-left: auto;
+  flex-shrink: 0;
+}
+
+.tsess {
+  font-size: 10px;
+  padding: 2px 7px;
+  border-radius: 4px;
+  border: 1px solid;
+  flex-shrink: 0;
+}
+.tsess.active   { border-color: var(--bull); color: var(--bull); background: var(--bbg); }
+.tsess.inactive { border-color: var(--b2);   color: var(--m);    background: var(--s2); }
+
+.trisk {
+  font-size: 10px;
+  padding: 2px 7px;
+  border-radius: 4px;
+  border: 1px solid var(--bear);
+  color: var(--bear);
+  background: var(--rbg);
+  flex-shrink: 0;
+}
+
+/* Detail panel (expandable) */
+.tdet {
+  display: none;
+  border-top: 1px solid var(--b);
+}
+.tdet.open {
+  display: block;
+}
+
+/* ── Setup grid (long / short sides) ─────────────────────── */
+.setup-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0;
+  border-bottom: 1px solid var(--b);
+}
+
+.setup-side {
+  padding: 14px 16px;
+}
+.setup-side:first-child {
+  border-right: 1px solid var(--b);
+}
+
+.setup-label {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  margin-bottom: 12px;
+}
+.setup-label.long  { color: var(--bull); }
+.setup-label.short { color: var(--bear); }
+.setup-label.na    { color: var(--m); }

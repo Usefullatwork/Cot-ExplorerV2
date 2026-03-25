@@ -1,0 +1,105 @@
+/* ── COT table & search bar ───────────────────────────────── */
+.sbar2 {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 14px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+#cotS {
+  background: var(--s);
+  border: 1px solid var(--b);
+  color: var(--t);
+  font-family: 'DM Sans', sans-serif;
+  font-size: 13px;
+  padding: 7px 12px;
+  border-radius: 6px;
+  width: 220px;
+  outline: none;
+}
+#cotS:focus {
+  border-color: var(--blue);
+}
+#cotS::placeholder {
+  color: var(--m);
+}
+
+/* Filter chips */
+.fc {
+  background: var(--s2);
+  border: 1px solid var(--b);
+  color: var(--m);
+  font-size: 11px;
+  font-weight: 600;
+  padding: 3px 9px;
+  border-radius: 20px;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.fc:hover,
+.fc.on {
+  background: var(--blbg);
+  border-color: var(--blue);
+  color: var(--blue);
+}
+
+/* Table wrapper */
+.cotw {
+  background: var(--s);
+  border: 1px solid var(--b);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.cott {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.cott th {
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  color: var(--m);
+  padding: 8px 12px;
+  text-align: left;
+  border-bottom: 1px solid var(--b);
+}
+
+.cott td {
+  padding: 8px 12px;
+  font-size: 13px;
+  border-bottom: 1px solid var(--b);
+}
+.cott tr:last-child td {
+  border-bottom: none;
+}
+.cott tr:hover td {
+  background: var(--s2);
+}
+
+.tdname {
+  font-weight: 500;
+}
+.tdsub {
+  font-size: 10px;
+  color: var(--m);
+  margin-top: 1px;
+}
+.tdr {
+  text-align: right;
+  font-family: 'DM Mono', monospace;
+}
+.tdbull {
+  color: var(--bull);
+  font-family: 'DM Mono', monospace;
+  text-align: right;
+  font-weight: 500;
+}
+.tdbear {
+  color: var(--bear);
+  font-family: 'DM Mono', monospace;
+  text-align: right;
+  font-weight: 500;
+}

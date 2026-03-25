@@ -1,0 +1,30 @@
+/* ── Reset & base typography ──────────────────────────────── */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  background: var(--bg);
+  color: var(--t);
+  font-family: 'DM Sans', sans-serif;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+footer {
+  border-top: 1px solid var(--b);
+  padding: 12px 20px;
+  font-size: 11px;
+  color: var(--m);
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+  margin-top: 28px;
+}
+
+footer a {
+  color: var(--blue);
+  text-decoration: none;
+}

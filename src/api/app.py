@@ -6,7 +6,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from src.api.middleware.auth import APIKeyMiddleware
-from src.api.routes import cot, health, instruments, macro, signals, webhook
+from src.api.routes import backtests, cot, health, instruments, macro, signals, webhook
 
 
 def create_app() -> FastAPI:
@@ -36,6 +36,7 @@ def create_app() -> FastAPI:
     app.include_router(cot.router)
     app.include_router(macro.router)
     app.include_router(webhook.router)
+    app.include_router(backtests.router)
 
     return app
 
