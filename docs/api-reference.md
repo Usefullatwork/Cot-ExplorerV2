@@ -48,6 +48,34 @@ curl http://localhost:8000/health
 
 ---
 
+#### GET /health/detailed
+
+Comprehensive system diagnostics including uptime, DB size, row counts, last pipeline run, and process memory.
+
+**Tags:** `health`
+
+| Field                  | Type           | Description                              |
+|------------------------|----------------|------------------------------------------|
+| `status`               | `string`       | Service status                           |
+| `version`              | `string`       | API version                              |
+| `timestamp`            | `string`       | Current server UTC timestamp             |
+| `uptime_seconds`       | `float`        | Seconds since process started            |
+| `started_at`           | `string`       | UTC timestamp of process start           |
+| `db_size_mb`           | `float \| null` | SQLite file size in MB                  |
+| `db_tables`            | `int \| null`  | Number of DB tables                      |
+| `last_pipeline_run`    | `string \| null` | Last pipeline_start audit timestamp    |
+| `last_signal_generated`| `string \| null` | Most recent signal timestamp           |
+| `total_signals`        | `int`          | Total signal count                       |
+| `total_prices`         | `int`          | Total daily price bar count              |
+| `total_cot`            | `int`          | Total COT position count                 |
+| `memory_rss_mb`        | `float \| null` | Process RSS memory in MB               |
+
+```bash
+curl http://localhost:8000/health/detailed
+```
+
+---
+
 #### GET /metrics
 
 Database row counts for core tables.
