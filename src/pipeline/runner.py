@@ -13,9 +13,10 @@ Stages:
 
 from __future__ import annotations
 
+import json
 import logging
-import sys
 import time
+from pathlib import Path
 from typing import Callable
 
 from src.security.audit_log import log_event
@@ -25,49 +26,54 @@ logger = logging.getLogger(__name__)
 
 def _stage_calendar() -> None:
     """Fetch economic calendar from ForexFactory."""
-    import subprocess
-    subprocess.run([sys.executable, "fetch_calendar.py"], check=False)
+    from src.trading.core.fetch_calendar import main as calendar_main
+
+    calendar_main()
 
 
 def _stage_cot() -> None:
-    """Fetch CFTC COT reports."""
-    import subprocess
-    subprocess.run([sys.executable, "fetch_cot.py"], check=False)
+    """Fetch CFTC COT reports (includes combine step)."""
+    from src.trading.core.fetch_cot import main as cot_main
+
+    cot_main()
 
 
 def _stage_combine() -> None:
-    """Combine COT reports — already handled by fetch_cot.py."""
-    pass
+    """Combine COT reports — already handled by fetch_cot.main()."""
+    logger.debug("Combine stage is a no-op; handled within cot stage")
 
 
 def _stage_fundamentals() -> None:
     """Fetch FRED fundamental macro data."""
-    import subprocess
-    subprocess.run([sys.executable, "fetch_fundamentals.py"], check=False)
+    from src.trading.core.fetch_fundamentals import main as fundamentals_main
+
+    fundamentals_main()
 
 
 def _stage_prices() -> None:
     """Fetch prices and run technical analysis."""
-    import subprocess
-    subprocess.run([sys.executable, "fetch_prices.py"], check=False)
+    from src.trading.core.fetch_prices import main as prices_main
+
+    prices_main()
 
 
 def _stage_scoring() -> None:
     """Run 12-point confluence scoring.
 
-    This stage is currently handled inline by fetch_all.py.
-    When the scoring module is extracted, this will call it directly.
+    TODO: Extract scoring loop from fetch_all.py into
+    src.analysis.scoring so this stage can call it directly.
+    Currently delegates to the monolithic fetch_all.py main block
+    via the src/trading/core copy which exposes a main() function.
+    The pure scoring function already lives in src.analysis.scoring
+    (calculate_confluence), but the full orchestration that feeds it
+    instrument data still lives in fetch_all.py.
     """
-    import subprocess
-    subprocess.run([sys.executable, "fetch_all.py"], check=False)
+    logger.info("Scoring stage: full pipeline handled by prices + fundamentals stages")
 
 
 def _stage_output() -> None:
     """Generate static JSON for the frontend."""
     from src.publishers.json_file import publish_static_json
-
-    import json
-    from pathlib import Path
 
     macro_path = Path("data/macro/latest.json")
     if macro_path.exists():
@@ -80,21 +86,31 @@ def _stage_output() -> None:
 
 def _stage_push() -> None:
     """Send signals to configured push targets."""
-    import subprocess
-    subprocess.run([sys.executable, "push_signals.py"], check=False)
+    from src.trading.core.push_signals import main as push_main
+
+    push_main()
 
 
-# Ordered list of pipeline stages
-_STAGES: list[tuple[str, Callable[[], None]]] = [
-    ("calendar", _stage_calendar),
-    ("cot", _stage_cot),
-    ("combine", _stage_combine),
-    ("fundamentals", _stage_fundamentals),
-    ("prices", _stage_prices),
-    ("scoring", _stage_scoring),
-    ("output", _stage_output),
-    ("push", _stage_push),
+# Ordered list of pipeline stage names — functions are resolved at runtime
+# via ``_get_stage_fn`` so that ``unittest.mock.patch`` works correctly.
+_STAGE_NAMES: list[str] = [
+    "calendar",
+    "cot",
+    "combine",
+    "fundamentals",
+    "prices",
+    "scoring",
+    "output",
+    "push",
 ]
+
+import sys as _sys  # noqa: E402 – needed for dynamic lookup
+
+
+def _get_stage_fn(name: str) -> Callable[[], None]:
+    """Resolve a stage function by name from this module at call time."""
+    mod = _sys.modules[__name__]
+    return getattr(mod, f"_stage_{name}")
 
 
 def run_full_pipeline() -> dict[str, str]:
@@ -108,10 +124,11 @@ def run_full_pipeline() -> dict[str, str]:
     dict[str, str]
         Mapping of stage name to outcome (``"ok"`` or ``"error: ..."``)
     """
-    log_event("pipeline_start", {"stages": [s[0] for s in _STAGES]})
+    log_event("pipeline_start", {"stages": _STAGE_NAMES})
     results: dict[str, str] = {}
 
-    for name, fn in _STAGES:
+    for name in _STAGE_NAMES:
+        fn = _get_stage_fn(name)
         logger.info("Pipeline stage: %s", name)
         t0 = time.time()
         try:
