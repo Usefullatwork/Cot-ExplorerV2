@@ -13,6 +13,7 @@ Usage:
     python fetch_cot.py --history   # Fetch current + all historical data
 """
 
+import logging
 import urllib.request
 import zipfile
 import csv
@@ -21,6 +22,8 @@ import os
 import sys
 import shutil
 from datetime import datetime
+
+log = logging.getLogger(__name__)
 
 # ---------------------------------------------------------------------------
 # Paths - relative to project root (two levels up from this file)
@@ -171,7 +174,7 @@ def download_and_extract(url, tmp_dir):
             if f.endswith(".txt") and f != "cot.zip":
                 return os.path.join(tmp_dir, f)
     except Exception as e:
-        print(f"  Error: {e}")
+        log.error("Download/extract error: %s", e)
     return None
 
 
@@ -279,7 +282,7 @@ def parse_file(csv_file, report_id, keep_all=False):
                     if mkt not in results or date > results[mkt]["date"]:
                         results[mkt] = entry
     except Exception as e:
-        print(f"  Parse error: {e}")
+        log.error("Parse error: %s", e)
 
     if keep_all:
         out = []
@@ -301,7 +304,7 @@ def process_report(report, year=None, keep_all=False):
     url = report["url"] if year is None else report["hist_pat"].replace("YYYY", str(year))
     rid = report["id"]
     yr = year or YEAR
-    print(f"  Loading {rid} {yr}...")
+    log.info("Loading %s %s...", rid, yr)
     tmp = os.path.join(DATA_DIR, f"_tmp_cot_{rid}_{yr}")
     os.makedirs(tmp, exist_ok=True)
     csv_file = download_and_extract(url, tmp)
@@ -309,7 +312,7 @@ def process_report(report, year=None, keep_all=False):
         return []
     data = parse_file(csv_file, rid, keep_all=keep_all)
     shutil.rmtree(tmp, ignore_errors=True)
-    print(f"  {len(data)} markets")
+    log.info("%d markets", len(data))
     return data
 
 
@@ -317,12 +320,12 @@ def main():
     """Main entry point - fetch and save COT data."""
     do_history = "--history" in sys.argv
     today = datetime.now().strftime("%Y-%m-%d")
-    print("COT Explorer - Data Download")
-    print("=" * 40)
+    log.info("COT Explorer - Data Download")
+    log.info("=" * 40)
 
     all_current = []
     for report in REPORTS:
-        print(f"\n[{report['id'].upper()}]")
+        log.info("[%s]", report["id"].upper())
         data = process_report(report)
         if data:
             save(os.path.join(DATA_DIR, "cot", report["id"], "latest.json"), data)
@@ -340,19 +343,20 @@ def main():
     combined.sort(key=lambda x: (x["kategori"], x["navn_no"]))
     save(os.path.join(DATA_DIR, "cot", "combined", "latest.json"), combined)
     save(os.path.join(DATA_DIR, "cot", "combined", f"{today}.json"), combined)
-    print(f"\nCombined: {len(combined)} markets -> data/cot/combined/latest.json")
+    log.info("Combined: %d markets -> data/cot/combined/latest.json", len(combined))
 
     if do_history:
-        print("\n[HISTORICAL DATA]")
+        log.info("[HISTORICAL DATA]")
         for report in REPORTS:
             for yr in range(report["hist_from"], YEAR):
                 data = process_report(report, yr, keep_all=True)
                 if data:
                     save(os.path.join(DATA_DIR, "cot", "history", report["id"], f"{yr}.json"), data)
-        print("Historical data saved to data/cot/history/")
+        log.info("Historical data saved to data/cot/history/")
 
-    print("\nDone!")
+    log.info("Done!")
 
 
 if __name__ == "__main__":
+    logging.basicConfig(level=logging.INFO, format="%(asctime)s %(name)s %(levelname)s %(message)s")
     main()

@@ -18,6 +18,7 @@ Environment variables:
 Zero external dependencies - stdlib only.
 """
 
+import logging
 import os
 import json
 import sys
@@ -25,6 +26,8 @@ import urllib.request
 import urllib.error
 from pathlib import Path
 from datetime import datetime, timezone
+
+log = logging.getLogger(__name__)
 
 # ---------------------------------------------------------------------------
 # Paths
@@ -48,7 +51,7 @@ SCALP_API_KEY = os.environ.get("SCALP_API_KEY", "")
 def load_data():
     """Load macro data from disk."""
     if not os.path.exists(DATA_FILE):
-        print(f"ERROR: {DATA_FILE} not found - run fetch_all.py first")
+        log.error("ERROR: %s not found - run fetch_all.py first", DATA_FILE)
         sys.exit(1)
     with open(DATA_FILE) as f:
         return json.load(f)
@@ -146,9 +149,9 @@ def push_telegram(text):
                                  headers={"Content-Type": "application/json"})
     try:
         with urllib.request.urlopen(req, timeout=10) as resp:
-            print(f"Telegram OK ({resp.status})")
+            log.info("Telegram OK (%s)", resp.status)
     except urllib.error.URLError as e:
-        print(f"Telegram ERROR: {e}")
+        log.error("Telegram: %s", e)
 
 
 def push_discord(text):
@@ -160,9 +163,9 @@ def push_discord(text):
                                  headers={"Content-Type": "application/json"})
     try:
         with urllib.request.urlopen(req, timeout=10) as resp:
-            print(f"Discord OK ({resp.status})")
+            log.info("Discord OK (%s)", resp.status)
     except urllib.error.URLError as e:
-        print(f"Discord ERROR: {e}")
+        log.error("Discord: %s", e)
 
 
 def push_flask(signals, generated):
@@ -177,9 +180,9 @@ def push_flask(signals, generated):
     )
     try:
         with urllib.request.urlopen(req, timeout=10) as resp:
-            print(f"Flask /push-alert OK ({resp.status})")
+            log.info("Flask /push-alert OK (%s)", resp.status)
     except urllib.error.URLError as e:
-        print(f"Flask ERROR: {e}")
+        log.error("Flask: %s", e)
 
 
 def main():
@@ -188,12 +191,11 @@ def main():
     top = get_top_signals(macro)
 
     if not top:
-        print(f"No signals with score >= {MIN_SCORE}")
+        log.info("No signals with score >= %d", MIN_SCORE)
         sys.exit(0)
 
     message = build_message(top, macro)
-    print(message)
-    print()
+    log.info("%s", message)
 
     push_telegram(message)
     push_discord(message)
@@ -212,4 +214,5 @@ def main():
 
 
 if __name__ == "__main__":
+    logging.basicConfig(level=logging.INFO, format="%(asctime)s %(name)s %(levelname)s %(message)s")
     main()

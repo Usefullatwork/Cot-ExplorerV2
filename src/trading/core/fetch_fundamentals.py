@@ -21,11 +21,14 @@ Weighting for high-probability setups:
 Output: data/prices/fundamentals_latest.json
 """
 
+import logging
 import urllib.request
 import json
 import os
 import time
 from datetime import datetime, timezone
+
+log = logging.getLogger(__name__)
 
 # ---------------------------------------------------------------------------
 # Paths
@@ -85,7 +88,7 @@ EQ_INSTRUMENTS = {"SPX", "NAS100", "Brent", "WTI"}
 def fetch_fred_api(series_id, limit=16):
     """Fetch observations from FRED API."""
     if not FRED_API_KEY:
-        print(f"  FRED API key not set - skipping {series_id}")
+        log.warning("FRED API key not set - skipping %s", series_id)
         return []
     url = (f"https://api.stlouisfed.org/fred/series/observations"
            f"?series_id={series_id}&api_key={FRED_API_KEY}"
@@ -103,7 +106,7 @@ def fetch_fred_api(series_id, limit=16):
                     pass
         return list(reversed(obs))
     except Exception as e:
-        print(f"  FRED {series_id} ERROR: {e}")
+        log.error("FRED %s: %s", series_id, e)
         return []
 
 
@@ -363,21 +366,21 @@ def consensus_multiplier(cat_scores):
 
 def main():
     """Fetch fundamentals, score them, and save output."""
-    print("=== fetch_fundamentals.py ===")
-    print(f"FRED API key: {'***' + FRED_API_KEY[-4:] if FRED_API_KEY else 'NOT SET'}")
+    log.info("=== fetch_fundamentals.py ===")
+    log.info("FRED API key: %s", "***" + FRED_API_KEY[-4:] if FRED_API_KEY else "NOT SET")
 
     indicators = {}
 
     for key, cfg in FRED_SERIES.items():
-        print(f"  Fetching {key} ({cfg['id']})...")
+        log.info("Fetching %s (%s)...", key, cfg["id"])
         limit = 16 if cfg["type"] == "yoy" else 6
         obs = fetch_fred_api(cfg["id"], limit=limit)
         result = compute_indicator(key, cfg, obs)
         if result:
             indicators[key] = result
-            print(f"    -> {result['current']} ({result['trend']:5s})  score={result['score']:+d}")
+            log.info("  -> %s (%s)  score=%+d", result["current"], result["trend"], result["score"])
         else:
-            print(f"    -> ERROR or insufficient data")
+            log.warning("  -> ERROR or insufficient data for %s", key)
         time.sleep(0.15)
 
     cal_pmi = try_calendar_pmi(DATA_DIR)
@@ -444,10 +447,11 @@ def main():
     with open(OUT, "w") as f:
         json.dump(output, f, ensure_ascii=False, indent=2)
 
-    print(f"\nSaved -> {OUT}")
-    print(f"Consensus multiplier: x{multiplier}")
-    print(f"USD fundamental: {usd_bias.upper()}  (score={usd_score:+.3f})")
+    log.info("Saved -> %s", OUT)
+    log.info("Consensus multiplier: x%s", multiplier)
+    log.info("USD fundamental: %s  (score=%+.3f)", usd_bias.upper(), usd_score)
 
 
 if __name__ == "__main__":
+    logging.basicConfig(level=logging.INFO, format="%(asctime)s %(name)s %(levelname)s %(message)s")
     main()

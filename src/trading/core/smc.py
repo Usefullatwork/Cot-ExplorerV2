@@ -13,6 +13,10 @@ Usage:
     # rows = list of (high, low, close) tuples
 """
 
+import logging
+
+log = logging.getLogger(__name__)
+
 
 def calc_atr(rows, n=50):
     """Calculate Average True Range over n periods."""
@@ -266,30 +270,31 @@ if __name__ == "__main__":
         return [(h, l, c) for h, l, c in zip(q["high"], q["low"], q["close"])
                 if h and l and c]
 
+    logging.basicConfig(level=logging.DEBUG, format="%(asctime)s %(name)s %(levelname)s %(message)s")
     for sym, name in [("EURUSD=X", "EUR/USD"), ("GC=F", "Gold"), ("CL=F", "WTI")]:
-        print(f"\n{'=' * 50}")
-        print(f"{name} - 15m SMC")
+        log.debug("\n%s", "=" * 50)
+        log.debug("%s - 15m SMC", name)
         rows = fetch(sym)
         if not rows:
-            print("  No data")
+            log.debug("  No data")
             continue
         result = run_smc(rows, swing_length=5)
         if not result:
-            print("  Insufficient data")
+            log.debug("  Insufficient data")
             continue
         curr = rows[-1][2]
-        print(f"  Price:     {curr:.5f}")
-        print(f"  Structure: {result['structure']}")
-        print(f"  Last HH/LH: {result['last_swing_high']}")
-        print(f"  Last HL/LL: {result['last_swing_low']}")
-        print(f"  Supply zones ({len(result['supply_zones'])}):")
+        log.debug("  Price:     %.5f", curr)
+        log.debug("  Structure: %s", result["structure"])
+        log.debug("  Last HH/LH: %s", result["last_swing_high"])
+        log.debug("  Last HL/LL: %s", result["last_swing_low"])
+        log.debug("  Supply zones (%d):", len(result["supply_zones"]))
         for z in result["supply_zones"]:
             dist = abs(z["poi"] - curr) / result["atr"]
-            print(f"    {z['top']:.5f} - {z['bottom']:.5f}  POI:{z['poi']:.5f}  {dist:.1f}xATR")
-        print(f"  Demand zones ({len(result['demand_zones'])}):")
+            log.debug("    %.5f - %.5f  POI:%.5f  %.1fxATR", z["top"], z["bottom"], z["poi"], dist)
+        log.debug("  Demand zones (%d):", len(result["demand_zones"]))
         for z in result["demand_zones"]:
             dist = abs(z["poi"] - curr) / result["atr"]
-            print(f"    {z['top']:.5f} - {z['bottom']:.5f}  POI:{z['poi']:.5f}  {dist:.1f}xATR")
-        print(f"  BOS ({len(result['bos_levels'])}):")
+            log.debug("    %.5f - %.5f  POI:%.5f  %.1fxATR", z["top"], z["bottom"], z["poi"], dist)
+        log.debug("  BOS (%d):", len(result["bos_levels"]))
         for b in result["bos_levels"]:
-            print(f"    {b['type']}  level:{b['level']:.5f}")
+            log.debug("    %s  level:%.5f", b["type"], b["level"])

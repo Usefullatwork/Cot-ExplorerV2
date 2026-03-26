@@ -10,11 +10,14 @@ Output: data/prices/macro_latest.json
 Zero external dependencies - stdlib only.
 """
 
+import logging
 import urllib.request
 import urllib.parse
 import json
 import os
 from datetime import datetime, timezone
+
+log = logging.getLogger(__name__)
 
 # ---------------------------------------------------------------------------
 # Paths
@@ -75,7 +78,7 @@ def fetch_yahoo(symbol):
             "chg20d": round((now / day20 - 1) * 100, 2),
         }
     except Exception as e:
-        print(f"  ERROR {symbol}: {e}")
+        log.error("Yahoo %s: %s", symbol, e)
         return None
 
 
@@ -137,18 +140,19 @@ def main():
     """Fetch all prices and build macro overview."""
     prices = {}
     for key, sym in SYMBOLS.items():
-        print(f"Fetching {key} ({sym})...")
+        log.info("Fetching %s (%s)...", key, sym)
         v = fetch_yahoo(sym)
         if v:
             prices[key] = v
-            print(f"  -> {v['price']} ({v['chg1d']:+.2f}%)")
+            log.info("  -> %s (%+.2f%%)", v["price"], v["chg1d"])
 
     macro = build_macro(prices)
 
     with open(OUT, "w") as f:
         json.dump(macro, f, ensure_ascii=False, indent=2)
-    print(f"\nOK -> {OUT}")
+    log.info("OK -> %s", OUT)
 
 
 if __name__ == "__main__":
+    logging.basicConfig(level=logging.INFO, format="%(asctime)s %(name)s %(levelname)s %(message)s")
     main()

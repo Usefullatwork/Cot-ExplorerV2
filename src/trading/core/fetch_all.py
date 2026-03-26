@@ -19,6 +19,7 @@ Output: data/prices/macro_latest.json
 Zero external dependencies - stdlib only (except optional smc import).
 """
 
+import logging
 import urllib.request
 import urllib.parse
 import json
@@ -27,6 +28,8 @@ import sys
 import time
 import re
 from datetime import datetime, timezone, timedelta
+
+log = logging.getLogger(__name__)
 
 # ---------------------------------------------------------------------------
 # Paths
@@ -44,7 +47,7 @@ try:
     SMC_OK = True
 except ImportError:
     SMC_OK = False
-    print("  SMC not available")
+    log.warning("SMC not available")
 
 # ---------------------------------------------------------------------------
 # Instrument definitions
@@ -126,7 +129,7 @@ def fetch_yahoo(symbol, interval="1d", range_="1y"):
         return [(h, l, c) for h, l, c in zip(q.get("high", []), q.get("low", []), q.get("close", []))
                 if h and l and c]
     except Exception as e:
-        print(f"  ERROR {symbol} ({interval}): {e}")
+        log.error("Yahoo %s (%s): %s", symbol, interval, e)
         return []
 
 
@@ -144,7 +147,7 @@ def fetch_twelvedata(symbol, interval="1d", outputsize=365):
         with urllib.request.urlopen(req, timeout=12) as r:
             d = json.loads(r.read())
         if d.get("status") == "error":
-            print(f"  TD {td_sym}: {d.get('message', 'unknown error')}")
+            log.warning("TD %s: %s", td_sym, d.get("message", "unknown error"))
             return []
         rows = []
         for v in reversed(d.get("values", [])):
@@ -155,7 +158,7 @@ def fetch_twelvedata(symbol, interval="1d", outputsize=365):
         time.sleep(8)  # Free tier: max 8 req/min
         return rows
     except Exception as e:
-        print(f"  TD ERROR {td_sym} ({interval}): {e}")
+        log.error("TD %s (%s): %s", td_sym, interval, e)
         return []
 
 
@@ -186,7 +189,7 @@ def fetch_stooq(symbol, range_="1y"):
                 continue
         return rows
     except Exception as e:
-        print(f"  Stooq ERROR {stooq_sym}: {e}")
+        log.error("Stooq %s: %s", stooq_sym, e)
         return []
 
 
@@ -208,7 +211,7 @@ def fetch_finnhub_quote(symbol):
             return (h, l, c)
         return None
     except Exception as e:
-        print(f"  FH ERROR {fh_sym}: {e}")
+        log.error("Finnhub %s: %s", fh_sym, e)
         return None
 
 
@@ -225,7 +228,7 @@ def fetch_fred(series_id):
                 return float(parts[1])
         return None
     except Exception as e:
-        print(f"  FRED {series_id} ERROR: {e}")
+        log.error("FRED %s: %s", series_id, e)
         return None
 
 
@@ -498,7 +501,7 @@ def fetch_fear_greed():
         return {"score": round(d["fear_and_greed"]["score"], 1),
                 "rating": d["fear_and_greed"]["rating"]}
     except Exception as e:
-        print(f"  Fear&Greed ERROR: {e}")
+        log.error("Fear&Greed: %s", e)
         return None
 
 
@@ -531,7 +534,7 @@ def fetch_news_sentiment():
                 titles = re.findall(r"<title>(.*?)</title>", txt)
             headlines.extend(titles[1:16])
         except Exception as e:
-            print(f"  News ERROR ({url[:45]}): {e}")
+            log.error("News (%s): %s", url[:45], e)
     if not headlines:
         return None
     ro_count = roff_count = 0
@@ -568,7 +571,7 @@ MACRO_SYMBOLS = {
 def fetch_macro_indicators():
     """Fetch supplementary macro indicators (yields, HYG, copper, EM)."""
     out = {}
-    print("  FRED: fetching yields...")
+    log.info("FRED: fetching yields...")
     for key, series in [("TNX", "DGS10"), ("IRX", "DTB3")]:
         val = fetch_fred(series)
         if val:
@@ -643,7 +646,7 @@ def main():
             with open(cal_file) as f:
                 cal_data = json.load(f)
             calendar_events = cal_data.get("events", [])
-            print(f"Calendar: {len(calendar_events)} events loaded")
+            log.info("Calendar: %d events loaded", len(calendar_events))
         except Exception:
             pass
 
@@ -668,25 +671,25 @@ def main():
             with open(fund_file) as f:
                 fund_data = json.load(f)
             n = len(fund_data.get("indicators", {}))
-            print(f"Fundamentals: {n} indicators loaded")
+            log.info("Fundamentals: %d indicators loaded", n)
         except Exception:
             pass
 
     # Fear & Greed
-    print("Fetching Fear & Greed...")
+    log.info("Fetching Fear & Greed...")
     fg = fetch_fear_greed()
     if fg:
-        print(f"  -> {fg['score']} ({fg['rating']})")
+        log.info("  -> %s (%s)", fg["score"], fg["rating"])
 
     # News sentiment
-    print("Fetching news sentiment...")
+    log.info("Fetching news sentiment...")
     news_sentiment = fetch_news_sentiment()
 
     # Prices and setups
     prices, levels = {}, {}
 
     for inst in INSTRUMENTS:
-        print(f"Fetching {inst['navn']}...")
+        log.info("Fetching %s...", inst["navn"])
 
         daily = fetch_prices(inst["symbol"], "1d", "1y")
         rows_15m = fetch_prices(inst["symbol"], "15m", "5d")
@@ -724,17 +727,17 @@ def main():
             try:
                 smc = run_smc(rows_15m, swing_length=5)
             except Exception as e:
-                print(f"  SMC 15m ERROR: {e}")
+                log.error("SMC 15m: %s", e)
         if SMC_OK and rows_1h and len(rows_1h) > 50:
             try:
                 smc_1h = run_smc(rows_1h, swing_length=10)
             except Exception as e:
-                print(f"  SMC 1H ERROR: {e}")
+                log.error("SMC 1H: %s", e)
         if SMC_OK and h4 and len(h4) > 30:
             try:
                 smc_4h = run_smc(h4, swing_length=5)
             except Exception as e:
-                print(f"  SMC 4H ERROR: {e}")
+                log.error("SMC 4H: %s", e)
 
         # Build multi-timeframe level map
         pdh, pdl, pdc = get_pdh_pdl_pdc(daily)
@@ -920,7 +923,7 @@ def main():
             return out
 
         dir_tag = "^" if dir_color == "bull" else "v"
-        print(f"  {inst['navn']:10s} {curr:.5f}  {grade}({score}/{max_score}) {dir_tag}  TF:{timeframe_bias}")
+        log.info("  %s %s  %s(%d/%d) %s  TF:%s", f"{inst['navn']:10s}", f"{curr:.5f}", grade, score, max_score, dir_tag, timeframe_bias)
 
         def smc_dict(s):
             if not s:
@@ -961,7 +964,7 @@ def main():
         }
 
     # Macro indicators
-    print("Fetching macro indicators...")
+    log.info("Fetching macro indicators...")
     macro_ind = fetch_macro_indicators()
 
     hyg = macro_ind.get("HYG") or {}
@@ -1027,12 +1030,13 @@ def main():
 
     with open(OUT, "w") as f:
         json.dump(macro, f, ensure_ascii=False, indent=2)
-    print(f"\nOK -> {OUT}  ({len(levels)} instruments)")
+    log.info("OK -> %s  (%d instruments)", OUT, len(levels))
     if conflicts:
-        print("Conflicts:")
+        log.warning("Conflicts:")
         for c in conflicts:
-            print(f"  - {c}")
+            log.warning("  - %s", c)
 
 
 if __name__ == "__main__":
+    logging.basicConfig(level=logging.INFO, format="%(asctime)s %(name)s %(levelname)s %(message)s")
     main()

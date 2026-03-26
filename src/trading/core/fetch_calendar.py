@@ -11,10 +11,13 @@ Output: data/prices/calendar_latest.json
 Zero external dependencies - stdlib only.
 """
 
+import logging
 import urllib.request
 import json
 import os
 from datetime import datetime, timezone, timedelta
+
+log = logging.getLogger(__name__)
 
 # ---------------------------------------------------------------------------
 # Paths
@@ -48,7 +51,7 @@ def fetch_calendar():
         with urllib.request.urlopen(req, timeout=10) as r:
             raw = json.loads(r.read())
     except Exception as e:
-        print(f"ERROR: {e}")
+        log.error("Calendar fetch error: %s", e)
         return None
 
     now = datetime.now(timezone.utc)
@@ -96,10 +99,11 @@ def main():
         json.dump(result, f, ensure_ascii=False, indent=2)
 
     high_count = sum(1 for e in events if e["impact"] == "High")
-    print(f"Saved {len(events)} events ({high_count} High)")
+    log.info("Saved %d events (%d High)", len(events), high_count)
     for e in events[:8]:
-        print(f"  {e['cet']:18s} {e['country']:4s} [{e['impact']:6s}] {e['title'][:40]}")
+        log.info("  %-18s %-4s [%-6s] %s", e["cet"], e["country"], e["impact"], e["title"][:40])
 
 
 if __name__ == "__main__":
+    logging.basicConfig(level=logging.INFO, format="%(asctime)s %(name)s %(levelname)s %(message)s")
     main()
