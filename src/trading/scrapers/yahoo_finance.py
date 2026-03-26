@@ -9,10 +9,10 @@ Free tier, no API key required. Personal use only.
 Zero external dependencies - stdlib only.
 """
 
-import logging
-import urllib.request
-import urllib.parse
 import json
+import logging
+import urllib.parse
+import urllib.request
 
 log = logging.getLogger(__name__)
 
@@ -29,25 +29,30 @@ def fetch_ohlc(symbol: str, interval: str = "1d", range_: str = "1y") -> list[tu
     Returns:
         List of (high, low, close) tuples, oldest first. Empty list on error.
     """
-    url = (f"https://query1.finance.yahoo.com/v8/finance/chart/"
-           f"{urllib.parse.quote(symbol)}?interval={interval}&range={range_}")
-    req = urllib.request.Request(url, headers={
-        "User-Agent": "Mozilla/5.0",
-        "Accept": "application/json",
-    })
+    url = (
+        f"https://query1.finance.yahoo.com/v8/finance/chart/"
+        f"{urllib.parse.quote(symbol)}?interval={interval}&range={range_}"
+    )
+    req = urllib.request.Request(
+        url,
+        headers={
+            "User-Agent": "Mozilla/5.0",
+            "Accept": "application/json",
+        },
+    )
     try:
         with urllib.request.urlopen(req, timeout=10) as r:
             d = json.loads(r.read())
         res = d["chart"]["result"][0]
         q = res["indicators"]["quote"][0]
         rows = [
-            (h, l, c)
-            for h, l, c in zip(
+            (h, lo, c)
+            for h, lo, c in zip(
                 q.get("high", []),
                 q.get("low", []),
                 q.get("close", []),
             )
-            if h and l and c
+            if h and lo and c
         ]
         return rows
     except Exception as e:
@@ -62,12 +67,14 @@ def fetch_price_changes(symbol: str) -> dict | None:
     Returns:
         Dict with price, chg1d, chg5d, chg20d or None on error.
     """
-    url = (f"https://query1.finance.yahoo.com/v8/finance/chart/"
-           f"{urllib.parse.quote(symbol)}?interval=1d&range=1mo")
-    req = urllib.request.Request(url, headers={
-        "User-Agent": "Mozilla/5.0",
-        "Accept": "application/json",
-    })
+    url = f"https://query1.finance.yahoo.com/v8/finance/chart/{urllib.parse.quote(symbol)}?interval=1d&range=1mo"
+    req = urllib.request.Request(
+        url,
+        headers={
+            "User-Agent": "Mozilla/5.0",
+            "Accept": "application/json",
+        },
+    )
     try:
         with urllib.request.urlopen(req, timeout=10) as r:
             d = json.loads(r.read())

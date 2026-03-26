@@ -13,6 +13,7 @@ from src.db import repository as repo
 def _clear_macro_cache():
     """Clear the TTL macro cache between tests."""
     from src.api.middleware.cache import macro_cache
+
     macro_cache.clear()
     yield
     macro_cache.clear()
@@ -37,6 +38,7 @@ _SAMPLE_MACRO = {
 # ---------------------------------------------------------------------------
 # /macro — DB first, then fallback to file
 # ---------------------------------------------------------------------------
+
 
 async def test_macro_no_data(app_client, tmp_path, monkeypatch):
     """GET /api/v1/macro returns error dict when no data anywhere."""
@@ -83,6 +85,7 @@ async def test_macro_fallback_to_file(app_client, tmp_path, monkeypatch):
 # ---------------------------------------------------------------------------
 # /macro/indicators — subset of prices
 # ---------------------------------------------------------------------------
+
 
 async def test_macro_indicators_from_db(app_client, db_session):
     """GET /api/v1/macro/indicators returns the 6 indicator keys."""

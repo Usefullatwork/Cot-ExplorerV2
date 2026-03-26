@@ -2,8 +2,7 @@
 
 from __future__ import annotations
 
-import os
-from typing import AsyncGenerator, Generator
+from typing import Generator
 
 import pytest
 from sqlalchemy import create_engine

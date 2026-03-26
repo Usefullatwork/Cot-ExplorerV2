@@ -16,6 +16,7 @@ router = APIRouter(prefix="/api/v1", tags=["signals"])
 
 # ── Response models ──────────────────────────────────────────────────────────
 
+
 class SignalResponse(BaseModel):
     """A single trading signal with trade levels and scoring details."""
 
@@ -43,6 +44,7 @@ class SignalResponse(BaseModel):
 
 
 # ── Endpoints ────────────────────────────────────────────────────────────────
+
 
 @router.get(
     "/signals",

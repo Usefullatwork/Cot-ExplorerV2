@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from fastapi import APIRouter, Request
+from fastapi import APIRouter
 from pydantic import BaseModel, Field
 
 from src.db import repository as repo
@@ -13,6 +13,7 @@ router = APIRouter(prefix="/api/v1", tags=["webhook"])
 
 
 # ── Request / Response models ────────────────────────────────────────────────
+
 
 class PushAlertRequest(BaseModel):
     """Request body for the push-alert webhook."""
@@ -32,23 +33,19 @@ class PushAlertRequest(BaseModel):
 class PushAlertResponse(BaseModel):
     """Response for the push-alert webhook."""
 
-    status: str = Field(
-        ..., description="Processing status", examples=["ok"]
-    )
-    received: int = Field(
-        ..., description="Number of signals received in this batch", examples=[5]
-    )
+    status: str = Field(..., description="Processing status", examples=["ok"])
+    received: int = Field(..., description="Number of signals received in this batch", examples=[5])
 
 
 # ── Endpoint ─────────────────────────────────────────────────────────────────
+
 
 @router.post(
     "/webhook/push-alert",
     response_model=PushAlertResponse,
     summary="Receive push-alert signals",
     description=(
-        "Accepts the same JSON payload that ``push_signals.py`` sends: "
-        "``{\"signals\": [...], \"generated\": \"...\"}``."
+        'Accepts the same JSON payload that ``push_signals.py`` sends: ``{"signals": [...], "generated": "..."}``.'
     ),
 )
 async def push_alert(body: PushAlertRequest) -> PushAlertResponse:

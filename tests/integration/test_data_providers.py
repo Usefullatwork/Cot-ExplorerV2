@@ -7,9 +7,8 @@ All external I/O is mocked.
 
 from __future__ import annotations
 
-import json
 import time
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 import pytest
 
@@ -17,19 +16,18 @@ from src.core.errors import ProviderError, ProviderUnavailableError
 from src.core.models import OhlcBar
 from src.data.providers.base import BaseProvider, CircuitBreaker
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
 
-def _bar(h: float = 1.1, l: float = 1.0, c: float = 1.05) -> OhlcBar:
-    return OhlcBar(high=h, low=l, close=c)
+
+def _bar(h: float = 1.1, lo: float = 1.0, c: float = 1.05) -> OhlcBar:
+    return OhlcBar(high=h, low=lo, close=c)
 
 
 def _bars(n: int = 5, base_close: float = 100.0) -> list[OhlcBar]:
     return [
-        OhlcBar(high=base_close + i * 2 + 1, low=base_close + i * 2 - 1, close=base_close + i * 2)
-        for i in range(n)
+        OhlcBar(high=base_close + i * 2 + 1, low=base_close + i * 2 - 1, close=base_close + i * 2) for i in range(n)
     ]
 
 
@@ -216,7 +214,7 @@ class TestFullFallbackChain:
         from src.data import price_router
 
         stooq_bars = _bars(5)
-        realtime_bar = _bar(h=999.0, l=990.0, c=995.0)
+        realtime_bar = _bar(h=999.0, lo=990.0, c=995.0)
         mock_stooq.fetch_stooq.return_value = stooq_bars
         mock_fh.return_value = realtime_bar
 

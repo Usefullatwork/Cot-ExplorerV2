@@ -21,6 +21,7 @@ from sqlalchemy.orm import DeclarativeBase, relationship
 
 class Base(DeclarativeBase):
     """Declarative base for all ORM models."""
+
     pass
 
 
@@ -288,9 +289,7 @@ class MacroSnapshot(Base):
     conflicts = Column(Text, nullable=True)  # JSON
     full_json = Column(Text, nullable=True)  # JSON — complete macro panel
 
-    __table_args__ = (
-        Index("ix_macro_generated", "generated_at"),
-    )
+    __table_args__ = (Index("ix_macro_generated", "generated_at"),)
 
 
 # ---------------------------------------------------------------------------

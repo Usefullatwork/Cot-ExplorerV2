@@ -7,7 +7,6 @@ CFTC COT symbols to price keys.
 
 import json
 import logging
-import os
 import time
 import urllib.parse
 import urllib.request
@@ -17,23 +16,23 @@ from pathlib import Path
 log = logging.getLogger(__name__)
 
 INSTRUMENTS = [
-    {"key": "eurusd",  "yahoo": "EURUSD=X",  "navn": "EUR/USD"},
-    {"key": "usdjpy",  "yahoo": "JPY=X",     "navn": "USD/JPY"},
-    {"key": "gbpusd",  "yahoo": "GBPUSD=X",  "navn": "GBP/USD"},
-    {"key": "audusd",  "yahoo": "AUDUSD=X",  "navn": "AUD/USD"},
-    {"key": "gold",    "yahoo": "GC=F",      "navn": "Gull"},
-    {"key": "silver",  "yahoo": "SI=F",      "navn": "Solv"},
-    {"key": "brent",   "yahoo": "BZ=F",      "navn": "Brent"},
-    {"key": "wti",     "yahoo": "CL=F",      "navn": "WTI"},
-    {"key": "spx",     "yahoo": "^GSPC",     "navn": "S&P 500"},
-    {"key": "nas100",  "yahoo": "^NDX",      "navn": "Nasdaq"},
-    {"key": "dxy",     "yahoo": "DX-Y.NYB",  "navn": "DXY"},
-    {"key": "corn",    "yahoo": "ZC=F",      "navn": "Mais"},
-    {"key": "wheat",   "yahoo": "ZW=F",      "navn": "Hvete"},
-    {"key": "soybean", "yahoo": "ZS=F",      "navn": "Soyabonner"},
-    {"key": "sugar",   "yahoo": "SB=F",      "navn": "Sukker"},
-    {"key": "coffee",  "yahoo": "KC=F",      "navn": "Kaffe"},
-    {"key": "cocoa",   "yahoo": "CC=F",      "navn": "Kakao"},
+    {"key": "eurusd", "yahoo": "EURUSD=X", "navn": "EUR/USD"},
+    {"key": "usdjpy", "yahoo": "JPY=X", "navn": "USD/JPY"},
+    {"key": "gbpusd", "yahoo": "GBPUSD=X", "navn": "GBP/USD"},
+    {"key": "audusd", "yahoo": "AUDUSD=X", "navn": "AUD/USD"},
+    {"key": "gold", "yahoo": "GC=F", "navn": "Gull"},
+    {"key": "silver", "yahoo": "SI=F", "navn": "Solv"},
+    {"key": "brent", "yahoo": "BZ=F", "navn": "Brent"},
+    {"key": "wti", "yahoo": "CL=F", "navn": "WTI"},
+    {"key": "spx", "yahoo": "^GSPC", "navn": "S&P 500"},
+    {"key": "nas100", "yahoo": "^NDX", "navn": "Nasdaq"},
+    {"key": "dxy", "yahoo": "DX-Y.NYB", "navn": "DXY"},
+    {"key": "corn", "yahoo": "ZC=F", "navn": "Mais"},
+    {"key": "wheat", "yahoo": "ZW=F", "navn": "Hvete"},
+    {"key": "soybean", "yahoo": "ZS=F", "navn": "Soyabonner"},
+    {"key": "sugar", "yahoo": "SB=F", "navn": "Sukker"},
+    {"key": "coffee", "yahoo": "KC=F", "navn": "Kaffe"},
+    {"key": "cocoa", "yahoo": "CC=F", "navn": "Kakao"},
 ]
 
 COT_TO_PRICE = {

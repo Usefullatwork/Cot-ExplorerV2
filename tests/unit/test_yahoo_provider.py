@@ -6,18 +6,19 @@ import json
 import urllib.error
 from unittest.mock import MagicMock, patch
 
-import pytest
-
 from src.core.models import OhlcBar
 from src.data.providers.yahoo import YahooProvider, fetch_yahoo
-
 
 # ---------------------------------------------------------------------------
 # Helpers — reusable Yahoo JSON response builders
 # ---------------------------------------------------------------------------
 
+
 def _make_yahoo_json(
-    highs: list, lows: list, closes: list, timestamps: list | None = None,
+    highs: list,
+    lows: list,
+    closes: list,
+    timestamps: list | None = None,
 ) -> bytes:
     """Build a minimal Yahoo Finance v8 JSON response as bytes."""
     if timestamps is None:
@@ -27,11 +28,7 @@ def _make_yahoo_json(
             "result": [
                 {
                     "timestamp": timestamps,
-                    "indicators": {
-                        "quote": [
-                            {"high": highs, "low": lows, "close": closes}
-                        ]
-                    },
+                    "indicators": {"quote": [{"high": highs, "low": lows, "close": closes}]},
                 }
             ],
             "error": None,
@@ -53,6 +50,7 @@ def _mock_urlopen(data: bytes):
 # YahooProvider instantiation
 # ---------------------------------------------------------------------------
 
+
 class TestYahooProviderInit:
     """Basic construction and availability."""
 
@@ -68,6 +66,7 @@ class TestYahooProviderInit:
 # ---------------------------------------------------------------------------
 # OHLC parsing
 # ---------------------------------------------------------------------------
+
 
 class TestOhlcParsing:
     """_fetch correctly parses Yahoo JSON into OhlcBar objects."""
@@ -128,7 +127,9 @@ class TestOhlcParsing:
     def test_as_tuple(self, mock_urlopen):
         """OhlcBar.as_tuple returns (h, l, c)."""
         data = _make_yahoo_json(
-            highs=[100.0], lows=[90.0], closes=[95.0],
+            highs=[100.0],
+            lows=[90.0],
+            closes=[95.0],
         )
         mock_urlopen.return_value = _mock_urlopen(data)
 
@@ -141,6 +142,7 @@ class TestOhlcParsing:
 # ---------------------------------------------------------------------------
 # Empty / edge-case data
 # ---------------------------------------------------------------------------
+
 
 class TestEmptyData:
     """Behaviour when Yahoo returns empty or minimal data."""
@@ -159,7 +161,9 @@ class TestEmptyData:
     def test_all_none_values(self, mock_urlopen):
         """All bars are None -> empty list."""
         data = _make_yahoo_json(
-            highs=[None, None], lows=[None, None], closes=[None, None],
+            highs=[None, None],
+            lows=[None, None],
+            closes=[None, None],
         )
         mock_urlopen.return_value = _mock_urlopen(data)
 
@@ -171,6 +175,7 @@ class TestEmptyData:
 # ---------------------------------------------------------------------------
 # URL construction
 # ---------------------------------------------------------------------------
+
 
 class TestUrlConstruction:
     """Verify the correct URL and headers are built."""
@@ -211,6 +216,7 @@ class TestUrlConstruction:
 # Error scenarios
 # ---------------------------------------------------------------------------
 
+
 class TestErrorScenarios:
     """Network failures, bad JSON, and circuit breaker integration."""
 
@@ -230,7 +236,11 @@ class TestErrorScenarios:
     def test_http_error_returns_empty(self, mock_urlopen):
         """HTTP 404 -> fetch_yahoo returns []."""
         mock_urlopen.side_effect = urllib.error.HTTPError(
-            url="http://x", code=404, msg="Not Found", hdrs={}, fp=None,
+            url="http://x",
+            code=404,
+            msg="Not Found",
+            hdrs={},
+            fp=None,
         )
 
         p = YahooProvider()
@@ -268,19 +278,20 @@ class TestErrorScenarios:
 # Module-level convenience function
 # ---------------------------------------------------------------------------
 
+
 class TestModuleLevelFetchYahoo:
     """The module-level fetch_yahoo delegates to the singleton provider."""
 
     @patch("src.data.providers.yahoo._provider")
     def test_delegates_to_provider(self, mock_provider):
         """fetch_yahoo() calls _provider.fetch_yahoo with correct args."""
-        mock_provider.fetch_yahoo.return_value = [
-            OhlcBar(high=1.1, low=1.0, close=1.05)
-        ]
+        mock_provider.fetch_yahoo.return_value = [OhlcBar(high=1.1, low=1.0, close=1.05)]
         result = fetch_yahoo("GC=F", interval="60m", range_="1mo")
 
         mock_provider.fetch_yahoo.assert_called_once_with(
-            "GC=F", "60m", "1mo",
+            "GC=F",
+            "60m",
+            "1mo",
         )
         assert len(result) == 1
         assert result[0].high == 1.1

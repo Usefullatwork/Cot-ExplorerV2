@@ -5,18 +5,14 @@ from __future__ import annotations
 import json
 from datetime import datetime, timezone
 
-import pytest
-
 from src.db import repository as repo
-from src.db.models import AuditLog, CotPosition, MacroSnapshot, PriceDaily, Signal
-
 
 # ===========================================================================
 # Signals
 # ===========================================================================
 
-class TestSaveSignal:
 
+class TestSaveSignal:
     def test_save_minimal(self, db_session, seed_instrument):
         """Save a signal with only required fields."""
         sig = repo.save_signal(
@@ -86,7 +82,6 @@ class TestSaveSignal:
 
 
 class TestGetSignals:
-
     def _seed(self, session, seed_instrument):
         for i, (grade, score) in enumerate([("A+", 11), ("A", 9), ("B", 6), ("C", 3)]):
             repo.save_signal(
@@ -147,8 +142,8 @@ class TestGetSignals:
 # PriceDaily
 # ===========================================================================
 
-class TestPriceDaily:
 
+class TestPriceDaily:
     def test_save_new(self, db_session, seed_instrument):
         """Insert a new daily price bar."""
         row = repo.save_price_daily(
@@ -210,9 +205,7 @@ class TestPriceDaily:
             )
         db_session.commit()
 
-        history = repo.get_price_history(
-            instrument="EURUSD", start="2026-03-21", end="2026-03-23", db=db_session
-        )
+        history = repo.get_price_history(instrument="EURUSD", start="2026-03-21", end="2026-03-23", db=db_session)
         assert len(history) == 1
         assert history[0].date == "2026-03-22"
 
@@ -221,8 +214,8 @@ class TestPriceDaily:
 # CotPosition
 # ===========================================================================
 
-class TestCotPosition:
 
+class TestCotPosition:
     _BASE = {
         "symbol": "GOLD",
         "market": "Gold Futures",
@@ -294,8 +287,8 @@ class TestCotPosition:
 # MacroSnapshot
 # ===========================================================================
 
-class TestMacroSnapshot:
 
+class TestMacroSnapshot:
     def test_save_and_get(self, db_session):
         """Save a macro snapshot and retrieve it."""
         snap = repo.save_macro_snapshot(
@@ -347,8 +340,8 @@ class TestMacroSnapshot:
 # AuditLog
 # ===========================================================================
 
-class TestAuditLog:
 
+class TestAuditLog:
     def test_save_audit_log(self, db_session):
         """Save an audit log entry."""
         entry = repo.save_audit_log(

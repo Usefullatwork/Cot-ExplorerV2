@@ -4,11 +4,9 @@ import pytest
 
 from src.analysis.smc import (
     build_supply_demand_zones,
-    calc_atr,
     classify_swings,
     detect_bos,
     determine_structure,
-    filter_relevant_zones,
     find_pivot_highs,
     find_pivot_lows,
     run_smc,
@@ -19,13 +17,12 @@ from tests.fixtures.price_data import (
     make_smc_bullish_rows,
 )
 
-
 # ---------------------------------------------------------------------------
 # find_pivot_highs / find_pivot_lows
 # ---------------------------------------------------------------------------
 
-class TestFindPivotHighs:
 
+class TestFindPivotHighs:
     def test_basic_bullish_data(self):
         rows = make_smc_bullish_rows(n=120)
         pivots = find_pivot_highs(rows, length=5)
@@ -48,7 +45,6 @@ class TestFindPivotHighs:
 
 
 class TestFindPivotLows:
-
     def test_basic_bullish_data(self):
         rows = make_smc_bullish_rows(n=120)
         pivots = find_pivot_lows(rows, length=5)
@@ -67,6 +63,7 @@ class TestFindPivotLows:
 # ---------------------------------------------------------------------------
 # classify_swings
 # ---------------------------------------------------------------------------
+
 
 class TestClassifySwings:
     """
@@ -118,16 +115,14 @@ class TestClassifySwings:
 # build_supply_demand_zones
 # ---------------------------------------------------------------------------
 
-class TestBuildSupplyDemandZones:
 
+class TestBuildSupplyDemandZones:
     def test_basic_creates_zones(self):
         rows = make_smc_bullish_rows(n=60)
         pivot_highs = find_pivot_highs(rows, length=10)
         pivot_lows = find_pivot_lows(rows, length=10)
         atr = 0.0020
-        supply, demand = build_supply_demand_zones(
-            pivot_highs, pivot_lows, rows, atr, box_width=2.5, history=20
-        )
+        supply, demand = build_supply_demand_zones(pivot_highs, pivot_lows, rows, atr, box_width=2.5, history=20)
         assert isinstance(supply, list)
         assert isinstance(demand, list)
 
@@ -138,9 +133,7 @@ class TestBuildSupplyDemandZones:
         # Create artificial pivot highs very close together
         close_pivots_h = [(20, 1.0900), (22, 1.0901)]  # 0.0001 apart < 2*0.0020
         close_pivots_l = [(25, 1.0800)]
-        supply, demand = build_supply_demand_zones(
-            close_pivots_h, close_pivots_l, rows, atr, box_width=2.5, history=20
-        )
+        supply, demand = build_supply_demand_zones(close_pivots_h, close_pivots_l, rows, atr, box_width=2.5, history=20)
         # With overlap check (within 2*atr = 0.004), close pivots merge
         assert len(supply) <= len(close_pivots_h)
 
@@ -149,9 +142,7 @@ class TestBuildSupplyDemandZones:
         atr = 0.0020
         pivot_highs = [(30, 1.0900)]
         pivot_lows = [(25, 1.0800)]
-        supply, demand = build_supply_demand_zones(
-            pivot_highs, pivot_lows, rows, atr, box_width=2.5, history=20
-        )
+        supply, demand = build_supply_demand_zones(pivot_highs, pivot_lows, rows, atr, box_width=2.5, history=20)
         # Supply: top=high, bottom=high - atr*(box_width/10)
         if supply:
             zone = supply[0]
@@ -164,13 +155,18 @@ class TestBuildSupplyDemandZones:
 # detect_bos
 # ---------------------------------------------------------------------------
 
+
 class TestDetectBos:
     """Break of structure: close >= top -> BOS_opp, close <= bottom -> BOS_ned."""
 
     def _make_zone(self, top, bottom, idx=0, type_="supply"):
         return {
-            "top": top, "bottom": bottom, "poi": (top + bottom) / 2,
-            "idx": idx, "type": type_, "status": "intakt",
+            "top": top,
+            "bottom": bottom,
+            "poi": (top + bottom) / 2,
+            "idx": idx,
+            "type": type_,
+            "status": "intakt",
         }
 
     def test_supply_broken(self):
@@ -206,8 +202,8 @@ class TestDetectBos:
 # determine_structure
 # ---------------------------------------------------------------------------
 
-class TestDetermineStructure:
 
+class TestDetermineStructure:
     def test_bullish_hh_hl(self):
         highs = [(5, 1.0850, "HH"), (15, 1.0900, "HH")]
         lows = [(10, 1.0800, "HL"), (20, 1.0830, "HL")]
@@ -233,8 +229,8 @@ class TestDetermineStructure:
 # run_smc (integration of all SMC sub-functions)
 # ---------------------------------------------------------------------------
 
-class TestRunSmc:
 
+class TestRunSmc:
     def test_full_bullish_data(self):
         rows = make_smc_bullish_rows(n=200)
         result = run_smc(rows, swing_length=5, box_width=2.5)
@@ -252,6 +248,7 @@ class TestRunSmc:
 
 
 # ===== Edge case tests added by Agent D3 =====================================
+
 
 class TestFindPivotHighsEdgeCases:
     """Edge cases for pivot high detection."""
@@ -379,9 +376,7 @@ class TestBuildSupplyDemandZonesEdgeCases:
         pivot_highs = [(30, 1.0900)]
         pivot_lows = [(25, 1.0800)]
         rows = make_smc_bullish_rows(n=60)
-        supply, demand = build_supply_demand_zones(
-            pivot_highs, pivot_lows, rows, atr=0.0
-        )
+        supply, demand = build_supply_demand_zones(pivot_highs, pivot_lows, rows, atr=0.0)
         # With atr=0, zone top == bottom == poi
         assert isinstance(supply, list)
         assert isinstance(demand, list)
@@ -399,8 +394,12 @@ class TestDetectBosEdgeCases:
     def test_zone_idx_beyond_rows(self):
         """Zone idx at end of rows => no subsequent rows to check."""
         zone = {
-            "top": 1.0900, "bottom": 1.0895, "poi": 1.08975,
-            "idx": 0, "type": "supply", "status": "intakt",
+            "top": 1.0900,
+            "bottom": 1.0895,
+            "poi": 1.08975,
+            "idx": 0,
+            "type": "supply",
+            "status": "intakt",
         }
         # Only 1 row, zone at idx 0 => range(1, 1) is empty
         rows = [(1.0910, 1.0880, 1.0905)]

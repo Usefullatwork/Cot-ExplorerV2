@@ -18,7 +18,10 @@ _DATA_DIR = Path(__file__).resolve().parents[3] / "data"
 @router.get(
     "/macro",
     summary="Full macro panel",
-    description="Returns the complete macro environment: Dollar Smile, VIX regime, conflicts, prices, calendar. Prefers DB snapshot; falls back to data/macro/latest.json.",
+    description=(
+        "Returns the complete macro environment: Dollar Smile, VIX regime, conflicts, prices, calendar."
+        " Prefers DB snapshot; falls back to data/macro/latest.json."
+    ),
 )
 def macro_panel() -> dict:
     """Full macro panel: Dollar Smile, VIX regime, conflicts, prices.

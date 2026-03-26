@@ -7,7 +7,6 @@ from typing import Any, Optional
 from fastapi import APIRouter, HTTPException, Query
 from pydantic import BaseModel, Field
 from sqlalchemy import func, select
-from sqlalchemy.orm import Session
 
 from src.db.engine import session_scope
 from src.db.models import BacktestResult
@@ -17,6 +16,7 @@ router = APIRouter(prefix="/api/v1/backtests", tags=["backtests"])
 
 
 # ── Response models ──────────────────────────────────────────────────────────
+
 
 class BacktestSummaryResponse(BaseModel):
     """Aggregate backtest performance statistics."""
@@ -50,6 +50,7 @@ class BacktestTradeResponse(BaseModel):
 
 # ── Endpoints ────────────────────────────────────────────────────────────────
 
+
 @router.get(
     "/summary",
     response_model=BacktestSummaryResponse,
@@ -73,19 +74,12 @@ def backtest_summary() -> dict:
 
         wins = (
             session.execute(
-                select(func.count(BacktestResult.id)).where(
-                    BacktestResult.exit_reason.in_(["t1_hit", "t2_hit"])
-                )
+                select(func.count(BacktestResult.id)).where(BacktestResult.exit_reason.in_(["t1_hit", "t2_hit"]))
             ).scalar()
             or 0
         )
-        avg_pnl_rr = (
-            session.execute(select(func.avg(BacktestResult.pnl_rr))).scalar() or 0.0
-        )
-        avg_duration = (
-            session.execute(select(func.avg(BacktestResult.duration_hours))).scalar()
-            or 0.0
-        )
+        avg_pnl_rr = session.execute(select(func.avg(BacktestResult.pnl_rr))).scalar() or 0.0
+        avg_duration = session.execute(select(func.avg(BacktestResult.duration_hours))).scalar() or 0.0
 
         result = {
             "total_trades": total,

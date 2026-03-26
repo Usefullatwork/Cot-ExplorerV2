@@ -50,4 +50,4 @@ class TTLCache:
 
 # Shared cache instances used by route handlers
 instruments_cache = TTLCache(default_ttl=86400)  # 24 hours
-macro_cache = TTLCache(default_ttl=3600)          # 1 hour
+macro_cache = TTLCache(default_ttl=3600)  # 1 hour

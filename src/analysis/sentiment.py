@@ -13,9 +13,9 @@ import urllib.parse
 import urllib.request
 from typing import Optional
 
-log = logging.getLogger(__name__)
-
 from src.core.models import FearGreed, NewsSentiment
+
+log = logging.getLogger(__name__)
 
 
 def fetch_fear_greed() -> FearGreed | None:
@@ -48,18 +48,58 @@ def fetch_news_sentiment() -> NewsSentiment | None:
     Returns sentiment with score (-1..1), label, top_headlines and key_drivers.
     """
     RISK_ON = [
-        "peace", "ceasefire", "deal", "agreement", "truce", "treaty",
-        "stimulus", "rate cut", "rate cuts", "recovery", "trade deal",
-        "tariff pause", "tariff reduction", "tariff removed", "de-escalation",
-        "deescalation", "accord", "optimism", "soft landing", "talks progress",
-        "diplomatic", "breakthrough", "resolved", "lifted sanctions",
+        "peace",
+        "ceasefire",
+        "deal",
+        "agreement",
+        "truce",
+        "treaty",
+        "stimulus",
+        "rate cut",
+        "rate cuts",
+        "recovery",
+        "trade deal",
+        "tariff pause",
+        "tariff reduction",
+        "tariff removed",
+        "de-escalation",
+        "deescalation",
+        "accord",
+        "optimism",
+        "soft landing",
+        "talks progress",
+        "diplomatic",
+        "breakthrough",
+        "resolved",
+        "lifted sanctions",
     ]
     RISK_OFF = [
-        "war", "attack", "invasion", "escalation", "sanctions", "default",
-        "crisis", "collapse", "recession", "military strike", "nuclear",
-        "terror", "conflict", "threatens", "tariff hike", "new tariffs",
-        "imposed tariffs", "sell-off", "selloff", "bank run", "debt crisis",
-        "banking crisis", "crash", "downgrade", "emergency", "missile",
+        "war",
+        "attack",
+        "invasion",
+        "escalation",
+        "sanctions",
+        "default",
+        "crisis",
+        "collapse",
+        "recession",
+        "military strike",
+        "nuclear",
+        "terror",
+        "conflict",
+        "threatens",
+        "tariff hike",
+        "new tariffs",
+        "imposed tariffs",
+        "sell-off",
+        "selloff",
+        "bank run",
+        "debt crisis",
+        "banking crisis",
+        "crash",
+        "downgrade",
+        "emergency",
+        "missile",
     ]
     feeds = [
         "https://news.google.com/rss/search?q=economy+markets+geopolitics&hl=en-US&gl=US&ceid=US:en",
@@ -114,12 +154,12 @@ def fetch_news_sentiment() -> NewsSentiment | None:
 # Macro indicator symbols — mirrors v1 MACRO_SYMBOLS
 # ---------------------------------------------------------------------------
 MACRO_SYMBOLS: dict[str, str] = {
-    "HYG": "HYG",       # iShares High Yield Corp Bond ETF
-    "TIP": "TIP",       # iShares TIPS Bond ETF
-    "TNX": "^TNX",      # 10-year Treasury yield
-    "IRX": "^IRX",      # 3-month Treasury bill
-    "Copper": "HG=F",   # Copper futures
-    "EEM": "EEM",       # iShares MSCI Emerging Markets ETF
+    "HYG": "HYG",  # iShares High Yield Corp Bond ETF
+    "TIP": "TIP",  # iShares TIPS Bond ETF
+    "TNX": "^TNX",  # 10-year Treasury yield
+    "IRX": "^IRX",  # 3-month Treasury bill
+    "Copper": "HG=F",  # Copper futures
+    "EEM": "EEM",  # iShares MSCI Emerging Markets ETF
 }
 
 
@@ -146,18 +186,14 @@ def _fetch_yahoo(symbol: str, interval: str = "1d", range_: str = "30d") -> list
         f"https://query1.finance.yahoo.com/v8/finance/chart/"
         f"{urllib.parse.quote(symbol)}?interval={interval}&range={range_}"
     )
-    req = urllib.request.Request(
-        url, headers={"User-Agent": "Mozilla/5.0", "Accept": "application/json"}
-    )
+    req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0", "Accept": "application/json"})
     try:
         with urllib.request.urlopen(req, timeout=10) as r:
             d = json.loads(r.read())
         res = d["chart"]["result"][0]
         q = res["indicators"]["quote"][0]
         rows = [
-            (h, l, c)
-            for h, l, c in zip(q.get("high", []), q.get("low", []), q.get("close", []))
-            if h and l and c
+            (h, lo, c) for h, lo, c in zip(q.get("high", []), q.get("low", []), q.get("close", [])) if h and lo and c
         ]
         return rows
     except Exception as e:
@@ -242,7 +278,5 @@ def detect_conflict(
     if news_sent and news_sent.get("label") == "risk_off" and fg and fg["score"] > 60:
         conflicts.append("Nyheter risk-off men Fear&Greed viser grådighet – divergens")
     if news_sent and news_sent.get("label") == "risk_on" and fg and fg["score"] < 25:
-        conflicts.append(
-            "Nyheter risk-on men ekstrem frykt i markedet – potensiell bunnstemning"
-        )
+        conflicts.append("Nyheter risk-on men ekstrem frykt i markedet – potensiell bunnstemning")
     return conflicts

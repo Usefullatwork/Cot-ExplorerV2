@@ -87,13 +87,15 @@ def test_pipeline_output_stage_with_no_macro_file(mock_stage_functions, tmp_path
     monkeypatch.chdir(tmp_path)
 
     # Re-import to get the real _stage_output
-    with patch("src.pipeline.runner._stage_calendar"), \
-         patch("src.pipeline.runner._stage_cot"), \
-         patch("src.pipeline.runner._stage_combine"), \
-         patch("src.pipeline.runner._stage_fundamentals"), \
-         patch("src.pipeline.runner._stage_prices"), \
-         patch("src.pipeline.runner._stage_scoring"), \
-         patch("src.pipeline.runner._stage_push"):
+    with (
+        patch("src.pipeline.runner._stage_calendar"),
+        patch("src.pipeline.runner._stage_cot"),
+        patch("src.pipeline.runner._stage_combine"),
+        patch("src.pipeline.runner._stage_fundamentals"),
+        patch("src.pipeline.runner._stage_prices"),
+        patch("src.pipeline.runner._stage_scoring"),
+        patch("src.pipeline.runner._stage_push"),
+    ):
         results = run_full_pipeline()
 
     # Output stage should not crash
@@ -109,6 +111,7 @@ def test_pipeline_result_values_are_strings():
 
 
 # ===== Edge case tests added by Agent D3 =====================================
+
 
 def test_multiple_stage_failures(mock_stage_functions):
     """Multiple stages failing should not halt the pipeline."""

@@ -1,7 +1,5 @@
 """Unit tests for src.analysis.levels — level detection, proximity, and merging."""
 
-import pytest
-
 from src.analysis.levels import (
     find_intraday_levels,
     find_swing_levels,
@@ -13,27 +11,27 @@ from src.analysis.levels import (
 )
 from tests.fixtures.price_data import make_15m_rows, make_daily_rows
 
-
 # ---------------------------------------------------------------------------
 # get_pdh_pdl_pdc
 # ---------------------------------------------------------------------------
+
 
 class TestGetPdhPdlPdc:
     """Returns (high, low, close) of the second-to-last daily row."""
 
     def test_basic_two_rows(self):
         rows = [(1.0900, 1.0800, 1.0850), (1.0920, 1.0810, 1.0860)]
-        h, l, c = get_pdh_pdl_pdc(rows)
+        h, lo, c = get_pdh_pdl_pdc(rows)
         assert h == 1.0900
-        assert l == 1.0800
+        assert lo == 1.0800
         assert c == 1.0850
 
     def test_multiple_rows_uses_second_to_last(self):
         rows = make_daily_rows(n=10)
-        h, l, c = get_pdh_pdl_pdc(rows)
+        h, lo, c = get_pdh_pdl_pdc(rows)
         expected = rows[-2]
         assert h == expected[0]
-        assert l == expected[1]
+        assert lo == expected[1]
         assert c == expected[2]
 
     def test_insufficient_one_row(self):
@@ -47,6 +45,7 @@ class TestGetPdhPdlPdc:
 # ---------------------------------------------------------------------------
 # get_pwh_pwl
 # ---------------------------------------------------------------------------
+
 
 class TestGetPwhPwl:
     """Returns (max high, min low) of daily[-8:-1]."""
@@ -87,6 +86,7 @@ class TestGetPwhPwl:
 # get_session_status
 # ---------------------------------------------------------------------------
 
+
 class TestGetSessionStatus:
     """Real-time clock, so we only test structure and types."""
 
@@ -110,6 +110,7 @@ class TestGetSessionStatus:
 # ---------------------------------------------------------------------------
 # find_intraday_levels
 # ---------------------------------------------------------------------------
+
 
 class TestFindIntradayLevels:
     """Finds support/resistance levels from 15m rows."""
@@ -172,8 +173,8 @@ class TestFindIntradayLevels:
 # find_swing_levels
 # ---------------------------------------------------------------------------
 
-class TestFindSwingLevels:
 
+class TestFindSwingLevels:
     def test_basic(self):
         rows = make_daily_rows(n=30)
         res, sup = find_swing_levels(rows)
@@ -201,6 +202,7 @@ class TestFindSwingLevels:
 # ---------------------------------------------------------------------------
 # is_at_level
 # ---------------------------------------------------------------------------
+
 
 class TestIsAtLevel:
     """Tolerance: w<=1: 0.30*atr, w==2: 0.35*atr, w>=3: 0.45*atr. Uses <=."""
@@ -237,6 +239,7 @@ class TestIsAtLevel:
 # merge_tagged_levels
 # ---------------------------------------------------------------------------
 
+
 class TestMergeTaggedLevels:
     """Merges levels within 0.5*atr, keeps highest weight, max max_n."""
 
@@ -266,10 +269,7 @@ class TestMergeTaggedLevels:
         assert 5 in weights
 
     def test_max_n_limits_output(self):
-        tagged = [
-            {"price": 1.0800 + i * 0.0010, "source": f"src_{i}", "weight": i}
-            for i in range(10)
-        ]
+        tagged = [{"price": 1.0800 + i * 0.0010, "source": f"src_{i}", "weight": i} for i in range(10)]
         result = merge_tagged_levels(tagged, self.CURR, self.ATR, max_n=4)
         assert len(result) <= 4
 
@@ -290,31 +290,32 @@ class TestMergeTaggedLevels:
 
 # ===== Edge case tests added by Agent D3 =====================================
 
+
 class TestGetPdhPdlPdcEdgeCases:
     """Edge cases for previous-day data extraction."""
 
     def test_two_rows_exact_minimum(self):
         """Exactly 2 rows is the minimum to get a result."""
         rows = [(1.1000, 1.0900, 1.0950), (1.1020, 1.0920, 1.0970)]
-        h, l, c = get_pdh_pdl_pdc(rows)
+        h, lo, c = get_pdh_pdl_pdc(rows)
         assert h == 1.1000
-        assert l == 1.0900
+        assert lo == 1.0900
         assert c == 1.0950
 
     def test_identical_rows(self):
         """All rows same values — should still extract correctly."""
         rows = [(1.0850, 1.0850, 1.0850)] * 5
-        h, l, c = get_pdh_pdl_pdc(rows)
+        h, lo, c = get_pdh_pdl_pdc(rows)
         assert h == 1.0850
-        assert l == 1.0850
+        assert lo == 1.0850
         assert c == 1.0850
 
     def test_large_spread_rows(self):
         """Rows with extreme high-low spread."""
         rows = [(2.0000, 0.5000, 1.2500), (1.9000, 0.6000, 1.1000)]
-        h, l, c = get_pdh_pdl_pdc(rows)
+        h, lo, c = get_pdh_pdl_pdc(rows)
         assert h == 2.0000
-        assert l == 0.5000
+        assert lo == 0.5000
         assert c == 1.2500
 
 

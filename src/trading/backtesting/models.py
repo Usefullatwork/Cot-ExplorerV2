@@ -9,10 +9,10 @@ Classes:
 
 from typing import Dict, List, Optional, Tuple
 
-
 # ---------------------------------------------------------------------------
 # Trade
 # ---------------------------------------------------------------------------
+
 
 class Trade:
     """Represents a single trade with full lifecycle tracking."""
@@ -116,6 +116,7 @@ class Trade:
 # Portfolio
 # ---------------------------------------------------------------------------
 
+
 class Portfolio:
     """Track portfolio state, equity, positions, and risk."""
 
@@ -136,9 +137,7 @@ class Portfolio:
         self.open_trades[trade.id] = trade
         return trade.id
 
-    def close_trade(
-        self, trade_id: int, exit_price: float, exit_date: str, reason: str = ""
-    ) -> Optional[float]:
+    def close_trade(self, trade_id: int, exit_price: float, exit_date: str, reason: str = "") -> Optional[float]:
         """Close an open trade. Returns realized P&L or None if not found."""
         trade = self.open_trades.pop(trade_id, None)
         if trade is None:
@@ -171,9 +170,7 @@ class Portfolio:
     def equity_curve(self) -> List[Tuple[str, float]]:
         return list(self._equity_history)
 
-    def position_size_from_risk(
-        self, risk_pct: float, entry_price: float, stop_loss: float
-    ) -> float:
+    def position_size_from_risk(self, risk_pct: float, entry_price: float, stop_loss: float) -> float:
         """Calculate position size based on risk percentage of equity.
         Returns number of units (contracts/lots).
         risk_pct: e.g. 0.01 for 1% risk
@@ -192,6 +189,7 @@ class Portfolio:
 # ---------------------------------------------------------------------------
 # Bar
 # ---------------------------------------------------------------------------
+
 
 class Bar:
     """A single data bar combining price and COT data for one instrument/date."""

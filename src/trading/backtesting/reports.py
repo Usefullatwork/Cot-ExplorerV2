@@ -4,7 +4,8 @@ Produces text summaries, CSV trade logs, and equity curve data.
 """
 
 import os
-from typing import Dict, List, Tuple
+from typing import Dict
+
 from . import metrics as m
 
 
@@ -80,11 +81,13 @@ def text_report(results: Dict) -> str:
         lines.append("  RECENT TRADES (last 10)")
         lines.append("-" * 70)
         lines.append(f"  {'Date':<12} {'Inst':<10} {'Dir':<6} {'Entry':>10} {'Exit':>10} {'P&L':>10} {'Reason'}")
-        lines.append(f"  {'-'*12} {'-'*10} {'-'*6} {'-'*10} {'-'*10} {'-'*10} {'-'*15}")
+        lines.append(f"  {'-' * 12} {'-' * 10} {'-' * 6} {'-' * 10} {'-' * 10} {'-' * 10} {'-' * 15}")
         for t in trade_log[-10:]:
             entry = f"{t['entry_price']:.4f}" if t["entry_price"] < 100 else f"{t['entry_price']:.2f}"
-            exit_p = f"{t['exit_price']:.4f}" if t.get("exit_price") and t["exit_price"] < 100 else (
-                f"{t['exit_price']:.2f}" if t.get("exit_price") else "open"
+            exit_p = (
+                f"{t['exit_price']:.4f}"
+                if t.get("exit_price") and t["exit_price"] < 100
+                else (f"{t['exit_price']:.2f}" if t.get("exit_price") else "open")
             )
             pnl_str = f"{t['pnl']:+.4f}"
             lines.append(
@@ -122,9 +125,21 @@ def trade_log_csv(results: Dict) -> str:
         CSV string with header and one row per trade.
     """
     header = [
-        "id", "instrument", "direction", "entry_date", "entry_price",
-        "exit_date", "exit_price", "stop_loss", "take_profit",
-        "size", "pnl", "pnl_pct", "bars_held", "reason", "exit_reason",
+        "id",
+        "instrument",
+        "direction",
+        "entry_date",
+        "entry_price",
+        "exit_date",
+        "exit_price",
+        "stop_loss",
+        "take_profit",
+        "size",
+        "pnl",
+        "pnl_pct",
+        "bars_held",
+        "reason",
+        "exit_reason",
     ]
     lines = [",".join(header)]
 

@@ -11,11 +11,11 @@ Output: data/prices/calendar_latest.json
 Zero external dependencies - stdlib only.
 """
 
-import logging
-import urllib.request
 import json
+import logging
 import os
-from datetime import datetime, timezone, timedelta
+import urllib.request
+from datetime import datetime, timedelta, timezone
 
 log = logging.getLogger(__name__)
 
@@ -71,18 +71,20 @@ def fetch_calendar() -> dict | None:
         except (ValueError, TypeError):
             continue
         cet = dt_utc + timedelta(hours=1)
-        events.append({
-            "date": dt_utc.isoformat(),
-            "cet": cet.strftime("%a %d.%m %H:%M"),
-            "title": title,
-            "country": country,
-            "impact": impact,
-            "forecast": ev.get("forecast", ""),
-            "previous": ev.get("previous", ""),
-            "actual": ev.get("actual", ""),
-            "berorte": AFFECTED_INSTRUMENTS.get(country, []),
-            "hours_away": round((dt_utc - now).total_seconds() / 3600, 1),
-        })
+        events.append(
+            {
+                "date": dt_utc.isoformat(),
+                "cet": cet.strftime("%a %d.%m %H:%M"),
+                "title": title,
+                "country": country,
+                "impact": impact,
+                "forecast": ev.get("forecast", ""),
+                "previous": ev.get("previous", ""),
+                "actual": ev.get("actual", ""),
+                "berorte": AFFECTED_INSTRUMENTS.get(country, []),
+                "hours_away": round((dt_utc - now).total_seconds() / 3600, 1),
+            }
+        )
 
     events.sort(key=lambda x: x["date"])
     return {"updated": now.isoformat(), "events": events}

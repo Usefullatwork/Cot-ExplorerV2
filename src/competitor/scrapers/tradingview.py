@@ -99,12 +99,14 @@ def fetch_tv_ideas_rss() -> list[dict[str, Any]]:
             match = re.match(r"([A-Z]{3,8})", title)
             symbol = match.group(1) if match else "UNKNOWN"
 
-        ideas.append({
-            "symbol": symbol,
-            "direction": _guess_direction(title),
-            "title": title[:200],
-            "url": url,
-        })
+        ideas.append(
+            {
+                "symbol": symbol,
+                "direction": _guess_direction(title),
+                "title": title[:200],
+                "url": url,
+            }
+        )
 
     logger.info("TradingView RSS: %d ideas", len(ideas))
     return ideas

@@ -9,12 +9,12 @@ Requires ALPHA_VANTAGE_API_KEY environment variable.
 Zero external dependencies - stdlib only.
 """
 
-import logging
-import urllib.request
-import urllib.parse
 import json
+import logging
 import os
 import time
+import urllib.parse
+import urllib.request
 
 log = logging.getLogger(__name__)
 
@@ -34,11 +34,13 @@ def fetch_daily(symbol: str, outputsize: str = "compact") -> list[tuple[float, f
     """
     if not API_KEY:
         return []
-    url = (f"https://www.alphavantage.co/query"
-           f"?function=TIME_SERIES_DAILY"
-           f"&symbol={urllib.parse.quote(symbol)}"
-           f"&outputsize={outputsize}"
-           f"&apikey={API_KEY}")
+    url = (
+        f"https://www.alphavantage.co/query"
+        f"?function=TIME_SERIES_DAILY"
+        f"&symbol={urllib.parse.quote(symbol)}"
+        f"&outputsize={outputsize}"
+        f"&apikey={API_KEY}"
+    )
     req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
     try:
         with urllib.request.urlopen(req, timeout=12) as r:
@@ -49,9 +51,9 @@ def fetch_daily(symbol: str, outputsize: str = "compact") -> list[tuple[float, f
             bar = ts[date]
             try:
                 h = float(bar["2. high"])
-                l = float(bar["3. low"])
+                lo = float(bar["3. low"])
                 c = float(bar["4. close"])
-                rows.append((h, l, c))
+                rows.append((h, lo, c))
             except (ValueError, KeyError):
                 continue
         time.sleep(12)  # Rate limit: 5 req/min
@@ -70,11 +72,13 @@ def fetch_forex(from_currency: str, to_currency: str) -> float | None:
     """
     if not API_KEY:
         return None
-    url = (f"https://www.alphavantage.co/query"
-           f"?function=CURRENCY_EXCHANGE_RATE"
-           f"&from_currency={from_currency}"
-           f"&to_currency={to_currency}"
-           f"&apikey={API_KEY}")
+    url = (
+        f"https://www.alphavantage.co/query"
+        f"?function=CURRENCY_EXCHANGE_RATE"
+        f"&from_currency={from_currency}"
+        f"&to_currency={to_currency}"
+        f"&apikey={API_KEY}"
+    )
     req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
     try:
         with urllib.request.urlopen(req, timeout=10) as r:

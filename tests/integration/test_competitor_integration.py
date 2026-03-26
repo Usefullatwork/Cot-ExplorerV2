@@ -20,7 +20,6 @@ from src.competitor.analyzer import (
 from src.competitor.scrapers.myfxbook import fetch_myfxbook_outlook
 from src.competitor.scrapers.tradingview import fetch_tv_ideas_rss
 
-
 # ---------------------------------------------------------------------------
 # Mock HTML / RSS payloads
 # ---------------------------------------------------------------------------
@@ -103,8 +102,7 @@ class TestMyfxbookPipeline:
         # USDJPY: 48.5% long => retail slightly short-biased
         assert result["USDJPY"]["long_pct"] < 50
 
-    @patch("src.competitor.scrapers.myfxbook.urllib.request.urlopen",
-           side_effect=Exception("network error"))
+    @patch("src.competitor.scrapers.myfxbook.urllib.request.urlopen", side_effect=Exception("network error"))
     def test_graceful_failure(self, mock_urlopen):
         """Network failure returns empty dict, no exception raised."""
         result = fetch_myfxbook_outlook()
@@ -154,8 +152,7 @@ class TestTradingViewPipeline:
         # "Neutral Range Bound" => neutral (no strong keywords)
         assert ideas[2]["direction"] == "neutral"
 
-    @patch("src.competitor.scrapers.tradingview.urllib.request.urlopen",
-           side_effect=Exception("DNS failure"))
+    @patch("src.competitor.scrapers.tradingview.urllib.request.urlopen", side_effect=Exception("DNS failure"))
     def test_rss_failure_returns_empty(self, mock_urlopen):
         """RSS fetch failure returns empty list."""
         assert fetch_tv_ideas_rss() == []
@@ -173,6 +170,7 @@ class TestSignalLogPipeline:
     def _mock_log_dir(self, tmp_path, monkeypatch):
         """Redirect signal log to a temporary directory."""
         import src.competitor.analyzer as mod
+
         self._log_file = tmp_path / "signal_log.json"
         monkeypatch.setattr(mod, "_LOG_DIR", tmp_path)
         monkeypatch.setattr(mod, "_LOG_FILE", self._log_file)
@@ -217,23 +215,33 @@ class TestSignalLogPipeline:
         """Log multiple signals with known outcomes, compute accuracy."""
         signals_and_outcomes = [
             (
-                {"instrument": "EURUSD", "direction": "bull", "entry_price": 1.08,
-                 "stop_loss": 1.07, "target_1": 1.10, "rr_t1": 2.0},
+                {
+                    "instrument": "EURUSD",
+                    "direction": "bull",
+                    "entry_price": 1.08,
+                    "stop_loss": 1.07,
+                    "target_1": 1.10,
+                    "rr_t1": 2.0,
+                },
                 "t1_hit",
             ),
             (
-                {"instrument": "GOLD", "direction": "bull", "entry_price": 2000,
-                 "stop_loss": 1950, "target_1": 2100, "rr_t1": 2.0},
+                {
+                    "instrument": "GOLD",
+                    "direction": "bull",
+                    "entry_price": 2000,
+                    "stop_loss": 1950,
+                    "target_1": 2100,
+                    "rr_t1": 2.0,
+                },
                 "t1_hit",
             ),
             (
-                {"instrument": "USDJPY", "direction": "bear", "entry_price": 150,
-                 "stop_loss": 152, "target_1": 148},
+                {"instrument": "USDJPY", "direction": "bear", "entry_price": 150, "stop_loss": 152, "target_1": 148},
                 "stopped_out",
             ),
             (
-                {"instrument": "GBPUSD", "direction": "bull", "entry_price": 1.26,
-                 "stop_loss": 1.25, "target_1": 1.28},
+                {"instrument": "GBPUSD", "direction": "bull", "entry_price": 1.26, "stop_loss": 1.25, "target_1": 1.28},
                 "expired",
             ),
         ]
@@ -263,8 +271,13 @@ class TestSignalLogPipeline:
         """Multiple log_signal calls accumulate entries in the file."""
         for i in range(5):
             log_signal(
-                {"instrument": f"INST{i}", "direction": "bull",
-                 "entry_price": 100 + i, "stop_loss": 95 + i, "target_1": 110 + i},
+                {
+                    "instrument": f"INST{i}",
+                    "direction": "bull",
+                    "entry_price": 100 + i,
+                    "stop_loss": 95 + i,
+                    "target_1": 110 + i,
+                },
                 timestamp=f"2026-03-25T{10 + i:02d}:00:00Z",
             )
 
@@ -285,6 +298,7 @@ class TestEndToEndCompetitorPipeline:
     @pytest.fixture(autouse=True)
     def _mock_log_dir(self, tmp_path, monkeypatch):
         import src.competitor.analyzer as mod
+
         self._log_file = tmp_path / "signal_log.json"
         monkeypatch.setattr(mod, "_LOG_DIR", tmp_path)
         monkeypatch.setattr(mod, "_LOG_FILE", self._log_file)

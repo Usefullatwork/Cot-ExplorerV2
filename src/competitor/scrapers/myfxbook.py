@@ -2,11 +2,9 @@
 
 from __future__ import annotations
 
-import json
 import logging
 import re
 import urllib.request
-from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -38,9 +36,9 @@ def fetch_myfxbook_outlook() -> dict[str, dict[str, float]]:
     # Look for rows like:  "EURUSD"  ...  longPercentage: 72.3  shortPercentage: 27.7
     # The page renders a table — we parse the raw text for percentage patterns.
     pattern = re.compile(
-        r'(?P<pair>[A-Z]{6})\s*</a>.*?'
-        r'(?P<long>\d+\.?\d*)%.*?'
-        r'(?P<short>\d+\.?\d*)%',
+        r"(?P<pair>[A-Z]{6})\s*</a>.*?"
+        r"(?P<long>\d+\.?\d*)%.*?"
+        r"(?P<short>\d+\.?\d*)%",
         re.DOTALL,
     )
     for m in pattern.finditer(html):

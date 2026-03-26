@@ -9,24 +9,25 @@ import pytest
 
 from src.core.models import OhlcBar
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
 
-def _bar(h: float = 1.1, l: float = 1.0, c: float = 1.05) -> OhlcBar:
+
+def _bar(h: float = 1.1, lo: float = 1.0, c: float = 1.05) -> OhlcBar:
     """Create a minimal OhlcBar."""
-    return OhlcBar(high=h, low=l, close=c)
+    return OhlcBar(high=h, low=lo, close=c)
 
 
 def _bars(n: int = 5) -> list[OhlcBar]:
     """Create a list of n simple OhlcBars."""
-    return [_bar(h=1.0 + i * 0.01, l=1.0 + i * 0.005, c=1.0 + i * 0.008) for i in range(n)]
+    return [_bar(h=1.0 + i * 0.01, lo=1.0 + i * 0.005, c=1.0 + i * 0.008) for i in range(n)]
 
 
 # ---------------------------------------------------------------------------
 # Module-level patches — we reload the module to control env vars
 # ---------------------------------------------------------------------------
+
 
 @pytest.fixture(autouse=True)
 def _isolate_module(monkeypatch):
@@ -36,6 +37,7 @@ def _isolate_module(monkeypatch):
 
 
 # ===== Priority waterfall tests ============================================
+
 
 class TestPriorityWaterfall:
     """Twelvedata -> Stooq -> Yahoo (v1 fallback order)."""
@@ -135,6 +137,7 @@ class TestPriorityWaterfall:
 
 # ===== Fallback chain tests ================================================
 
+
 class TestFallbackChain:
     """When a higher-priority provider returns empty, the next one is tried."""
 
@@ -214,6 +217,7 @@ class TestFallbackChain:
 
 # ===== Finnhub real-time quote overlay =====================================
 
+
 class TestFinnhubQuoteOverlay:
     """Finnhub quote replaces the last bar on daily data when available."""
 
@@ -226,7 +230,7 @@ class TestFinnhubQuoteOverlay:
         from src.data import price_router
 
         bars = _bars(5)
-        quote = _bar(h=2.0, l=1.8, c=1.9)
+        quote = _bar(h=2.0, lo=1.8, c=1.9)
         mock_td.return_value = bars
         mock_fh.return_value = quote
 
@@ -245,7 +249,7 @@ class TestFinnhubQuoteOverlay:
         from src.data import price_router
 
         bars = _bars(5)
-        quote = _bar(h=3.0, l=2.8, c=2.9)
+        quote = _bar(h=3.0, lo=2.8, c=2.9)
         mock_stooq.fetch_stooq.return_value = bars
         mock_fh.return_value = quote
 
@@ -291,6 +295,7 @@ class TestFinnhubQuoteOverlay:
 
 
 # ===== _fetch_twelvedata unit tests ========================================
+
 
 class TestFetchTwelvedata:
     """Direct tests for the internal _fetch_twelvedata function."""
@@ -399,6 +404,7 @@ class TestFetchTwelvedata:
 
 # ===== _fetch_finnhub_quote unit tests =====================================
 
+
 class TestFetchFinnhubQuote:
     """Direct tests for _fetch_finnhub_quote."""
 
@@ -470,6 +476,7 @@ class TestFetchFinnhubQuote:
 
 # ===== Rate limiting (Twelvedata 8s sleep) =================================
 
+
 class TestRateLimiting:
     """Twelvedata free plan enforces an 8-second sleep per request."""
 
@@ -506,14 +513,17 @@ class TestRateLimiting:
         mock_resp.__exit__ = MagicMock(return_value=False)
         mock_urlopen.return_value = mock_resp
 
-        with patch("src.data.price_router.TWELVEDATA_API_KEY", "fake-key"), \
-             patch("src.data.price_router.time.sleep") as mock_sleep:
+        with (
+            patch("src.data.price_router.TWELVEDATA_API_KEY", "fake-key"),
+            patch("src.data.price_router.time.sleep") as mock_sleep,
+        ):
             _fetch_twelvedata("EURUSD=X", "1d", 365)
 
         mock_sleep.assert_not_called()
 
 
 # ===== Edge cases ==========================================================
+
 
 class TestEdgeCases:
     """Edge cases: empty symbol, interval mapping, TD_SIZE fallback."""
@@ -539,7 +549,7 @@ class TestEdgeCases:
     @patch("src.data.price_router.time.sleep")
     def test_td_interval_mapping(self, mock_sleep, mock_urlopen):
         """TD_INTERVAL maps '1d' -> '1day', '15m' -> '15min', '60m' -> '1h'."""
-        from src.data.price_router import _fetch_twelvedata, TD_INTERVAL
+        from src.data.price_router import TD_INTERVAL
 
         assert TD_INTERVAL == {"1d": "1day", "15m": "15min", "60m": "1h"}
 

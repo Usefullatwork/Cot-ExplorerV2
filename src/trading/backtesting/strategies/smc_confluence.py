@@ -26,11 +26,11 @@ Stop loss: Beyond the zone boundary.
 Position sizing: 1% risk per trade.
 """
 
-import math
 from typing import Dict, List, Optional
+
 from ..engine import Strategy
-from ..models import Bar, Portfolio
 from ..indicators import Indicators
+from ..models import Bar, Portfolio
 
 
 class SMCConfluenceStrategy(Strategy):
@@ -88,7 +88,6 @@ class SMCConfluenceStrategy(Strategy):
 
         atr_buf = atr * self.zone_atr_buffer
         atr_overlap = atr * 2
-        curr = bars[-1].close
 
         supply_zones = []
         demand_zones = []
@@ -105,10 +104,15 @@ class SMCConfluenceStrategy(Strategy):
             bottom = val - atr_buf
             poi = (top + bottom) / 2
             if not overlapping(poi, supply_zones):
-                supply_zones.append({
-                    "top": top, "bottom": bottom, "poi": poi,
-                    "idx": idx, "status": "intact",
-                })
+                supply_zones.append(
+                    {
+                        "top": top,
+                        "bottom": bottom,
+                        "poi": poi,
+                        "idx": idx,
+                        "status": "intact",
+                    }
+                )
 
         # Demand zones from pivot lows (last 20)
         for idx, val in pl[-20:]:
@@ -116,10 +120,15 @@ class SMCConfluenceStrategy(Strategy):
             top = val + atr_buf
             poi = (top + bottom) / 2
             if not overlapping(poi, demand_zones):
-                demand_zones.append({
-                    "top": top, "bottom": bottom, "poi": poi,
-                    "idx": idx, "status": "intact",
-                })
+                demand_zones.append(
+                    {
+                        "top": top,
+                        "bottom": bottom,
+                        "poi": poi,
+                        "idx": idx,
+                        "status": "intact",
+                    }
+                )
 
         # Check for broken zones (BOS)
         for z in supply_zones:
@@ -175,9 +184,7 @@ class SMCConfluenceStrategy(Strategy):
                     return "bearish"
         return None
 
-    def _confluence_score(
-        self, bars: List[Bar], direction: str, atr: float, at_zone: bool
-    ) -> int:
+    def _confluence_score(self, bars: List[Bar], direction: str, atr: float, at_zone: bool) -> int:
         """Calculate 12-point confluence score (-12 to +12).
 
         Positive = bullish confluence, Negative = bearish confluence.
@@ -226,9 +233,9 @@ class SMCConfluenceStrategy(Strategy):
         if len(bars) >= 6:
             chg5 = price / bars[-6].close - 1
             chg20_val = price / bars[-21].close - 1 if len(bars) >= 21 else chg5
-            if (chg5 > 0 and chg20_val > 0):
+            if chg5 > 0 and chg20_val > 0:
                 score += 1
-            elif (chg5 < 0 and chg20_val < 0):
+            elif chg5 < 0 and chg20_val < 0:
                 score -= 1
 
         # 8. No event risk (simplified: always +1 in backtest)
@@ -309,17 +316,22 @@ class SMCConfluenceStrategy(Strategy):
                         tp = price + risk * self.tp_rr
                         size = portfolio.position_size_from_risk(self.risk_pct, price, sl)
                         if size > 0 and risk > 0:
-                            actions.append({
-                                "action": "open",
-                                "instrument": instrument,
-                                "direction": "long",
-                                "entry_price": price,
-                                "stop_loss": sl,
-                                "take_profit": tp,
-                                "size": size,
-                                "use_risk_sizing": False,
-                                "reason": f"SMC demand zone [{zone['bottom']:.4f}-{zone['top']:.4f}] confluence={confluence}/12",
-                            })
+                            actions.append(
+                                {
+                                    "action": "open",
+                                    "instrument": instrument,
+                                    "direction": "long",
+                                    "entry_price": price,
+                                    "stop_loss": sl,
+                                    "take_profit": tp,
+                                    "size": size,
+                                    "use_risk_sizing": False,
+                                    "reason": (
+                                        f"SMC demand zone [{zone['bottom']:.4f}-{zone['top']:.4f}]"
+                                        f" confluence={confluence}/12"
+                                    ),
+                                }
+                            )
                     break  # only process nearest zone
 
             # Check if price is at a supply zone (potential short)
@@ -332,17 +344,22 @@ class SMCConfluenceStrategy(Strategy):
                         tp = price - risk * self.tp_rr
                         size = portfolio.position_size_from_risk(self.risk_pct, price, sl)
                         if size > 0 and risk > 0:
-                            actions.append({
-                                "action": "open",
-                                "instrument": instrument,
-                                "direction": "short",
-                                "entry_price": price,
-                                "stop_loss": sl,
-                                "take_profit": tp,
-                                "size": size,
-                                "use_risk_sizing": False,
-                                "reason": f"SMC supply zone [{zone['bottom']:.4f}-{zone['top']:.4f}] confluence={confluence}/12",
-                            })
+                            actions.append(
+                                {
+                                    "action": "open",
+                                    "instrument": instrument,
+                                    "direction": "short",
+                                    "entry_price": price,
+                                    "stop_loss": sl,
+                                    "take_profit": tp,
+                                    "size": size,
+                                    "use_risk_sizing": False,
+                                    "reason": (
+                                        f"SMC supply zone [{zone['bottom']:.4f}-{zone['top']:.4f}]"
+                                        f" confluence={confluence}/12"
+                                    ),
+                                }
+                            )
                     break
 
         return actions

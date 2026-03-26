@@ -7,7 +7,6 @@ from __future__ import annotations
 
 from src.core.models import OhlcBar
 
-
 # ---------------------------------------------------------------------------
 # Type alias: rows can be passed as list of OhlcBar *or* plain (h,l,c) tuples
 # to stay compatible with v1 callers.  Internally we index [0]=h, [1]=l, [2]=c.
@@ -68,7 +67,7 @@ def to_4h(rows_1h: list[Row]) -> list[tuple[float, float, float]]:
     for i in range(0, len(rows_1h) - 3, 4):
         grp = rows_1h[i : i + 4]
         h = max(_h(r) for r in grp)
-        l = min(_l(r) for r in grp)
+        lo = min(_l(r) for r in grp)
         c = _c(grp[-1])
-        out.append((h, l, c))
+        out.append((h, lo, c))
     return out

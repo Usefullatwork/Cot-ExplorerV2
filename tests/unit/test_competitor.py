@@ -19,7 +19,6 @@ from src.competitor.scrapers.tradingview import (
     fetch_tv_ideas_rss,
 )
 
-
 # ===========================================================================
 # check_signal_outcome
 # ===========================================================================
@@ -104,8 +103,7 @@ class TestLogSignalAndAccuracy:
         monkeypatch.setattr(mod, "_LOG_DIR", tmp_path)
         monkeypatch.setattr(mod, "_LOG_FILE", log_file)
 
-        sig = {"instrument": "EURUSD", "direction": "bull", "entry_price": 1.10,
-               "stop_loss": 1.09, "target_1": 1.12}
+        sig = {"instrument": "EURUSD", "direction": "bull", "entry_price": 1.10, "stop_loss": 1.09, "target_1": 1.12}
         log_signal(sig, timestamp="2026-01-01T00:00:00Z")
 
         data = json.loads(log_file.read_text())
@@ -204,12 +202,15 @@ class TestMyfxbookScraper:
 class TestTradingViewHelpers:
     """TradingView symbol normalization and direction guessing."""
 
-    @pytest.mark.parametrize("raw,expected", [
-        ("FX:EURUSD", "EURUSD"),
-        ("OANDA:XAUUSD", "Gold"),
-        ("TVC:DXY", "DXY"),
-        ("SP:SPX", "SPX"),
-    ])
+    @pytest.mark.parametrize(
+        "raw,expected",
+        [
+            ("FX:EURUSD", "EURUSD"),
+            ("OANDA:XAUUSD", "Gold"),
+            ("TVC:DXY", "DXY"),
+            ("SP:SPX", "SPX"),
+        ],
+    )
     def test_normalize_known_symbols(self, raw, expected):
         assert _normalize_symbol(raw) == expected
 
@@ -221,13 +222,16 @@ class TestTradingViewHelpers:
         """Unknown ticker >8 chars returns None."""
         assert _normalize_symbol("VERYLONGSYMBOL") is None
 
-    @pytest.mark.parametrize("title,expected", [
-        ("EURUSD - Long Setup", "bull"),
-        ("Gold Bullish Breakout", "bull"),
-        ("USDJPY Short Sell Signal", "bear"),
-        ("Bearish Breakdown", "bear"),
-        ("EURUSD Analysis", "neutral"),
-    ])
+    @pytest.mark.parametrize(
+        "title,expected",
+        [
+            ("EURUSD - Long Setup", "bull"),
+            ("Gold Bullish Breakout", "bull"),
+            ("USDJPY Short Sell Signal", "bear"),
+            ("Bearish Breakdown", "bear"),
+            ("EURUSD Analysis", "neutral"),
+        ],
+    )
     def test_guess_direction(self, title, expected):
         assert _guess_direction(title) == expected
 

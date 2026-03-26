@@ -130,15 +130,17 @@ def build_timeseries(base_dir: str | Path | None = None) -> dict:
         n = len(meta["data"])
         if n < MIN_WEEKS:
             continue
-        index.append({
-            "key": f"{sym}_{report}",
-            "symbol": sym,
-            "navn_no": meta["navn_no"],
-            "market": meta["market"],
-            "kategori": meta["kategori"],
-            "report": report,
-            "weeks": n,
-        })
+        index.append(
+            {
+                "key": f"{sym}_{report}",
+                "symbol": sym,
+                "navn_no": meta["navn_no"],
+                "market": meta["market"],
+                "kategori": meta["kategori"],
+                "report": report,
+                "weeks": n,
+            }
+        )
 
     index.sort(key=lambda x: (-x["weeks"], x["navn_no"]))
     with open(ts_dir / "index.json", "w") as f:

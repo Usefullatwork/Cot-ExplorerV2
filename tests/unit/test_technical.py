@@ -5,23 +5,23 @@ import pytest
 from src.analysis.technical import calc_atr, calc_ema, to_4h
 from src.core.models import OhlcBar
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
 
-def _row(h: float, l: float, c: float) -> tuple[float, float, float]:
-    return (h, l, c)
+
+def _row(h: float, lo: float, c: float) -> tuple[float, float, float]:
+    return (h, lo, c)
 
 
-def _ohlc(h: float, l: float, c: float) -> OhlcBar:
-    return OhlcBar(high=h, low=l, close=c)
+def _ohlc(h: float, lo: float, c: float) -> OhlcBar:
+    return OhlcBar(high=h, low=lo, close=c)
 
 
 # ===== calc_atr =============================================================
 
-class TestCalcAtr:
 
+class TestCalcAtr:
     def test_basic_15_rows(self):
         """15 rows with n=14 (minimum for default) should return a float."""
         rows = [_row(100 + i, 90 + i, 95 + i) for i in range(15)]
@@ -75,8 +75,8 @@ class TestCalcAtr:
 
 # ===== calc_ema =============================================================
 
-class TestCalcEma:
 
+class TestCalcEma:
     def test_basic_10_plus_values(self):
         """10+ values with default n=9 should return a float."""
         closes = [float(100 + i) for i in range(12)]
@@ -113,8 +113,8 @@ class TestCalcEma:
 
 # ===== to_4h ================================================================
 
-class TestTo4h:
 
+class TestTo4h:
     def test_basic_8_rows_gives_2_bars(self):
         """8 1h rows -> 2 4h bars."""
         rows = [_row(100 + i, 90 + i, 95 + i) for i in range(8)]
@@ -132,9 +132,9 @@ class TestTo4h:
         result = to_4h(rows)
         assert len(result) == 1
         bar = result[0]
-        assert bar[0] == 15   # max high
-        assert bar[1] == 1    # min low
-        assert bar[2] == 8    # last close
+        assert bar[0] == 15  # max high
+        assert bar[1] == 1  # min low
+        assert bar[2] == 8  # last close
 
     def test_remainder_dropped(self):
         """9 rows -> 2 bars (remainder 1 dropped)."""
@@ -156,6 +156,7 @@ class TestTo4h:
 
 
 # ===== Edge case tests added by Agent D3 =====================================
+
 
 class TestCalcAtrEdgeCases:
     """Edge cases: zero-range bars, single period, all-same prices."""
@@ -264,9 +265,9 @@ class TestTo4hEdgeCases:
         rows = [_row(-5, -15, -10), _row(-3, -12, -8), _row(-4, -14, -9), _row(-2, -11, -7)]
         result = to_4h(rows)
         assert len(result) == 1
-        assert result[0][0] == -2   # max high
+        assert result[0][0] == -2  # max high
         assert result[0][1] == -15  # min low
-        assert result[0][2] == -7   # last close
+        assert result[0][2] == -7  # last close
 
     def test_ohlcbar_single_group(self):
         """OhlcBar objects with exactly 4 bars."""

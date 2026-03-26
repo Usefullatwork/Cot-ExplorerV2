@@ -37,8 +37,8 @@ class Indicators:
             return None
         trs = []
         for i in range(1, len(bars)):
-            h, l, pc = bars[i].high, bars[i].low, bars[i - 1].close
-            tr = max(h - l, abs(h - pc), abs(l - pc))
+            h, lo, pc = bars[i].high, bars[i].low, bars[i - 1].close
+            tr = max(h - lo, abs(h - pc), abs(lo - pc))
             trs.append(tr)
         if len(trs) < period:
             return None
@@ -108,7 +108,7 @@ class Indicators:
         relevant = [b for b in bars if b.spec_net is not None]
         if len(relevant) < weeks + 1:
             return None
-        values = [b.spec_net for b in relevant[-(weeks + 1):]]
+        values = [b.spec_net for b in relevant[-(weeks + 1) :]]
         increases = sum(1 for i in range(1, len(values)) if values[i] > values[i - 1])
         decreases = sum(1 for i in range(1, len(values)) if values[i] < values[i - 1])
         if increases >= weeks:

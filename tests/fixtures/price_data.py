@@ -35,9 +35,7 @@ def make_15m_rows(
     return make_daily_rows(n=n, base=base, atr=atr, seed=seed)
 
 
-def make_1h_rows(
-    n: int = 100, base: float = BASE_PRICE, seed: int = 42
-) -> list[tuple[float, float, float]]:
+def make_1h_rows(n: int = 100, base: float = BASE_PRICE, seed: int = 42) -> list[tuple[float, float, float]]:
     """Generate n 1-hour rows."""
     return make_daily_rows(n=n, base=base, atr=DAILY_ATR * 0.4, seed=seed)
 
@@ -83,8 +81,6 @@ def make_smc_bearish_rows(n: int = 60, seed: int = 42) -> list[tuple[float, floa
     return rows
 
 
-def make_flat_rows(
-    n: int = 30, price: float = BASE_PRICE
-) -> list[tuple[float, float, float]]:
+def make_flat_rows(n: int = 30, price: float = BASE_PRICE) -> list[tuple[float, float, float]]:
     """Generate n rows at exactly the same price (edge case testing)."""
     return [(price, price, price)] * n

@@ -7,19 +7,16 @@ and JSON file. All external HTTP calls are mocked.
 from __future__ import annotations
 
 import json
-from pathlib import Path
 from unittest.mock import MagicMock, patch
-
-import pytest
 
 from src.publishers.discord import send_discord
 from src.publishers.json_file import publish_static_json
 from src.publishers.telegram import format_signal, send_telegram
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def _make_signal(**overrides) -> dict:
     """Return a complete signal dict with sensible defaults."""
@@ -103,6 +100,7 @@ class TestTelegramIntegration:
     def test_network_error_returns_false(self, mock_urlopen):
         """URLError during send returns False."""
         import urllib.error
+
         mock_urlopen.side_effect = urllib.error.URLError("connection refused")
 
         result = send_telegram("test", token="tok", chat_id="123")
@@ -217,6 +215,7 @@ class TestMultiChannelDispatch:
         import urllib.error
 
         call_count = 0
+
         def side_effect_fn(*args, **kwargs):
             nonlocal call_count
             call_count += 1

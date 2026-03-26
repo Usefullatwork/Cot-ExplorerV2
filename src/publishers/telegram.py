@@ -40,11 +40,13 @@ def send_telegram(
         return False
 
     url = f"https://api.telegram.org/bot{token}/sendMessage"
-    payload = json.dumps({
-        "chat_id": chat_id,
-        "text": message,
-        "parse_mode": "HTML",
-    }).encode()
+    payload = json.dumps(
+        {
+            "chat_id": chat_id,
+            "text": message,
+            "parse_mode": "HTML",
+        }
+    ).encode()
     req = urllib.request.Request(
         url,
         data=payload,

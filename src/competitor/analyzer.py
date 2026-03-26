@@ -79,14 +79,13 @@ def check_signal_outcome(
         return "pending"
 
     direction = signal.get("direction", "bull")
-    entry = signal["entry_price"]
     sl = signal["stop_loss"]
     t1 = signal["target_1"]
     t2 = signal.get("target_2")
 
-    for h, l, c in price_data:
+    for h, lo, c in price_data:
         if direction == "bull":
-            if l <= sl:
+            if lo <= sl:
                 return "stopped_out"
             if t2 and h >= t2:
                 return "t2_hit"
@@ -95,9 +94,9 @@ def check_signal_outcome(
         else:
             if h >= sl:
                 return "stopped_out"
-            if t2 and l <= t2:
+            if t2 and lo <= t2:
                 return "t2_hit"
-            if l <= t1:
+            if lo <= t1:
                 return "t1_hit"
 
     return "expired"
@@ -124,11 +123,7 @@ def compute_accuracy(days: int = 90) -> dict[str, Any]:
     resolved = wins + losses
     win_rate = round(wins / resolved * 100, 1) if resolved > 0 else 0.0
 
-    rr_values = [
-        e.get("rr_t1", 0)
-        for e in recent
-        if e.get("outcome") in ("t1_hit", "t2_hit") and e.get("rr_t1")
-    ]
+    rr_values = [e.get("rr_t1", 0) for e in recent if e.get("outcome") in ("t1_hit", "t2_hit") and e.get("rr_t1")]
     avg_rr = round(sum(rr_values) / len(rr_values), 2) if rr_values else 0.0
 
     return {

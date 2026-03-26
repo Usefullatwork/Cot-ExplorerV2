@@ -8,8 +8,8 @@ from src.analysis.cot_analyzer import (
     get_cot_for_instrument,
 )
 
-
 # ===== classify_cot_bias ====================================================
+
 
 class TestClassifyCotBias:
     """LONG if pct>4, SHORT if pct<-4, NØYTRAL otherwise. oi=0 -> uses 1."""
@@ -63,6 +63,7 @@ class TestClassifyCotBias:
 
 # ===== classify_cot_momentum ================================================
 
+
 class TestClassifyCotMomentum:
     """ØKER if adding to direction, SNUR if reducing/reversing, STABIL if change==0."""
 
@@ -94,8 +95,8 @@ class TestClassifyCotMomentum:
 
 # ===== get_cot_for_instrument ===============================================
 
-class TestGetCotForInstrument:
 
+class TestGetCotForInstrument:
     def test_found(self):
         cot_data = {"WHEAT": {"spec_net": 5000, "oi": 100000}}
         cot_map = {"wheat_futures": "WHEAT"}

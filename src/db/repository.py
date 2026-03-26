@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import json
-from datetime import datetime, timezone
+from datetime import datetime
 from typing import Any, Optional, Sequence
 
 from sqlalchemy import select
@@ -12,10 +12,7 @@ from sqlalchemy.orm import Session
 from src.db.engine import session_scope
 from src.db.models import (
     AuditLog,
-    BacktestResult,
-    CalendarEvent,
     CotPosition,
-    Fundamental,
     MacroSnapshot,
     PriceDaily,
     Signal,
@@ -166,11 +163,7 @@ def get_price_history(
     """Return daily price bars for an instrument, ordered by date ascending."""
 
     def _do(session: Session) -> Sequence[PriceDaily]:
-        stmt = (
-            select(PriceDaily)
-            .where(PriceDaily.instrument == instrument)
-            .order_by(PriceDaily.date.asc())
-        )
+        stmt = select(PriceDaily).where(PriceDaily.instrument == instrument).order_by(PriceDaily.date.asc())
         if start:
             stmt = stmt.where(PriceDaily.date >= start)
         if end:
@@ -212,9 +205,20 @@ def save_cot_position(data: dict[str, Any], db: Session | None = None) -> CotPos
         ).scalar_one_or_none()
         if existing:
             for col in (
-                "market", "open_interest", "change_oi", "spec_long", "spec_short",
-                "spec_net", "comm_long", "comm_short", "comm_net", "nonrept_long",
-                "nonrept_short", "nonrept_net", "change_spec_net", "category",
+                "market",
+                "open_interest",
+                "change_oi",
+                "spec_long",
+                "spec_short",
+                "spec_net",
+                "comm_long",
+                "comm_short",
+                "comm_net",
+                "nonrept_long",
+                "nonrept_short",
+                "nonrept_net",
+                "change_spec_net",
+                "category",
             ):
                 if col in data:
                     setattr(existing, col, data[col])
@@ -254,11 +258,7 @@ def get_cot_history(
     """Return COT history for a symbol, ordered by date ascending."""
 
     def _do(session: Session) -> Sequence[CotPosition]:
-        stmt = (
-            select(CotPosition)
-            .where(CotPosition.symbol == symbol)
-            .order_by(CotPosition.date.asc())
-        )
+        stmt = select(CotPosition).where(CotPosition.symbol == symbol).order_by(CotPosition.date.asc())
         if start:
             stmt = stmt.where(CotPosition.date >= start)
         if end:

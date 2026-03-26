@@ -3,12 +3,10 @@
 import json
 from unittest.mock import MagicMock, patch
 
-import pytest
-
 from src.publishers.discord import send_discord
 
-
 # ===== send_discord ========================================================
+
 
 class TestSendDiscordSuccess:
     """Verify successful sends build the right payload."""
@@ -90,6 +88,7 @@ class TestSendDiscordErrors:
     @patch("src.publishers.discord.urllib.request.urlopen")
     def test_url_error_returns_false(self, mock_urlopen):
         import urllib.error
+
         mock_urlopen.side_effect = urllib.error.URLError("connection refused")
         result = send_discord("fail", webhook_url="https://bad.url/hook")
         assert result is False

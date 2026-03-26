@@ -23,9 +23,7 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
 
     def __init__(self, app, max_requests: int | None = None) -> None:  # type: ignore[override]
         super().__init__(app)
-        self.max_requests = max_requests or int(
-            os.environ.get("RATE_LIMIT_PER_MINUTE", "60")
-        )
+        self.max_requests = max_requests or int(os.environ.get("RATE_LIMIT_PER_MINUTE", "60"))
         # ip -> list of request timestamps (within current window)
         self._hits: dict[str, list[float]] = defaultdict(list)
 

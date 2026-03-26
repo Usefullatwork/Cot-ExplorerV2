@@ -4,12 +4,11 @@ import pytest
 
 from src.analysis.setup_builder import make_setup_l2l
 from tests.fixtures.tagged_levels import (
-    make_support_level,
-    make_resistance_level,
-    EURUSD_SUPPORTS,
     EURUSD_RESISTANCES,
+    EURUSD_SUPPORTS,
+    make_resistance_level,
+    make_support_level,
 )
-
 
 # ---------------------------------------------------------------------------
 # Constants
@@ -20,6 +19,7 @@ ATR_DAILY = 0.006
 
 
 # ===== Long – basic flow =====================================================
+
 
 class TestLongBasicSetup:
     """LONG setups using EURUSD-style levels."""
@@ -113,6 +113,7 @@ class TestLongBasicSetup:
 
 # ===== Short – basic flow ====================================================
 
+
 class TestShortBasicSetup:
     """SHORT setups using EURUSD-style levels."""
 
@@ -182,6 +183,7 @@ class TestShortBasicSetup:
 
 # ===== ATR edge cases ========================================================
 
+
 class TestATREdgeCases:
     """ATR validation and fallback logic."""
 
@@ -229,6 +231,7 @@ class TestATREdgeCases:
 
 
 # ===== Structural SL logic ====================================================
+
 
 class TestStructuralSL:
     """Stop-loss placement: zone-based vs. line-based."""
@@ -288,6 +291,7 @@ class TestStructuralSL:
 
 # ===== T1 quality classification ==============================================
 
+
 class TestT1Quality:
     """T1 quality: weight>=3 -> 'htf', ==2 -> '4h', ==1 -> 'weak'."""
 
@@ -339,6 +343,7 @@ class TestT1Quality:
 
 # ===== Status (aktiv / watchlist) =============================================
 
+
 class TestStatus:
     """Status depends on is_at_level(curr, entry, atr_15m, weight)."""
 
@@ -374,6 +379,7 @@ class TestStatus:
 
 
 # ===== T2 logic ==============================================================
+
 
 class TestT2:
     """T2 from subsequent levels or fallback to t1 + risk."""
@@ -422,6 +428,7 @@ class TestT2:
 
 # ===== Custom min_rr =========================================================
 
+
 class TestMinRR:
     """Custom min_rr filtering."""
 
@@ -446,6 +453,7 @@ class TestMinRR:
 
 
 # ===== Edge case tests added by Agent D3 =====================================
+
 
 class TestSetupBuilderEdgeCases:
     """Edge cases: empty levels, same prices, extreme values, both directions."""

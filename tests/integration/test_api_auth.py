@@ -2,12 +2,10 @@
 
 from __future__ import annotations
 
-import pytest
-
-
 # ---------------------------------------------------------------------------
 # Public mode (SCALP_API_KEY="")
 # ---------------------------------------------------------------------------
+
 
 async def test_public_mode_signals(app_client):
     """In public mode, /api/v1/signals is accessible without key."""
@@ -26,6 +24,7 @@ async def test_public_mode_health(app_client):
 # ---------------------------------------------------------------------------
 # Auth mode (SCALP_API_KEY="test-secret-key")
 # ---------------------------------------------------------------------------
+
 
 async def test_auth_rejects_no_key(app_client_with_auth):
     """/api/v1/* returns 401 without X-API-Key header."""

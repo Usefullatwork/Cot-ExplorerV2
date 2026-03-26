@@ -4,7 +4,7 @@ All stdlib Python -- no numpy/pandas/scipy.
 """
 
 import math
-from typing import List, Optional, Tuple
+from typing import List, Tuple
 
 
 def sharpe_ratio(returns: List[float], risk_free_rate: float = 0.0) -> float:
@@ -55,7 +55,7 @@ def sortino_ratio(returns: List[float], risk_free_rate: float = 0.0) -> float:
     mean_excess = sum(excess) / len(excess)
 
     # Downside deviation: only negative excess returns
-    downside_sq = [e ** 2 for e in excess if e < 0]
+    downside_sq = [e**2 for e in excess if e < 0]
     if not downside_sq:
         return float("inf") if mean_excess > 0 else 0.0
 
@@ -181,7 +181,7 @@ def calmar_ratio(returns: List[float], max_dd: float) -> float:
     periods_per_year = 52
     total_return = 1.0
     for r in returns:
-        total_return *= (1 + r)
+        total_return *= 1 + r
 
     years = len(returns) / periods_per_year
     if years <= 0:

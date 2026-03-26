@@ -16,9 +16,10 @@ Weekly bars (COT data is weekly).
 """
 
 from typing import Dict, List
+
 from ..engine import Strategy
-from ..models import Bar, Portfolio
 from ..indicators import Indicators
+from ..models import Bar, Portfolio
 
 
 class COTMomentumStrategy(Strategy):
@@ -91,17 +92,22 @@ class COTMomentumStrategy(Strategy):
                 tp = price + self.tp_atr_mult * atr
                 size = portfolio.position_size_from_risk(self.risk_pct, price, sl)
                 if size > 0:
-                    actions.append({
-                        "action": "open",
-                        "instrument": instrument,
-                        "direction": "long",
-                        "entry_price": price,
-                        "stop_loss": sl,
-                        "take_profit": tp,
-                        "size": size,
-                        "use_risk_sizing": False,  # already calculated
-                        "reason": f"COT momentum long: spec_net increasing {self.trend_weeks}w, price > SMA{self.sma_period}",
-                    })
+                    actions.append(
+                        {
+                            "action": "open",
+                            "instrument": instrument,
+                            "direction": "long",
+                            "entry_price": price,
+                            "stop_loss": sl,
+                            "take_profit": tp,
+                            "size": size,
+                            "use_risk_sizing": False,  # already calculated
+                            "reason": (
+                                f"COT momentum long: spec_net increasing"
+                                f" {self.trend_weeks}w, price > SMA{self.sma_period}"
+                            ),
+                        }
+                    )
 
             # SHORT signal: COT decreasing + price below SMA200
             elif cot_trend == "decreasing" and price < sma200:
@@ -109,16 +115,21 @@ class COTMomentumStrategy(Strategy):
                 tp = price - self.tp_atr_mult * atr
                 size = portfolio.position_size_from_risk(self.risk_pct, price, sl)
                 if size > 0:
-                    actions.append({
-                        "action": "open",
-                        "instrument": instrument,
-                        "direction": "short",
-                        "entry_price": price,
-                        "stop_loss": sl,
-                        "take_profit": tp,
-                        "size": size,
-                        "use_risk_sizing": False,
-                        "reason": f"COT momentum short: spec_net decreasing {self.trend_weeks}w, price < SMA{self.sma_period}",
-                    })
+                    actions.append(
+                        {
+                            "action": "open",
+                            "instrument": instrument,
+                            "direction": "short",
+                            "entry_price": price,
+                            "stop_loss": sl,
+                            "take_profit": tp,
+                            "size": size,
+                            "use_risk_sizing": False,
+                            "reason": (
+                                f"COT momentum short: spec_net decreasing"
+                                f" {self.trend_weeks}w, price < SMA{self.sma_period}"
+                            ),
+                        }
+                    )
 
         return actions

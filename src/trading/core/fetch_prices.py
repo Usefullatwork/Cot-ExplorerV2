@@ -10,11 +10,11 @@ Output: data/prices/macro_latest.json
 Zero external dependencies - stdlib only.
 """
 
-import logging
-import urllib.request
-import urllib.parse
 import json
+import logging
 import os
+import urllib.parse
+import urllib.request
 from datetime import datetime, timezone
 
 log = logging.getLogger(__name__)
@@ -32,34 +32,36 @@ os.makedirs(os.path.join(DATA_DIR, "prices"), exist_ok=True)
 # Symbol mapping
 # ---------------------------------------------------------------------------
 SYMBOLS = {
-    "VIX":    "^VIX",
-    "SPX":    "^GSPC",
+    "VIX": "^VIX",
+    "SPX": "^GSPC",
     "NAS100": "^NDX",
-    "DXY":    "DX-Y.NYB",
+    "DXY": "DX-Y.NYB",
     "EURUSD": "EURUSD=X",
     "USDJPY": "JPY=X",
     "GBPUSD": "GBPUSD=X",
     "USDCHF": "CHFUSD=X",
     "AUDUSD": "AUDUSD=X",
     "USDNOK": "NOKUSD=X",
-    "Brent":  "BZ=F",
-    "WTI":    "CL=F",
-    "Gold":   "GC=F",
+    "Brent": "BZ=F",
+    "WTI": "CL=F",
+    "Gold": "GC=F",
     "Silver": "SI=F",
-    "HYG":    "HYG",
-    "TIP":    "TIP",
+    "HYG": "HYG",
+    "TIP": "TIP",
 }
 
 
 def fetch_yahoo(symbol: str) -> dict | None:
     """Fetch 1-month daily data from Yahoo Finance and calculate changes."""
-    url = (f"https://query1.finance.yahoo.com/v8/finance/chart/"
-           f"{urllib.parse.quote(symbol)}?interval=1d&range=1mo")
+    url = f"https://query1.finance.yahoo.com/v8/finance/chart/{urllib.parse.quote(symbol)}?interval=1d&range=1mo"
     try:
-        req = urllib.request.Request(url, headers={
-            "User-Agent": "Mozilla/5.0",
-            "Accept": "application/json",
-        })
+        req = urllib.request.Request(
+            url,
+            headers={
+                "User-Agent": "Mozilla/5.0",
+                "Accept": "application/json",
+            },
+        )
         with urllib.request.urlopen(req, timeout=10) as r:
             d = json.loads(r.read())
         res = d["chart"]["result"][0]
@@ -72,9 +74,9 @@ def fetch_yahoo(symbol: str) -> dict | None:
         day5 = closes[-6] if len(closes) >= 6 else closes[0]
         day20 = closes[-21] if len(closes) >= 21 else closes[0]
         return {
-            "price":  round(now, 4),
-            "chg1d":  round((now / day1 - 1) * 100, 2),
-            "chg5d":  round((now / day5 - 1) * 100, 2),
+            "price": round(now, 4),
+            "chg1d": round((now / day1 - 1) * 100, 2),
+            "chg5d": round((now / day5 - 1) * 100, 2),
             "chg20d": round((now / day20 - 1) * 100, 2),
         }
     except Exception as e:
@@ -93,26 +95,27 @@ def build_macro(prices: dict) -> dict:
     hy_stress = hyg < -1.0
     if vix > 30:
         smile_pos, usd_bias, usd_color, smile_desc = (
-            "venstre", "STERKT", "bull",
-            "Risk-off - USD etterspurt som trygg havn")
+            "venstre",
+            "STERKT",
+            "bull",
+            "Risk-off - USD etterspurt som trygg havn",
+        )
     elif vix < 18 and brent < 85:
         smile_pos, usd_bias, usd_color, smile_desc = (
-            "midten", "SVAKT", "bear",
-            "Goldilocks - svak USD, risikoappetitt god")
+            "midten",
+            "SVAKT",
+            "bear",
+            "Goldilocks - svak USD, risikoappetitt god",
+        )
     else:
-        smile_pos, usd_bias, usd_color, smile_desc = (
-            "hoyre", "MODERAT", "bull",
-            "Vekst/inflasjon driver USD")
+        smile_pos, usd_bias, usd_color, smile_desc = ("hoyre", "MODERAT", "bull", "Vekst/inflasjon driver USD")
 
     if vix > 30:
-        vix_regime = {"value": vix, "label": "Ekstrem frykt - kvart storrelse",
-                      "color": "bear", "regime": "extreme"}
+        vix_regime = {"value": vix, "label": "Ekstrem frykt - kvart storrelse", "color": "bear", "regime": "extreme"}
     elif vix > 20:
-        vix_regime = {"value": vix, "label": "Forhoyet - halv storrelse",
-                      "color": "warn", "regime": "elevated"}
+        vix_regime = {"value": vix, "label": "Forhoyet - halv storrelse", "color": "warn", "regime": "elevated"}
     else:
-        vix_regime = {"value": vix, "label": "Normalt - full storrelse",
-                      "color": "bull", "regime": "normal"}
+        vix_regime = {"value": vix, "label": "Normalt - full storrelse", "color": "bull", "regime": "normal"}
 
     return {
         "date": datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC"),

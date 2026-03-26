@@ -3,14 +3,12 @@
 import json
 from pathlib import Path
 
-import pytest
-
 from src.publishers.json_file import publish_static_json
-
 
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------
+
 
 def _sample_macro() -> dict:
     """Return a minimal v1-shaped macro data dict."""
@@ -26,6 +24,7 @@ def _sample_macro() -> dict:
 
 
 # ===== File writing ========================================================
+
 
 class TestPublishStaticJson:
     """Core write behaviour."""

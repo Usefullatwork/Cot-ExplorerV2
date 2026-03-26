@@ -13,15 +13,16 @@ iterates chronologically, and calls strategy.on_bar() for each bar.
 
 from typing import Dict, List, Optional
 
-# Re-export extracted classes for backward compatibility
-from .models import Trade, Portfolio, Bar
 from .data_loader import DataLoader
 from .indicators import Indicators
 
+# Re-export extracted classes for backward compatibility
+from .models import Bar, Portfolio, Trade
 
 # ---------------------------------------------------------------------------
 # Strategy Base Class
 # ---------------------------------------------------------------------------
+
 
 class Strategy:
     """Base class for all backtesting strategies.
@@ -56,6 +57,7 @@ class Strategy:
 # ---------------------------------------------------------------------------
 # BacktestEngine
 # ---------------------------------------------------------------------------
+
 
 class BacktestEngine:
     """Main backtesting engine. Orchestrates data loading, bar iteration,
@@ -132,9 +134,7 @@ class BacktestEngine:
                 t.bars_held += 1
 
             # Call strategy
-            actions = self.strategy.on_bar(
-                date, bars_by_inst, self.portfolio, self
-            )
+            actions = self.strategy.on_bar(date, bars_by_inst, self.portfolio, self)
 
             # Process strategy actions
             self._process_actions(date, actions)
@@ -161,13 +161,13 @@ class BacktestEngine:
                 continue
 
             h = current_bar.high
-            l = current_bar.low
+            lo = current_bar.low
 
             # Stop loss hit first (conservative: assume worst case)
-            if trade.check_stop_loss(h, l):
+            if trade.check_stop_loss(h, lo):
                 exit_price = trade.stop_loss
                 self.portfolio.close_trade(trade_id, exit_price, date, "stop_loss")
-            elif trade.check_take_profit(h, l):
+            elif trade.check_take_profit(h, lo):
                 exit_price = trade.take_profit
                 self.portfolio.close_trade(trade_id, exit_price, date, "take_profit")
 
@@ -187,9 +187,7 @@ class BacktestEngine:
                 # Calculate size from risk if stop_loss provided
                 size = action.get("size", 1.0)
                 if stop_loss and action.get("use_risk_sizing", True):
-                    size = self.portfolio.position_size_from_risk(
-                        self.risk_per_trade, entry_price, stop_loss
-                    )
+                    size = self.portfolio.position_size_from_risk(self.risk_per_trade, entry_price, stop_loss)
                     if size <= 0:
                         continue
 
@@ -211,9 +209,7 @@ class BacktestEngine:
                     self.portfolio.open_trades.get(trade_id, Trade("", "", 0, "")).instrument,
                     0,
                 )
-                self.portfolio.close_trade(
-                    trade_id, price, date, action.get("reason", "manual_close")
-                )
+                self.portfolio.close_trade(trade_id, price, date, action.get("reason", "manual_close"))
 
     def report(self) -> Dict:
         """Generate full performance report."""
@@ -269,7 +265,9 @@ class BacktestEngine:
                 "calmar_ratio": round(m.calmar_ratio(returns, max_dd), 3) if returns and max_dd else 0,
                 "recovery_factor": round(
                     m.recovery_factor(eq_values[-1] - self.initial_capital, max_dd * self.initial_capital / 100), 2
-                ) if eq_values and max_dd else 0,
+                )
+                if eq_values and max_dd
+                else 0,
             },
             "equity_curve": equity,
             "trade_log": trades_list,

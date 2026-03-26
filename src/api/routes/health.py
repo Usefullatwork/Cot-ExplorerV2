@@ -24,15 +24,12 @@ _START_UTC = datetime.now(timezone.utc)
 
 # ── Response models ──────────────────────────────────────────────────────────
 
+
 class HealthResponse(BaseModel):
     """Response for the health check endpoint."""
 
-    status: str = Field(
-        ..., description="Service status", examples=["ok"]
-    )
-    version: str = Field(
-        ..., description="API version string", examples=["2.0.0"]
-    )
+    status: str = Field(..., description="Service status", examples=["ok"])
+    version: str = Field(..., description="API version string", examples=["2.0.0"])
     last_run: Optional[str] = Field(
         None,
         description="ISO timestamp of the most recent signal generation",
@@ -53,21 +50,16 @@ class DetailedHealthResponse(BaseModel):
     timestamp: str = Field(..., description="Current server UTC timestamp")
 
     # Uptime
-    uptime_seconds: float = Field(
-        ..., description="Seconds since the API process started", examples=[3661.4]
-    )
+    uptime_seconds: float = Field(..., description="Seconds since the API process started", examples=[3661.4])
     started_at: str = Field(
-        ..., description="UTC timestamp when the process started",
+        ...,
+        description="UTC timestamp when the process started",
         examples=["2026-03-26T06:00:00+00:00"],
     )
 
     # Database
-    db_size_mb: Optional[float] = Field(
-        None, description="SQLite database file size in MB", examples=[12.4]
-    )
-    db_tables: Optional[int] = Field(
-        None, description="Number of tables in the database", examples=[10]
-    )
+    db_size_mb: Optional[float] = Field(None, description="SQLite database file size in MB", examples=[12.4])
+    db_tables: Optional[int] = Field(None, description="Number of tables in the database", examples=[10])
 
     # Pipeline
     last_pipeline_run: Optional[str] = Field(
@@ -83,32 +75,26 @@ class DetailedHealthResponse(BaseModel):
     total_cot: int = Field(0, description="Total COT position count")
 
     # Memory
-    memory_rss_mb: Optional[float] = Field(
-        None, description="Resident set size (RSS) of the process in MB"
-    )
+    memory_rss_mb: Optional[float] = Field(None, description="Resident set size (RSS) of the process in MB")
 
 
 class MetricsResponse(BaseModel):
     """Response for the metrics endpoint."""
 
-    signals: int = Field(
-        0, description="Total number of trading signals in the database", examples=[142]
-    )
-    prices_daily: int = Field(
-        0, description="Total number of daily price bars stored", examples=[5840]
-    )
-    cot_positions: int = Field(
-        0, description="Total number of COT position records", examples=[1200]
-    )
+    signals: int = Field(0, description="Total number of trading signals in the database", examples=[142])
+    prices_daily: int = Field(0, description="Total number of daily price bars stored", examples=[5840])
+    cot_positions: int = Field(0, description="Total number of COT position records", examples=[1200])
 
 
 # ── Helpers ──────────────────────────────────────────────────────────────────
+
 
 def _get_memory_rss_mb() -> Optional[float]:
     """Return current process RSS in MB, or None if unavailable."""
     try:
         # Try psutil first (most reliable cross-platform)
         import psutil  # noqa: F811
+
         proc = psutil.Process(os.getpid())
         return round(proc.memory_info().rss / (1024 * 1024), 2)
     except ImportError:
@@ -142,6 +128,7 @@ def _get_db_size_mb() -> Optional[float]:
 
 
 # ── Endpoints ────────────────────────────────────────────────────────────────
+
 
 @router.get(
     "/health",
@@ -225,9 +212,7 @@ def health_detailed() -> DetailedHealthResponse:
 
         # Table count via SQLite pragma
         try:
-            rows = session.execute(
-                text("SELECT count(*) FROM sqlite_master WHERE type='table'")
-            ).scalar_one()
+            rows = session.execute(text("SELECT count(*) FROM sqlite_master WHERE type='table'")).scalar_one()
             db_tables = rows
         except Exception:
             pass

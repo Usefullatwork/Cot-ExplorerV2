@@ -12,6 +12,7 @@ def _clear_instruments_cache():
     """Clear the module-level instrument cache and TTL cache between tests."""
     from src.api.middleware.cache import instruments_cache
     from src.api.routes import instruments as inst_mod
+
     inst_mod._INSTRUMENTS_CACHE = None
     instruments_cache.clear()
     yield

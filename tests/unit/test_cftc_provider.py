@@ -10,12 +10,9 @@ import tempfile
 import zipfile
 from pathlib import Path
 from typing import Any
-from unittest.mock import MagicMock, patch
-
-import pytest
+from unittest.mock import patch
 
 from src.data.providers.cftc import (
-    CATEGORIES,
     REPORTS,
     CftcProvider,
     _download_and_extract,
@@ -24,8 +21,8 @@ from src.data.providers.cftc import (
     _safe_int,
 )
 
-
 # ===== _safe_int ==============================================================
+
 
 class TestSafeInt:
     """Convert various messy values to int safely."""
@@ -56,6 +53,7 @@ class TestSafeInt:
 
 
 # ===== _get_category ==========================================================
+
 
 class TestGetCategory:
     """Keyword-based categorization of market names."""
@@ -88,6 +86,7 @@ class TestGetCategory:
 
 # ===== _download_and_extract ==================================================
 
+
 class TestDownloadAndExtract:
     """Test ZIP download and CSV extraction with mocked HTTP."""
 
@@ -105,9 +104,11 @@ class TestDownloadAndExtract:
         zip_bytes = self._make_zip_bytes(csv_text)
 
         with tempfile.TemporaryDirectory() as tmp:
+
             def fake_retrieve(url, dest):
                 with open(dest, "wb") as f:
                     f.write(zip_bytes)
+
             mock_retrieve.side_effect = fake_retrieve
 
             result = _download_and_extract("https://example.com/test.zip", tmp)
@@ -125,6 +126,7 @@ class TestDownloadAndExtract:
 
 
 # ===== _parse_file — TFF report ===============================================
+
 
 def _write_csv(tmp_dir: str, rows: list[dict[str, Any]], filename: str = "data.txt") -> str:
     """Write a CSV file with DictWriter and return the path."""
@@ -209,8 +211,8 @@ class TestParseFileTff:
 
 # ===== _parse_file — legacy report ============================================
 
-class TestParseFileLegacy:
 
+class TestParseFileLegacy:
     def _legacy_row(self, **overrides) -> dict[str, Any]:
         base = {
             "Market_and_Exchange_Names": "EURO FX - CHICAGO MERCANTILE",
@@ -247,8 +249,8 @@ class TestParseFileLegacy:
 
 # ===== _parse_file — unknown report_id ========================================
 
-class TestParseFileUnknown:
 
+class TestParseFileUnknown:
     def test_unknown_report_id_skipped(self):
         """Rows with an unrecognized report_id produce no output."""
         with tempfile.TemporaryDirectory() as tmp:
@@ -266,8 +268,8 @@ class TestParseFileUnknown:
 
 # ===== CftcProvider basics ====================================================
 
-class TestCftcProviderBasics:
 
+class TestCftcProviderBasics:
     def test_name(self):
         p = CftcProvider()
         assert p.name == "cftc"
@@ -278,6 +280,7 @@ class TestCftcProviderBasics:
 
 
 # ===== REPORTS config =========================================================
+
 
 class TestReportsConfig:
     """Verify the REPORTS list is well-formed."""
@@ -300,6 +303,7 @@ class TestReportsConfig:
 
 
 # ===== CftcProvider.fetch_cot_data (integration-light) ========================
+
 
 class TestFetchCotDataIntegration:
     """Test fetch_cot_data with mocked _download_and_extract."""

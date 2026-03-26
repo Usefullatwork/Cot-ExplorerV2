@@ -13,9 +13,10 @@ Position sizing: 1% risk per trade.
 """
 
 from typing import Dict, List
+
 from ..engine import Strategy
-from ..models import Bar, Portfolio
 from ..indicators import Indicators
+from ..models import Bar, Portfolio
 
 
 class MeanReversionStrategy(Strategy):
@@ -87,20 +88,30 @@ class MeanReversionStrategy(Strategy):
             bottom = val - atr_buf
             poi = (top + bottom) / 2
             if not overlapping(poi, supply_zones):
-                supply_zones.append({
-                    "top": top, "bottom": bottom, "poi": poi,
-                    "idx": idx, "status": "intact",
-                })
+                supply_zones.append(
+                    {
+                        "top": top,
+                        "bottom": bottom,
+                        "poi": poi,
+                        "idx": idx,
+                        "status": "intact",
+                    }
+                )
 
         for idx, val in pl[-15:]:
             bottom = val
             top = val + atr_buf
             poi = (top + bottom) / 2
             if not overlapping(poi, demand_zones):
-                demand_zones.append({
-                    "top": top, "bottom": bottom, "poi": poi,
-                    "idx": idx, "status": "intact",
-                })
+                demand_zones.append(
+                    {
+                        "top": top,
+                        "bottom": bottom,
+                        "poi": poi,
+                        "idx": idx,
+                        "status": "intact",
+                    }
+                )
 
         # Check for broken zones
         for z in supply_zones:
@@ -177,16 +188,20 @@ class MeanReversionStrategy(Strategy):
                     reason = f"mean_reversion_target SMA{self.sma_exit_period}={sma20:.4f}"
 
             if should_exit:
-                actions.append({
-                    "action": "close",
-                    "trade_id": trade_id,
-                    "reason": reason,
-                })
+                actions.append(
+                    {
+                        "action": "close",
+                        "trade_id": trade_id,
+                        "reason": reason,
+                    }
+                )
 
         open_instruments = {t.instrument for t in portfolio.open_trades.values()}
 
         for instrument, bars in bars_by_instrument.items():
-            min_bars = max(self.pivot_length * 2 + 5, self.atr_period + 1, self.rsi_period + 1, self.sma_exit_period + 1)
+            min_bars = max(
+                self.pivot_length * 2 + 5, self.atr_period + 1, self.rsi_period + 1, self.sma_exit_period + 1
+            )
             if len(bars) < min_bars:
                 continue
 
@@ -233,17 +248,19 @@ class MeanReversionStrategy(Strategy):
 
                     size = portfolio.position_size_from_risk(self.risk_pct, price, sl)
                     if size > 0:
-                        actions.append({
-                            "action": "open",
-                            "instrument": instrument,
-                            "direction": "long",
-                            "entry_price": price,
-                            "stop_loss": sl,
-                            "take_profit": tp,
-                            "size": size,
-                            "use_risk_sizing": False,
-                            "reason": f"mean_reversion long RSI={rsi:.1f} at demand/support",
-                        })
+                        actions.append(
+                            {
+                                "action": "open",
+                                "instrument": instrument,
+                                "direction": "long",
+                                "entry_price": price,
+                                "stop_loss": sl,
+                                "take_profit": tp,
+                                "size": size,
+                                "use_risk_sizing": False,
+                                "reason": f"mean_reversion long RSI={rsi:.1f} at demand/support",
+                            }
+                        )
 
             # SHORT: RSI overbought + at supply zone or key resistance
             elif rsi > self.rsi_overbought:
@@ -270,16 +287,18 @@ class MeanReversionStrategy(Strategy):
 
                     size = portfolio.position_size_from_risk(self.risk_pct, price, sl)
                     if size > 0:
-                        actions.append({
-                            "action": "open",
-                            "instrument": instrument,
-                            "direction": "short",
-                            "entry_price": price,
-                            "stop_loss": sl,
-                            "take_profit": tp,
-                            "size": size,
-                            "use_risk_sizing": False,
-                            "reason": f"mean_reversion short RSI={rsi:.1f} at supply/resistance",
-                        })
+                        actions.append(
+                            {
+                                "action": "open",
+                                "instrument": instrument,
+                                "direction": "short",
+                                "entry_price": price,
+                                "stop_loss": sl,
+                                "take_profit": tp,
+                                "size": size,
+                                "use_risk_sizing": False,
+                                "reason": f"mean_reversion short RSI={rsi:.1f} at supply/resistance",
+                            }
+                        )
 
         return actions

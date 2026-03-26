@@ -7,7 +7,6 @@ from typing import Optional
 
 import yaml
 from fastapi import APIRouter, HTTPException
-
 from pydantic import BaseModel, Field
 
 from src.api.middleware.cache import instruments_cache
@@ -18,6 +17,7 @@ router = APIRouter(prefix="/api/v1", tags=["instruments"])
 
 
 # ── Response models ──────────────────────────────────────────────────────────
+
 
 class CurrentPrice(BaseModel):
     """Latest price snapshot for an instrument."""

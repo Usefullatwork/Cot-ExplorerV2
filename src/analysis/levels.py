@@ -8,9 +8,6 @@ from __future__ import annotations
 from datetime import datetime, timezone
 from typing import Optional
 
-from src.core.models import TaggedLevel
-
-
 # ---------------------------------------------------------------------------
 # Type alias — rows are plain (h,l,c) tuples as used throughout v1.
 # ---------------------------------------------------------------------------
@@ -61,9 +58,7 @@ def get_session_status() -> dict:
     }
 
 
-def find_intraday_levels(
-    rows_15m: list[Row], n: int = 3
-) -> tuple[list[float], list[float]]:
+def find_intraday_levels(rows_15m: list[Row], n: int = 3) -> tuple[list[float], list[float]]:
     """Find intraday support/resistance from 15m candles.
 
     Uses last ~200 candles (~2 days).  n = minimum candles on each side to
@@ -90,9 +85,7 @@ def find_intraday_levels(
     return r_filt, s_filt
 
 
-def find_swing_levels(
-    rows: list[Row], n: int = 5
-) -> tuple[list[float], list[float]]:
+def find_swing_levels(rows: list[Row], n: int = 5) -> tuple[list[float], list[float]]:
     """Daily / 4H swing levels for context.
 
     Returns (resistances, supports) sorted by proximity, max 3 each.

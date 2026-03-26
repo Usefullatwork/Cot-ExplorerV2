@@ -2,16 +2,13 @@
 
 from __future__ import annotations
 
-from io import BytesIO
 from unittest.mock import MagicMock, patch
-
-import pytest
 
 from src.core.models import OhlcBar
 from src.data.providers.stooq import STOOQ_DAYS, STOOQ_MAP, StooqProvider
 
-
 # ===== StooqProvider basics ===================================================
+
 
 class TestStooqProviderBasics:
     """Initialization and availability."""
@@ -28,6 +25,7 @@ class TestStooqProviderBasics:
 
 # ===== STOOQ_MAP =============================================================
 
+
 class TestStooqMap:
     """Verify the symbol lookup table is well-formed."""
 
@@ -41,6 +39,7 @@ class TestStooqMap:
 
 
 # ===== _fetch — CSV parsing ===================================================
+
 
 class TestFetchCsvParsing:
     """Mock urlopen to inject CSV payloads and verify OhlcBar parsing."""
@@ -61,7 +60,11 @@ class TestFetchCsvParsing:
 
     @patch("src.data.providers.stooq.urllib.request.urlopen")
     def test_valid_csv_returns_bars(self, mock_urlopen):
-        csv = "Date,Open,High,Low,Close,Volume\n2024-01-02,1.10,1.12,1.09,1.11,1000\n2024-01-03,1.11,1.13,1.10,1.12,2000\n"
+        csv = (
+            "Date,Open,High,Low,Close,Volume\n"
+            "2024-01-02,1.10,1.12,1.09,1.11,1000\n"
+            "2024-01-03,1.11,1.13,1.10,1.12,2000\n"
+        )
         mock_urlopen.return_value = self._mock_urlopen(csv)
         p = self._make_provider()
         bars = p._fetch("EURUSD=X", "1y")
@@ -110,6 +113,7 @@ class TestFetchCsvParsing:
 
 # ===== Date range mapping =====================================================
 
+
 class TestDateRange:
     """Verify STOOQ_DAYS mapping and default fallback."""
 
@@ -138,6 +142,7 @@ class TestDateRange:
 
 # ===== fetch_stooq — retry/error wrapping ====================================
 
+
 class TestFetchStooqPublic:
     """Test the public fetch_stooq method that wraps _fetch with retry."""
 
@@ -164,6 +169,7 @@ class TestFetchStooqPublic:
 
 # ===== Module-level convenience function ======================================
 
+
 class TestModuleLevelFunction:
     """Test the drop-in fetch_stooq() module function."""
 
@@ -175,6 +181,7 @@ class TestModuleLevelFunction:
         cm.__exit__ = MagicMock(return_value=False)
         mock_urlopen.return_value = cm
         from src.data.providers.stooq import fetch_stooq
+
         bars = fetch_stooq("GC=F", "30d")
         assert len(bars) == 1
         assert bars[0].high == 105.0

@@ -9,11 +9,11 @@ Requires FINNHUB_API_KEY environment variable.
 Zero external dependencies - stdlib only.
 """
 
-import logging
-import urllib.request
-import urllib.parse
 import json
+import logging
 import os
+import urllib.parse
+import urllib.request
 
 log = logging.getLogger(__name__)
 
@@ -22,12 +22,12 @@ API_KEY = os.environ.get("FINNHUB_API_KEY", "")
 # Yahoo -> Finnhub symbol mapping
 QUOTE_MAP = {
     "^GSPC": "^GSPC",
-    "^NDX":  "^NDX",
-    "^VIX":  "^VIX",
-    "SI=F":  "SI1!",
-    "BZ=F":  "UKOIL",
-    "CL=F":  "USOIL",
-    "HG=F":  "HG1!",
+    "^NDX": "^NDX",
+    "^VIX": "^VIX",
+    "SI=F": "SI1!",
+    "BZ=F": "UKOIL",
+    "CL=F": "USOIL",
+    "HG=F": "HG1!",
 }
 
 
@@ -46,15 +46,14 @@ def fetch_quote(symbol: str) -> tuple[float, float, float] | None:
     fh_sym = QUOTE_MAP.get(symbol)
     if not fh_sym:
         return None
-    url = (f"https://finnhub.io/api/v1/quote"
-           f"?symbol={urllib.parse.quote(fh_sym)}&token={API_KEY}")
+    url = f"https://finnhub.io/api/v1/quote?symbol={urllib.parse.quote(fh_sym)}&token={API_KEY}"
     req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
     try:
         with urllib.request.urlopen(req, timeout=8) as r:
             d = json.loads(r.read())
-        c, h, l = d.get("c", 0), d.get("h", 0), d.get("l", 0)
-        if c and h and l:
-            return (h, l, c)
+        c, h, lo = d.get("c", 0), d.get("h", 0), d.get("l", 0)
+        if c and h and lo:
+            return (h, lo, c)
         return None
     except Exception as e:
         log.error(f"Finnhub ERROR {fh_sym}: {e}")

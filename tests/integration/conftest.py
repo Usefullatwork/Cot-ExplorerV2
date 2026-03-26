@@ -11,14 +11,10 @@ DBAPI connection and therefore sees the same data.
 
 from __future__ import annotations
 
-from typing import Generator
-
 import pytest
-from sqlalchemy import create_engine, event
-from sqlalchemy.orm import Session, sessionmaker
+from sqlalchemy import create_engine
 from sqlalchemy.pool import StaticPool
 
-import src.db.engine as engine_module
 from src.db.models import Base
 
 

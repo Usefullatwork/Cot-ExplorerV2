@@ -4,14 +4,14 @@ import pytest
 
 from src.security.input_validator import (
     sanitize_string,
-    validate_symbol,
     validate_instrument_key,
+    validate_symbol,
 )
-
 
 # ---------------------------------------------------------------------------
 # sanitize_string
 # ---------------------------------------------------------------------------
+
 
 class TestSanitizeString:
     """Tests for sanitize_string()."""
@@ -67,6 +67,7 @@ class TestSanitizeString:
 # validate_symbol
 # ---------------------------------------------------------------------------
 
+
 class TestValidateSymbol:
     """Tests for validate_symbol()."""
 
@@ -118,6 +119,7 @@ class TestValidateSymbol:
 # ---------------------------------------------------------------------------
 # validate_instrument_key
 # ---------------------------------------------------------------------------
+
 
 class TestValidateInstrumentKey:
     """Tests for validate_instrument_key()."""

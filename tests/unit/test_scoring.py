@@ -1,14 +1,12 @@
 """Unit tests for src.analysis.scoring.calculate_confluence."""
 
-import pytest
-
 from src.analysis.scoring import calculate_confluence
-from src.core.models import ScoringInput, ScoringResult, ScoreDetail
-
+from src.core.models import ScoreDetail, ScoringInput, ScoringResult
 
 # ---------------------------------------------------------------------------
 # Helper
 # ---------------------------------------------------------------------------
+
 
 def _make_input(**overrides) -> ScoringInput:
     """Create a ScoringInput with all fields False unless overridden."""
@@ -44,6 +42,7 @@ def _n_true(n: int, **forced) -> ScoringInput:
 
 
 # ===== Score / Grade boundary tests ========================================
+
 
 class TestGradeBoundaries:
     """Grade logic: A+ (>=11), A (>=9), B (>=6), C (<6)."""
@@ -99,8 +98,8 @@ class TestGradeBoundaries:
 
 # ===== max_score & details ==================================================
 
-class TestMaxScoreAndDetails:
 
+class TestMaxScoreAndDetails:
     def test_max_score_always_12_all_true(self):
         res = calculate_confluence(_all_true())
         assert res.max_score == 12
@@ -127,6 +126,7 @@ class TestMaxScoreAndDetails:
 
 
 # ===== Grade color mapping ==================================================
+
 
 class TestGradeColor:
     """>=11 bull, 9-10 warn, <9 bear."""
@@ -157,6 +157,7 @@ class TestGradeColor:
 
 
 # ===== Timeframe bias =======================================================
+
 
 class TestTimeframeBias:
     """
@@ -216,6 +217,7 @@ class TestTimeframeBias:
 
 
 # ===== Edge case tests =====================================================
+
 
 class TestScoreBoundaryTransitions:
     """Test exact boundary transitions: 5->6, 8->9, 10->11."""
@@ -333,6 +335,7 @@ class TestTimeframeBiasEdgeCases:
 
 
 # ===== Edge case tests added by Agent D3 =====================================
+
 
 class TestScoringInputVariations:
     """Edge cases: individual fields, idempotency, data integrity."""

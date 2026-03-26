@@ -9,9 +9,9 @@ Available strategies:
 """
 
 from .cot_momentum import COTMomentumStrategy
-from .smc_confluence import SMCConfluenceStrategy
 from .macro_regime import MacroRegimeStrategy
 from .mean_reversion import MeanReversionStrategy
+from .smc_confluence import SMCConfluenceStrategy
 
 __all__ = [
     "COTMomentumStrategy",

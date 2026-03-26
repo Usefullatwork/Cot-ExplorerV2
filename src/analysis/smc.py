@@ -52,9 +52,7 @@ def find_pivot_lows(rows: list[Row], length: int = 10) -> list[tuple[int, float]
     return pivots
 
 
-def classify_swings(
-    pivots: list[tuple[int, float]], swing_type: str
-) -> list[tuple[int, float, str]]:
+def classify_swings(pivots: list[tuple[int, float]], swing_type: str) -> list[tuple[int, float, str]]:
     """
     Klassifiser swing-punkter som HH/LH (for highs) eller HL/LL (for lows)
     swing_type: 'high' eller 'low'
@@ -226,17 +224,13 @@ def filter_relevant_zones(
     relevant_supply = [
         z
         for z in supply_zones
-        if z["status"] == "intakt"
-        and z["bottom"] > curr
-        and abs(z["poi"] - curr) <= atr * max_dist
+        if z["status"] == "intakt" and z["bottom"] > curr and abs(z["poi"] - curr) <= atr * max_dist
     ]
 
     relevant_demand = [
         z
         for z in demand_zones
-        if z["status"] == "intakt"
-        and z["top"] < curr
-        and abs(z["poi"] - curr) <= atr * max_dist
+        if z["status"] == "intakt" and z["top"] < curr and abs(z["poi"] - curr) <= atr * max_dist
     ]
 
     # Sorter: naermest pris overst
@@ -287,9 +281,7 @@ def run_smc(
     structure = determine_structure(swing_highs, swing_lows)
 
     # Filtrer til relevante
-    rel_supply, rel_demand, recent_bos = filter_relevant_zones(
-        supply, demand, bos, curr, atr, max_dist=15
-    )
+    rel_supply, rel_demand, recent_bos = filter_relevant_zones(supply, demand, bos, curr, atr, max_dist=15)
 
     return {
         "structure": structure,

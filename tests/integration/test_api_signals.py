@@ -4,14 +4,12 @@ from __future__ import annotations
 
 from datetime import datetime, timezone
 
-import pytest
-
 from src.db import repository as repo
-
 
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def _make_signal(instrument: str = "EURUSD", **overrides) -> dict:
     """Return a minimal valid signal dict."""
@@ -64,6 +62,7 @@ def _seed_signals(session, seed_instrument):
 # Tests — empty DB
 # ---------------------------------------------------------------------------
 
+
 async def test_list_signals_empty(app_client):
     """GET /api/v1/signals on empty DB returns empty list."""
     r = await app_client.get("/api/v1/signals")
@@ -75,6 +74,7 @@ async def test_list_signals_empty(app_client):
 # ---------------------------------------------------------------------------
 # Tests — with seeded data
 # ---------------------------------------------------------------------------
+
 
 async def test_list_signals_returns_all(app_client, db_session, seed_instrument):
     """All seeded signals appear in unfiltered listing."""
@@ -172,10 +172,27 @@ async def test_signal_response_shape(app_client, db_session, seed_instrument):
     r = await app_client.get("/api/v1/signals/EURUSD")
     body = r.json()
     expected_keys = {
-        "id", "instrument", "generated_at", "direction", "grade", "score",
-        "timeframe_bias", "entry_price", "stop_loss", "target_1", "target_2",
-        "rr_t1", "rr_t2", "entry_weight", "t1_weight", "sl_type",
-        "at_level_now", "vix_regime", "pos_size", "score_details", "metadata",
+        "id",
+        "instrument",
+        "generated_at",
+        "direction",
+        "grade",
+        "score",
+        "timeframe_bias",
+        "entry_price",
+        "stop_loss",
+        "target_1",
+        "target_2",
+        "rr_t1",
+        "rr_t2",
+        "entry_weight",
+        "t1_weight",
+        "sl_type",
+        "at_level_now",
+        "vix_regime",
+        "pos_size",
+        "score_details",
+        "metadata",
     }
     assert expected_keys == set(body.keys())
     assert body["score_details"] == {"cot": 2, "smc": 3}

@@ -57,21 +57,15 @@ def make_setup_l2l(
             sl_buf = atr_daily * (0.5 if w >= 4 else 0.3)
             return round(entry_level + sl_buf, 5)
 
-    def best_t1(
-        levels: list[dict], entry: float, min_dist: float
-    ) -> Optional[dict]:
+    def best_t1(levels: list[dict], entry: float, min_dist: float) -> Optional[dict]:
         """Best T1: highest HTF weight -> nearest to entry, at least min_dist away."""
         cands = sorted(levels, key=lambda x: (-x["weight"], abs(x["price"] - entry)))
-        for l in cands:
-            p = l["price"]
+        for lv in cands:
+            p = lv["price"]
             ok = (p > entry + min_dist) if direction == "long" else (p < entry - min_dist)
             if ok:
-                q = (
-                    "htf"
-                    if l["weight"] >= 3
-                    else ("4h" if l["weight"] >= 2 else "weak")
-                )
-                return dict(l, t1_quality=q)
+                q = "htf" if lv["weight"] >= 3 else ("4h" if lv["weight"] >= 2 else "weak")
+                return dict(lv, t1_quality=q)
         return None
 
     if direction == "long":
@@ -82,9 +76,7 @@ def make_setup_l2l(
         entry_w = entry_obj["weight"]
 
         entry_dist = curr - entry_level
-        max_entry_dist = atr_daily * (
-            0.3 if entry_w <= 1 else 0.7 if entry_w == 2 else 1.0
-        )
+        max_entry_dist = atr_daily * (0.3 if entry_w <= 1 else 0.7 if entry_w == 2 else 1.0)
         if entry_dist < 0 or entry_dist > max_entry_dist:
             return None
 
@@ -99,7 +91,7 @@ def make_setup_l2l(
             return None
         t1 = t1_obj["price"]
 
-        res_after = [l for l in res_tagged if l["price"] > t1]
+        res_after = [lv for lv in res_tagged if lv["price"] > t1]
         t2 = res_after[0]["price"] if res_after else round(t1 + risk, 5)
 
         rr1 = round((t1 - entry_level) / risk, 2)
@@ -144,9 +136,7 @@ def make_setup_l2l(
         entry_w = entry_obj["weight"]
 
         entry_dist = entry_level - curr
-        max_entry_dist = atr_daily * (
-            0.3 if entry_w <= 1 else 0.7 if entry_w == 2 else 1.0
-        )
+        max_entry_dist = atr_daily * (0.3 if entry_w <= 1 else 0.7 if entry_w == 2 else 1.0)
         if entry_dist < 0 or entry_dist > max_entry_dist:
             return None
 
@@ -161,7 +151,7 @@ def make_setup_l2l(
             return None
         t1 = t1_obj["price"]
 
-        sup_after = [l for l in sup_tagged if l["price"] < t1]
+        sup_after = [lv for lv in sup_tagged if lv["price"] < t1]
         t2 = sup_after[0]["price"] if sup_after else round(t1 - risk, 5)
 
         rr1 = round((entry_level - t1) / risk, 2)

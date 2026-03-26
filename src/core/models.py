@@ -9,6 +9,7 @@ from pydantic import BaseModel, Field
 
 class Instrument(BaseModel):
     """Trading instrument definition."""
+
     key: str
     name: str
     symbol: str
@@ -28,6 +29,7 @@ class Instrument(BaseModel):
 
 class OhlcBar(BaseModel):
     """A single (high, low, close) bar — the (h, l, c) tuple from v1."""
+
     high: float
     low: float
     close: float
@@ -39,6 +41,7 @@ class OhlcBar(BaseModel):
 
 class TaggedLevel(BaseModel):
     """A price level tagged with source and weight."""
+
     price: float
     source: str
     weight: int
@@ -48,12 +51,14 @@ class TaggedLevel(BaseModel):
 
 class ScoreDetail(BaseModel):
     """Single criterion in the confluence scoring."""
+
     label: str
     passes: bool
 
 
 class ScoringInput(BaseModel):
     """All boolean inputs for confluence scoring."""
+
     above_sma200: bool
     momentum_confirms: bool
     cot_confirms: bool
@@ -70,6 +75,7 @@ class ScoringInput(BaseModel):
 
 class ScoringResult(BaseModel):
     """Output of the confluence scoring function."""
+
     score: int
     max_score: int
     grade: str
@@ -80,6 +86,7 @@ class ScoringResult(BaseModel):
 
 class SetupL2L(BaseModel):
     """Level-to-level trade setup."""
+
     entry: float
     entry_curr: float
     sl: float
@@ -105,6 +112,7 @@ class SetupL2L(BaseModel):
 
 class SmcOutput(BaseModel):
     """Output from SMC analysis."""
+
     structure: str
     supply_zones: list[dict]
     demand_zones: list[dict]
@@ -115,6 +123,7 @@ class SmcOutput(BaseModel):
 
 class MacroIndicator(BaseModel):
     """A single macro indicator reading."""
+
     price: float
     chg1d: float
     chg5d: float
@@ -122,12 +131,14 @@ class MacroIndicator(BaseModel):
 
 class FearGreed(BaseModel):
     """CNN Fear & Greed index reading."""
+
     score: float
     rating: str
 
 
 class NewsSentiment(BaseModel):
     """Aggregated news sentiment from RSS feeds."""
+
     score: float
     label: str
     top_headlines: list[str]

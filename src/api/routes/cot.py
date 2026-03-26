@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
-from typing import Any, Optional
+from typing import Optional
 
 from fastapi import APIRouter, HTTPException, Query
 from pydantic import BaseModel, Field
@@ -18,6 +18,7 @@ _DATA_DIR = Path(__file__).resolve().parents[3] / "data"
 
 
 # ── Response models ──────────────────────────────────────────────────────────
+
 
 class CotPositionResponse(BaseModel):
     """A single COT position record with speculator, commercial, and non-reportable breakdowns."""
@@ -70,6 +71,7 @@ class CotSummaryResponse(BaseModel):
 
 
 # ── Endpoints ────────────────────────────────────────────────────────────────
+
 
 @router.get(
     "/cot",

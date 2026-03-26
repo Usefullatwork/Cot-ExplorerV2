@@ -10,28 +10,28 @@ Zero external dependencies - stdlib only.
 
 import logging
 import urllib.request
-from datetime import datetime, timezone, timedelta
+from datetime import datetime, timedelta, timezone
 
 log = logging.getLogger(__name__)
 
 # Symbol mapping: Yahoo -> Stooq
 SYMBOL_MAP = {
-    "EURUSD=X":  "eurusd",
-    "JPY=X":     "usdjpy",
-    "GBPUSD=X":  "gbpusd",
-    "AUDUSD=X":  "audusd",
-    "GC=F":      "xauusd",
-    "SI=F":      "xagusd",
-    "BZ=F":      "co.f",
-    "CL=F":      "cl.f",
-    "^GSPC":     "^spx",
-    "^NDX":      "^ndx",
-    "^VIX":      "^vix",
-    "DX-Y.NYB":  "dxy.f",
-    "HG=F":      "hg.f",
-    "HYG":       "hyg.us",
-    "TIP":       "tip.us",
-    "EEM":       "eem.us",
+    "EURUSD=X": "eurusd",
+    "JPY=X": "usdjpy",
+    "GBPUSD=X": "gbpusd",
+    "AUDUSD=X": "audusd",
+    "GC=F": "xauusd",
+    "SI=F": "xagusd",
+    "BZ=F": "co.f",
+    "CL=F": "cl.f",
+    "^GSPC": "^spx",
+    "^NDX": "^ndx",
+    "^VIX": "^vix",
+    "DX-Y.NYB": "dxy.f",
+    "HG=F": "hg.f",
+    "HYG": "hyg.us",
+    "TIP": "tip.us",
+    "EEM": "eem.us",
 }
 
 RANGE_DAYS = {"1y": 400, "30d": 35, "5d": 7}
@@ -64,9 +64,9 @@ def fetch_ohlc(symbol: str, range_: str = "1y") -> list[tuple[float, float, floa
             if len(parts) < 5:
                 continue
             try:
-                h, l, c = float(parts[2]), float(parts[3]), float(parts[4])
-                if h and l and c:
-                    rows.append((h, l, c))
+                h, lo, c = float(parts[2]), float(parts[3]), float(parts[4])
+                if h and lo and c:
+                    rows.append((h, lo, c))
             except (ValueError, IndexError):
                 continue
         return rows

@@ -20,11 +20,11 @@ Monthly rebalancing: closes all positions on first bar of new month,
 then re-enters based on current regime.
 """
 
-from typing import Dict, List, Optional
-from ..engine import Strategy
-from ..models import Bar, Portfolio
-from ..indicators import Indicators
+from typing import Dict, List
 
+from ..engine import Strategy
+from ..indicators import Indicators
+from ..models import Bar, Portfolio
 
 # Asset classification for regime-based allocation
 RISK_ON_ASSETS = {"spx", "nas100", "audusd", "brent", "wti", "copper", "silver"}
@@ -33,17 +33,17 @@ RISK_NEUTRAL_ASSETS = {"eurusd", "gbpusd"}
 
 # Asset universe with expected direction in risk-on
 ASSET_REGIME_DIR = {
-    "spx": "long",       # equities rise in risk-on
+    "spx": "long",  # equities rise in risk-on
     "nas100": "long",
-    "eurusd": "long",    # weak USD = EUR/USD up
+    "eurusd": "long",  # weak USD = EUR/USD up
     "gbpusd": "long",
-    "audusd": "long",    # risk currency
-    "usdjpy": "long",    # risk-on = weak JPY = USD/JPY up
-    "gold": "short",     # gold falls in risk-on (typically)
-    "silver": "long",    # silver is industrial + precious
+    "audusd": "long",  # risk currency
+    "usdjpy": "long",  # risk-on = weak JPY = USD/JPY up
+    "gold": "short",  # gold falls in risk-on (typically)
+    "silver": "long",  # silver is industrial + precious
     "brent": "long",
     "wti": "long",
-    "dxy": "short",      # weak USD in risk-on
+    "dxy": "short",  # weak USD in risk-on
 }
 
 
@@ -99,10 +99,10 @@ class MacroRegimeStrategy(Strategy):
 
         mean_r = sum(returns) / len(returns)
         variance = sum((r - mean_r) ** 2 for r in returns) / len(returns)
-        weekly_std = variance ** 0.5
+        weekly_std = variance**0.5
 
         # Annualize: weekly std * sqrt(52) * 100
-        annualized_vol = weekly_std * (52 ** 0.5) * 100
+        annualized_vol = weekly_std * (52**0.5) * 100
         return annualized_vol
 
     def _dxy_trend(self, bars: List[Bar], lookback: int) -> str:
@@ -116,9 +116,7 @@ class MacroRegimeStrategy(Strategy):
             return "weakening"
         return "flat"
 
-    def _classify_regime(
-        self, vix_est: float, dxy_trend: str
-    ) -> str:
+    def _classify_regime(self, vix_est: float, dxy_trend: str) -> str:
         """Classify macro regime."""
         if vix_est < self.vix_risk_on and dxy_trend in ("weakening", "flat"):
             return "risk_on"
@@ -182,12 +180,13 @@ class MacroRegimeStrategy(Strategy):
 
         # Close all existing positions before rebalancing
         for trade_id in list(portfolio.open_trades.keys()):
-            trade = portfolio.open_trades[trade_id]
-            actions.append({
-                "action": "close",
-                "trade_id": trade_id,
-                "reason": f"monthly_rebalance regime={regime}",
-            })
+            actions.append(
+                {
+                    "action": "close",
+                    "trade_id": trade_id,
+                    "reason": f"monthly_rebalance regime={regime}",
+                }
+            )
 
         # Size factor based on regime
         if regime == "risk_on":
@@ -238,18 +237,20 @@ class MacroRegimeStrategy(Strategy):
                 continue
 
             # Rank by absolute COT strength
-            scored.append({
-                "instrument": instrument,
-                "direction": direction,
-                "cot_score": abs(cot_score),
-                "price": price,
-                "atr": atr,
-            })
+            scored.append(
+                {
+                    "instrument": instrument,
+                    "direction": direction,
+                    "cot_score": abs(cot_score),
+                    "price": price,
+                    "atr": atr,
+                }
+            )
 
         # Sort by COT strength descending, take top N
         scored.sort(key=lambda x: x["cot_score"], reverse=True)
 
-        for entry in scored[:self.max_positions]:
+        for entry in scored[: self.max_positions]:
             price = entry["price"]
             atr = entry["atr"]
             direction = entry["direction"]
@@ -261,22 +262,24 @@ class MacroRegimeStrategy(Strategy):
                 sl = price + self.sl_atr_mult * atr
                 tp = price - self.sl_atr_mult * atr * 1.5
 
-            size = portfolio.position_size_from_risk(
-                self.risk_pct * size_mult, price, sl
-            )
+            size = portfolio.position_size_from_risk(self.risk_pct * size_mult, price, sl)
             if size <= 0:
                 continue
 
-            actions.append({
-                "action": "open",
-                "instrument": entry["instrument"],
-                "direction": direction,
-                "entry_price": price,
-                "stop_loss": sl,
-                "take_profit": tp,
-                "size": size,
-                "use_risk_sizing": False,
-                "reason": f"macro regime={regime} dxy={dxy_trend} vix_est={vix_est:.1f} cot={entry['cot_score']:.2f}",
-            })
+            actions.append(
+                {
+                    "action": "open",
+                    "instrument": entry["instrument"],
+                    "direction": direction,
+                    "entry_price": price,
+                    "stop_loss": sl,
+                    "take_profit": tp,
+                    "size": size,
+                    "use_risk_sizing": False,
+                    "reason": (
+                        f"macro regime={regime} dxy={dxy_trend} vix_est={vix_est:.1f} cot={entry['cot_score']:.2f}"
+                    ),
+                }
+            )
 
         return actions

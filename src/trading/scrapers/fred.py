@@ -9,10 +9,10 @@ Public domain data. No API key required for CSV endpoint.
 Zero external dependencies - stdlib only.
 """
 
-import logging
-import urllib.request
 import json
+import logging
 import os
+import urllib.request
 
 log = logging.getLogger(__name__)
 
@@ -57,9 +57,11 @@ def fetch_api(series_id: str, limit: int = 16) -> list[tuple[str, float]]:
     """
     if not API_KEY:
         return []
-    url = (f"https://api.stlouisfed.org/fred/series/observations"
-           f"?series_id={series_id}&api_key={API_KEY}"
-           f"&file_type=json&sort_order=desc&limit={limit}")
+    url = (
+        f"https://api.stlouisfed.org/fred/series/observations"
+        f"?series_id={series_id}&api_key={API_KEY}"
+        f"&file_type=json&sort_order=desc&limit={limit}"
+    )
     req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
     try:
         with urllib.request.urlopen(req, timeout=12) as r:

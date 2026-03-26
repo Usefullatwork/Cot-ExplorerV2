@@ -58,6 +58,7 @@ def _load_all() -> None:
 
 # ── Public API ────────────────────────────────────────────────────────
 
+
 def get_prompt(prompt_id: str) -> Optional[Dict[str, Any]]:
     """Return a single prompt template by its unique id, or None."""
     _load_all()
@@ -97,10 +98,7 @@ def get_prompts_for_instrument(key: str) -> List[Dict[str, Any]]:
     (instrument=null) that process all instruments.
     """
     _load_all()
-    return [
-        p for p in _all_prompts
-        if p.get("instrument") == key or p.get("instrument") is None
-    ]
+    return [p for p in _all_prompts if p.get("instrument") == key or p.get("instrument") is None]
 
 
 def get_all_ids() -> List[str]:

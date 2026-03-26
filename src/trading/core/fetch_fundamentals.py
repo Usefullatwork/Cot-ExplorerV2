@@ -28,18 +28,18 @@ import time
 import urllib.request
 from datetime import datetime, timezone
 
-from src.config.fundamentals import (
-    FRED_SERIES,
-    CATEGORIES,
-    CAT_WEIGHTS_FX,
-    CAT_WEIGHTS_EQ,
-    INSTRUMENT_USD_DIR,
-    EQ_INSTRUMENTS,
-)
 from src.analysis.fundamental_scoring import (
     compute_indicator,
-    weighted_cat_avg,
     consensus_multiplier,
+    weighted_cat_avg,
+)
+from src.config.fundamentals import (
+    CAT_WEIGHTS_EQ,
+    CAT_WEIGHTS_FX,
+    CATEGORIES,
+    EQ_INSTRUMENTS,
+    FRED_SERIES,
+    INSTRUMENT_USD_DIR,
 )
 from src.trading.core.pmi_calendar import try_calendar_pmi
 

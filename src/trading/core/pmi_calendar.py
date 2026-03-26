@@ -34,13 +34,11 @@ def try_calendar_pmi(data_dir: str) -> dict:
         except (ValueError, AttributeError):
             continue
         try:
-            fore_val = float(str(ev.get("forecast", "")).replace("%", "").strip()) \
-                       if ev.get("forecast") else None
+            fore_val = float(str(ev.get("forecast", "")).replace("%", "").strip()) if ev.get("forecast") else None
         except (ValueError, AttributeError):
             fore_val = None
         try:
-            prev_val = float(str(ev.get("previous", "")).replace("%", "").strip()) \
-                       if ev.get("previous") else None
+            prev_val = float(str(ev.get("previous", "")).replace("%", "").strip()) if ev.get("previous") else None
         except (ValueError, AttributeError):
             prev_val = None
 
@@ -52,12 +50,20 @@ def try_calendar_pmi(data_dir: str) -> dict:
             surprise = 0
         final_score = max(-2, min(2, base_score + surprise))
 
-        entry = {"actual": act_val, "forecast": fore_val, "previous": prev_val,
-                 "surprise": surprise, "score": final_score}
+        entry = {
+            "actual": act_val,
+            "forecast": fore_val,
+            "previous": prev_val,
+            "surprise": surprise,
+            "score": final_score,
+        }
         if "ism manufacturing" in title or ("manufacturing pmi" in title and "flash" not in title):
             pmi_map["mPMI"] = entry
-        elif ("ism services" in title or ("services pmi" in title and "flash" not in title)
-              or "non-manufacturing" in title):
+        elif (
+            "ism services" in title
+            or ("services pmi" in title and "flash" not in title)
+            or "non-manufacturing" in title
+        ):
             pmi_map["sPMI"] = entry
 
     return pmi_map

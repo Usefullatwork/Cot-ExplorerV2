@@ -1,9 +1,6 @@
 """Unit tests for src.analysis.sentiment.detect_conflict."""
 
-import pytest
-
 from src.analysis.sentiment import detect_conflict
-
 
 # ---------------------------------------------------------------------------
 # Defaults – no conflicts triggered
@@ -13,6 +10,7 @@ _SAFE = dict(vix=18.0, dxy_5d=0.5, fg={"score": 50}, cot_usd=0.0)
 
 
 # ===== Individual conflict conditions =========================================
+
 
 class TestSingleConflicts:
     """Each condition triggers exactly one conflict string."""
@@ -40,21 +38,32 @@ class TestSingleConflicts:
     def test_hy_stress_low_vix(self):
         """hy_stress=True and vix<20 -> 'HY-spreader øker men VIX lav'."""
         result = detect_conflict(
-            vix=15, dxy_5d=0.5, fg={"score": 50}, cot_usd=0, hy_stress=True,
+            vix=15,
+            dxy_5d=0.5,
+            fg={"score": 50},
+            cot_usd=0,
+            hy_stress=True,
         )
         assert any("HY-spreader" in c for c in result)
 
     def test_yield_curve_inverted(self):
         """yield_curve<-0.3 -> 'Rentekurve invertert'."""
         result = detect_conflict(
-            vix=18, dxy_5d=0.5, fg={"score": 50}, cot_usd=0, yield_curve=-0.5,
+            vix=18,
+            dxy_5d=0.5,
+            fg={"score": 50},
+            cot_usd=0,
+            yield_curve=-0.5,
         )
         assert any("Rentekurve invertert" in c for c in result)
 
     def test_news_risk_on_vix_high(self):
         """news risk_on and vix>25 -> 'Nyheter risk-on men VIX forhøyet'."""
         result = detect_conflict(
-            vix=30, dxy_5d=0.5, fg={"score": 50}, cot_usd=0,
+            vix=30,
+            dxy_5d=0.5,
+            fg={"score": 50},
+            cot_usd=0,
             news_sent={"label": "risk_on"},
         )
         assert any("Nyheter risk-on men VIX" in c for c in result)
@@ -62,13 +71,17 @@ class TestSingleConflicts:
     def test_news_risk_off_greed(self):
         """news risk_off and fg.score>60 -> 'Nyheter risk-off men Fear&Greed viser grådighet'."""
         result = detect_conflict(
-            vix=18, dxy_5d=0.5, fg={"score": 65}, cot_usd=0,
+            vix=18,
+            dxy_5d=0.5,
+            fg={"score": 65},
+            cot_usd=0,
             news_sent={"label": "risk_off"},
         )
         assert any("Nyheter risk-off" in c and "grådighet" in c.lower() for c in result)
 
 
 # ===== Clean / composite =====================================================
+
 
 class TestComposite:
     """No-conflict baseline and multi-trigger scenarios."""

@@ -3,13 +3,8 @@
 from __future__ import annotations
 
 import json
-from pathlib import Path
-from unittest.mock import patch
-
-import pytest
 
 from src.db import repository as repo
-
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -38,6 +33,7 @@ _SAMPLE_LATEST = [
 # ---------------------------------------------------------------------------
 # /cot — reads from combined/latest.json
 # ---------------------------------------------------------------------------
+
 
 async def test_cot_latest_no_file(app_client, tmp_path, monkeypatch):
     """GET /api/v1/cot returns [] when combined file does not exist."""
@@ -69,6 +65,7 @@ async def test_cot_latest_with_file(app_client, tmp_path, monkeypatch):
 # ---------------------------------------------------------------------------
 # /cot/{symbol}/history — reads from DB
 # ---------------------------------------------------------------------------
+
 
 async def test_cot_history_not_found(app_client):
     """GET /api/v1/cot/NOPE/history returns 404 when no data."""
@@ -150,6 +147,7 @@ async def test_cot_history_filter_report_type(app_client, db_session):
 # /cot/summary — reads from combined/latest.json
 # ---------------------------------------------------------------------------
 
+
 async def test_cot_summary_no_file(app_client, tmp_path, monkeypatch):
     """GET /api/v1/cot/summary returns empty movers/extremes when no file."""
     from src.api.routes import cot as cot_mod
@@ -210,9 +208,23 @@ async def test_cot_history_response_shape(app_client, db_session):
     r = await app_client.get("/api/v1/cot/EUROFX/history")
     row = r.json()[0]
     expected_keys = {
-        "date", "symbol", "market", "report_type", "open_interest", "change_oi",
-        "spec_long", "spec_short", "spec_net", "comm_long", "comm_short", "comm_net",
-        "nonrept_long", "nonrept_short", "nonrept_net", "change_spec_net", "category",
+        "date",
+        "symbol",
+        "market",
+        "report_type",
+        "open_interest",
+        "change_oi",
+        "spec_long",
+        "spec_short",
+        "spec_net",
+        "comm_long",
+        "comm_short",
+        "comm_net",
+        "nonrept_long",
+        "nonrept_short",
+        "nonrept_net",
+        "change_spec_net",
+        "category",
     }
     assert expected_keys == set(row.keys())
     await app_client.aclose()

@@ -7,23 +7,19 @@ trade lifecycle -> metrics computation -> report generation.
 from __future__ import annotations
 
 import json
-import os
-from typing import Dict, List
-from unittest.mock import patch
-
-import pytest
 
 from src.trading.backtesting.engine import BacktestEngine, Strategy
-from src.trading.backtesting.models import Bar, Portfolio, Trade
-
+from src.trading.backtesting.models import Bar
 
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
 
+
 def _weekly_dates(n: int, start: str = "2025-01-06") -> list[str]:
     """Generate n weekly date strings starting from start (Monday)."""
     from datetime import datetime, timedelta
+
     d = datetime.strptime(start, "%Y-%m-%d")
     return [(d + timedelta(weeks=i)).strftime("%Y-%m-%d") for i in range(n)]
 
@@ -42,15 +38,17 @@ def _make_bars(
     bars = []
     for i, (date, close, high, low) in enumerate(prices):
         sn = spec_nets[i] if i < len(spec_nets) else None
-        bars.append(Bar(
-            date=date,
-            instrument=instrument,
-            price=close,
-            high=high,
-            low=low,
-            spec_net=sn,
-            open_interest=100000 if sn is not None else None,
-        ))
+        bars.append(
+            Bar(
+                date=date,
+                instrument=instrument,
+                price=close,
+                high=high,
+                low=low,
+                spec_net=sn,
+                open_interest=100000 if sn is not None else None,
+            )
+        )
     return bars
 
 
@@ -71,17 +69,19 @@ class AlwaysLongStrategy(Strategy):
             return []
         current = bars[-1]
         self._opened = True
-        return [{
-            "action": "open",
-            "instrument": self.target_instrument,
-            "direction": "long",
-            "entry_price": current.close,
-            "stop_loss": current.close * 0.95,
-            "take_profit": current.close * 1.10,
-            "size": 10.0,
-            "use_risk_sizing": False,
-            "reason": "test_open",
-        }]
+        return [
+            {
+                "action": "open",
+                "instrument": self.target_instrument,
+                "direction": "long",
+                "entry_price": current.close,
+                "stop_loss": current.close * 0.95,
+                "take_profit": current.close * 1.10,
+                "size": 10.0,
+                "use_risk_sizing": False,
+                "reason": "test_open",
+            }
+        ]
 
 
 class MultiTradeStrategy(Strategy):
@@ -101,22 +101,25 @@ class MultiTradeStrategy(Strategy):
             return []
         self._count += 1
         current = bars[-1]
-        return [{
-            "action": "open",
-            "instrument": self.instrument,
-            "direction": "long",
-            "entry_price": current.close,
-            "stop_loss": current.close * 0.97,
-            "take_profit": current.close * 1.05,
-            "size": 5.0,
-            "use_risk_sizing": False,
-            "reason": f"trade_{self._count}",
-        }]
+        return [
+            {
+                "action": "open",
+                "instrument": self.instrument,
+                "direction": "long",
+                "entry_price": current.close,
+                "stop_loss": current.close * 0.97,
+                "take_profit": current.close * 1.05,
+                "size": 5.0,
+                "use_risk_sizing": False,
+                "reason": f"trade_{self._count}",
+            }
+        ]
 
 
 # ---------------------------------------------------------------------------
 # Mock data directory setup
 # ---------------------------------------------------------------------------
+
 
 def _write_mock_data(tmp_path, instrument: str, price_data: list[dict], cot_data: list[dict] | None = None):
     """Write price and COT JSON files in the expected directory layout."""
@@ -152,10 +155,7 @@ class TestBacktestEngineEndToEnd:
         """10 weekly bars with rising prices."""
         base = 1800.0
         dates = _weekly_dates(10)
-        return [
-            {"date": dates[i], "price": base + i * 20}
-            for i in range(10)
-        ]
+        return [{"date": dates[i], "price": base + i * 20} for i in range(10)]
 
     def test_run_produces_report_with_all_keys(self, tmp_path):
         """A complete backtest run returns a report with expected top-level keys."""
@@ -301,10 +301,7 @@ class TestBacktestMetricsIntegration:
         # 10 bars, prices go up then down then up
         dates = _weekly_dates(10)
         prices = [100, 102, 104, 106, 103, 99, 96, 98, 101, 105]
-        price_data = [
-            {"date": dates[i], "price": p}
-            for i, p in enumerate(prices)
-        ]
+        price_data = [{"date": dates[i], "price": p} for i, p in enumerate(prices)]
         _write_mock_data(tmp_path, "gold", price_data)
         strategy = MultiTradeStrategy("gold")
         engine = BacktestEngine(
@@ -326,10 +323,7 @@ class TestBacktestMetricsIntegration:
     def test_sharpe_and_sortino_computed(self, tmp_path):
         """Risk metrics are computed when there are enough bars."""
         dates = _weekly_dates(20)
-        price_data = [
-            {"date": dates[i], "price": 100 + i * 2}
-            for i in range(20)
-        ]
+        price_data = [{"date": dates[i], "price": 100 + i * 2} for i in range(20)]
         _write_mock_data(tmp_path, "gold", price_data)
         strategy = AlwaysLongStrategy("gold")
         engine = BacktestEngine(

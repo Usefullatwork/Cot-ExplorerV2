@@ -46,8 +46,7 @@ def build_combined(base_dir: str | Path | None = None) -> list[dict]:
         with open(fpath) as f:
             rows = json.load(f)
 
-        log.info("  %s: %d markets, date=%s", rep, len(rows),
-                 rows[0].get("date", "?") if rows else "?")
+        log.info("  %s: %d markets, date=%s", rep, len(rows), rows[0].get("date", "?") if rows else "?")
 
         for row in rows:
             market = row.get("market", "").strip()

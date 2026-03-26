@@ -9,9 +9,9 @@ No API key required.
 Zero external dependencies - stdlib only.
 """
 
+import json
 import logging
 import urllib.request
-import json
 
 log = logging.getLogger(__name__)
 
@@ -24,12 +24,15 @@ def fetch() -> dict | None:
         Dict with "score" (float) and "rating" (str), or None on error.
     """
     url = "https://production.dataviz.cnn.io/index/fearandgreed/graphdata"
-    req = urllib.request.Request(url, headers={
-        "User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 Chrome/120.0",
-        "Accept": "application/json, text/plain, */*",
-        "Referer": "https://edition.cnn.com/markets/fear-and-greed",
-        "Origin": "https://edition.cnn.com",
-    })
+    req = urllib.request.Request(
+        url,
+        headers={
+            "User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 Chrome/120.0",
+            "Accept": "application/json, text/plain, */*",
+            "Referer": "https://edition.cnn.com/markets/fear-and-greed",
+            "Origin": "https://edition.cnn.com",
+        },
+    )
     try:
         with urllib.request.urlopen(req, timeout=8) as r:
             d = json.loads(r.read())

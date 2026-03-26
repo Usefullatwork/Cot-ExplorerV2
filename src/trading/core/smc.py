@@ -111,22 +111,32 @@ def build_supply_demand_zones(
         bottom = val - atr_buffer
         poi = (top + bottom) / 2
         if not overlapping(poi, supply_zones):
-            supply_zones.append({
-                "top": round(top, 5), "bottom": round(bottom, 5),
-                "poi": round(poi, 5), "idx": idx,
-                "type": "supply", "status": "intakt",
-            })
+            supply_zones.append(
+                {
+                    "top": round(top, 5),
+                    "bottom": round(bottom, 5),
+                    "poi": round(poi, 5),
+                    "idx": idx,
+                    "type": "supply",
+                    "status": "intakt",
+                }
+            )
 
     for idx, val in pivot_lows[-history:]:
         bottom = val
         top = val + atr_buffer
         poi = (top + bottom) / 2
         if not overlapping(poi, demand_zones):
-            demand_zones.append({
-                "top": round(top, 5), "bottom": round(bottom, 5),
-                "poi": round(poi, 5), "idx": idx,
-                "type": "demand", "status": "intakt",
-            })
+            demand_zones.append(
+                {
+                    "top": round(top, 5),
+                    "bottom": round(bottom, 5),
+                    "poi": round(poi, 5),
+                    "idx": idx,
+                    "type": "demand",
+                    "status": "intakt",
+                }
+            )
 
     return supply_zones, demand_zones
 
@@ -148,20 +158,30 @@ def detect_bos(
         for i in range(z["idx"] + 1, len(rows)):
             if rows[i][2] >= z["top"]:
                 z["status"] = "bos_brutt"
-                bos_levels.append({
-                    "level": z["poi"], "type": "BOS_opp", "idx": i,
-                    "zone_top": z["top"], "zone_bot": z["bottom"],
-                })
+                bos_levels.append(
+                    {
+                        "level": z["poi"],
+                        "type": "BOS_opp",
+                        "idx": i,
+                        "zone_top": z["top"],
+                        "zone_bot": z["bottom"],
+                    }
+                )
                 break
 
     for z in demand_zones:
         for i in range(z["idx"] + 1, len(rows)):
             if rows[i][2] <= z["bottom"]:
                 z["status"] = "bos_brutt"
-                bos_levels.append({
-                    "level": z["poi"], "type": "BOS_ned", "idx": i,
-                    "zone_top": z["top"], "zone_bot": z["bottom"],
-                })
+                bos_levels.append(
+                    {
+                        "level": z["poi"],
+                        "type": "BOS_ned",
+                        "idx": i,
+                        "zone_top": z["top"],
+                        "zone_bot": z["bottom"],
+                    }
+                )
                 break
 
     return supply_zones, demand_zones, bos_levels
@@ -207,17 +227,15 @@ def filter_relevant_zones(
     - Nearest supply above price, nearest demand below price
     """
     relevant_supply = [
-        z for z in supply_zones
-        if z["status"] == "intakt"
-        and z["bottom"] > curr
-        and abs(z["poi"] - curr) <= atr * max_dist
+        z
+        for z in supply_zones
+        if z["status"] == "intakt" and z["bottom"] > curr and abs(z["poi"] - curr) <= atr * max_dist
     ]
 
     relevant_demand = [
-        z for z in demand_zones
-        if z["status"] == "intakt"
-        and z["top"] < curr
-        and abs(z["poi"] - curr) <= atr * max_dist
+        z
+        for z in demand_zones
+        if z["status"] == "intakt" and z["top"] < curr and abs(z["poi"] - curr) <= atr * max_dist
     ]
 
     relevant_supply.sort(key=lambda z: abs(z["poi"] - curr))
@@ -254,9 +272,7 @@ def run_smc(rows: list[tuple[float, float, float]], swing_length: int = 10, box_
     supply, demand, bos = detect_bos(supply, demand, rows)
     structure = determine_structure(swing_highs, swing_lows)
 
-    rel_supply, rel_demand, recent_bos = filter_relevant_zones(
-        supply, demand, bos, curr, atr, max_dist=15
-    )
+    rel_supply, rel_demand, recent_bos = filter_relevant_zones(supply, demand, bos, curr, atr, max_dist=15)
 
     return {
         "structure": structure,
@@ -267,28 +283,33 @@ def run_smc(rows: list[tuple[float, float, float]], swing_length: int = 10, box_
         "last_swing_high": {
             "value": round(swing_highs[-1][1], 5),
             "label": swing_highs[-1][2],
-        } if swing_highs else None,
+        }
+        if swing_highs
+        else None,
         "last_swing_low": {
             "value": round(swing_lows[-1][1], 5),
             "label": swing_lows[-1][2],
-        } if swing_lows else None,
+        }
+        if swing_lows
+        else None,
     }
 
 
 if __name__ == "__main__":
-    import urllib.request
-    import urllib.parse
     import json
+    import urllib.parse
+    import urllib.request
 
     def fetch(symbol: str, interval: str = "15m", range_: str = "5d") -> list[tuple[float, float, float]]:
-        url = (f"https://query1.finance.yahoo.com/v8/finance/chart/"
-               f"{urllib.parse.quote(symbol)}?interval={interval}&range={range_}")
+        url = (
+            f"https://query1.finance.yahoo.com/v8/finance/chart/"
+            f"{urllib.parse.quote(symbol)}?interval={interval}&range={range_}"
+        )
         req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
         with urllib.request.urlopen(req, timeout=10) as r:
             d = json.loads(r.read())
         q = d["chart"]["result"][0]["indicators"]["quote"][0]
-        return [(h, l, c) for h, l, c in zip(q["high"], q["low"], q["close"])
-                if h and l and c]
+        return [(h, lo, c) for h, lo, c in zip(q["high"], q["low"], q["close"]) if h and lo and c]
 
     logging.basicConfig(level=logging.DEBUG, format="%(asctime)s %(name)s %(levelname)s %(message)s")
     for sym, name in [("EURUSD=X", "EUR/USD"), ("GC=F", "Gold"), ("CL=F", "WTI")]:

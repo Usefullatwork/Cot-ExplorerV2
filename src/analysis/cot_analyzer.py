@@ -41,9 +41,7 @@ def classify_cot_momentum(change_spec_net: float, spec_net: float) -> str:
     """
     if change_spec_net == 0:
         return "STABIL"
-    elif (change_spec_net > 0 and spec_net >= 0) or (
-        change_spec_net < 0 and spec_net <= 0
-    ):
+    elif (change_spec_net > 0 and spec_net >= 0) or (change_spec_net < 0 and spec_net <= 0):
         return "ØKER"
     else:
         return "SNUR"

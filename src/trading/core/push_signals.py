@@ -18,13 +18,12 @@ Environment variables:
 Zero external dependencies - stdlib only.
 """
 
+import json
 import logging
 import os
-import json
 import sys
-import urllib.request
 import urllib.error
-from pathlib import Path
+import urllib.request
 from datetime import datetime, timezone
 
 log = logging.getLogger(__name__)
@@ -67,10 +66,7 @@ def score_key(item: tuple[str, dict]) -> tuple[int, int]:
 def get_top_signals(macro: dict) -> list[tuple[str, dict]]:
     """Filter and sort signals by score threshold."""
     levels = macro.get("trading_levels", {})
-    candidates = [
-        (key, d) for key, d in levels.items()
-        if d.get("score", 0) >= MIN_SCORE
-    ]
+    candidates = [(key, d) for key, d in levels.items() if d.get("score", 0) >= MIN_SCORE]
     candidates.sort(key=score_key, reverse=True)
     return candidates[:MAX_SIGNALS]
 
@@ -140,13 +136,14 @@ def push_telegram(text: str) -> None:
     if not TG_TOKEN or not TG_CHAT_ID:
         return
     url = f"https://api.telegram.org/bot{TG_TOKEN}/sendMessage"
-    payload = json.dumps({
-        "chat_id": TG_CHAT_ID,
-        "text": text,
-        "parse_mode": "HTML",
-    }).encode()
-    req = urllib.request.Request(url, data=payload,
-                                 headers={"Content-Type": "application/json"})
+    payload = json.dumps(
+        {
+            "chat_id": TG_CHAT_ID,
+            "text": text,
+            "parse_mode": "HTML",
+        }
+    ).encode()
+    req = urllib.request.Request(url, data=payload, headers={"Content-Type": "application/json"})
     try:
         with urllib.request.urlopen(req, timeout=10) as resp:
             log.info("Telegram OK (%s)", resp.status)
@@ -159,8 +156,7 @@ def push_discord(text: str) -> None:
     if not DC_WEBHOOK:
         return
     payload = json.dumps({"content": f"```\n{text}\n```"}).encode()
-    req = urllib.request.Request(DC_WEBHOOK, data=payload,
-                                 headers={"Content-Type": "application/json"})
+    req = urllib.request.Request(DC_WEBHOOK, data=payload, headers={"Content-Type": "application/json"})
     try:
         with urllib.request.urlopen(req, timeout=10) as resp:
             log.info("Discord OK (%s)", resp.status)
@@ -175,7 +171,8 @@ def push_flask(signals: list[dict], generated: str) -> None:
     url = f"{FLASK_URL}/push-alert"
     payload = json.dumps({"signals": signals, "generated": generated}).encode()
     req = urllib.request.Request(
-        url, data=payload,
+        url,
+        data=payload,
         headers={"Content-Type": "application/json", "X-API-Key": SCALP_API_KEY},
     )
     try:
@@ -201,16 +198,22 @@ def main() -> None:
     push_discord(message)
 
     generated = macro.get("date", "unknown")
-    push_flask([{
-        "key": key,
-        "name": d.get("name", key),
-        "timeframe_bias": d.get("timeframe_bias", "SWING"),
-        "direction": d.get("dir_color", "?"),
-        "grade": d.get("grade", "?"),
-        "score": d.get("score", 0),
-        "setup": d.get("setup_long") if d.get("dir_color") == "bull" else d.get("setup_short"),
-        "cot": d.get("cot", {}),
-    } for key, d in top], generated)
+    push_flask(
+        [
+            {
+                "key": key,
+                "name": d.get("name", key),
+                "timeframe_bias": d.get("timeframe_bias", "SWING"),
+                "direction": d.get("dir_color", "?"),
+                "grade": d.get("grade", "?"),
+                "score": d.get("score", 0),
+                "setup": d.get("setup_long") if d.get("dir_color") == "bull" else d.get("setup_short"),
+                "cot": d.get("cot", {}),
+            }
+            for key, d in top
+        ],
+        generated,
+    )
 
 
 if __name__ == "__main__":

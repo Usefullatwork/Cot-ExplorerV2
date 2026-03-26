@@ -5,12 +5,14 @@ from enum import Enum
 
 class Direction(str, Enum):
     """Price direction bias."""
+
     BULL = "bull"
     BEAR = "bear"
 
 
 class Grade(str, Enum):
     """Confluence score grade."""
+
     A_PLUS = "A+"
     A = "A"
     B = "B"
@@ -19,6 +21,7 @@ class Grade(str, Enum):
 
 class TimeframeBias(str, Enum):
     """Timeframe classification for trade setups."""
+
     MAKRO = "MAKRO"
     SWING = "SWING"
     SCALP = "SCALP"
@@ -27,6 +30,7 @@ class TimeframeBias(str, Enum):
 
 class VixRegime(str, Enum):
     """VIX volatility regime."""
+
     NORMAL = "normal"
     ELEVATED = "elevated"
     EXTREME = "extreme"
@@ -34,6 +38,7 @@ class VixRegime(str, Enum):
 
 class SmcStructure(str, Enum):
     """Smart Money Concept market structure."""
+
     BULLISH = "BULLISH"
     BEARISH = "BEARISH"
     MIXED = "MIXED"
@@ -43,6 +48,7 @@ class SmcStructure(str, Enum):
 
 class CotMomentum(str, Enum):
     """COT positioning momentum."""
+
     OKER = "ØKER"
     SNUR = "SNUR"
     STABIL = "STABIL"
@@ -50,6 +56,7 @@ class CotMomentum(str, Enum):
 
 class CotBias(str, Enum):
     """COT directional bias."""
+
     LONG = "LONG"
     SHORT = "SHORT"
     NOYTRAL = "NØYTRAL"

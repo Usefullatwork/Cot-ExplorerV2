@@ -3,14 +3,12 @@
 import json
 from unittest.mock import MagicMock, patch
 
-import pytest
-
 from src.publishers.telegram import format_signal, send_telegram
-
 
 # ---------------------------------------------------------------------------
 # Fixtures / helpers
 # ---------------------------------------------------------------------------
+
 
 def _make_signal(**overrides) -> dict:
     """Return a complete signal dict with sensible defaults."""
@@ -36,6 +34,7 @@ def _make_signal(**overrides) -> dict:
 
 
 # ===== format_signal =======================================================
+
 
 class TestFormatSignal:
     """Verify Telegram message formatting matches v1 layout."""
@@ -91,6 +90,7 @@ class TestFormatSignal:
 
 
 # ===== send_telegram =======================================================
+
 
 class TestSendTelegram:
     """Network calls are mocked; tests verify payload construction and error paths."""
@@ -157,6 +157,7 @@ class TestSendTelegram:
     @patch("src.publishers.telegram.urllib.request.urlopen")
     def test_url_error_returns_false(self, mock_urlopen):
         import urllib.error
+
         mock_urlopen.side_effect = urllib.error.URLError("timeout")
         result = send_telegram("fail", token="t", chat_id="c")
         assert result is False
