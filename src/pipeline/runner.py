@@ -60,15 +60,9 @@ def _stage_prices() -> None:
 
 
 def _stage_scoring() -> None:
-    """Run 12-point confluence scoring.
+    """Scoring is computed as part of the prices+analysis stage (fetch_all.main).
 
-    TODO: Extract scoring loop from fetch_all.py into
-    src.analysis.scoring so this stage can call it directly.
-    Currently delegates to the monolithic fetch_all.py main block
-    via the src/trading/core copy which exposes a main() function.
-    The pure scoring function already lives in src.analysis.scoring
-    (calculate_confluence), but the full orchestration that feeds it
-    instrument data still lives in fetch_all.py.
+    This stage is a no-op.
     """
     logger.info("Scoring stage: full pipeline handled by prices + fundamentals stages")
 
