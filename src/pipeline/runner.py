@@ -39,8 +39,10 @@ def _stage_cot() -> None:
 
 
 def _stage_combine() -> None:
-    """Combine COT reports — already handled by fetch_cot.main()."""
-    logger.debug("Combine stage is a no-op; handled within cot stage")
+    """Combine COT reports into data/combined/latest.json."""
+    from src.trading.core.build_combined import build_combined
+
+    build_combined()
 
 
 def _stage_fundamentals() -> None:
