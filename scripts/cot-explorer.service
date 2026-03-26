@@ -1,0 +1,34 @@
+[Unit]
+Description=Cot-ExplorerV2 Trading Signal API
+Documentation=https://github.com/Usefullatwork/Cot-ExplorerV2
+After=network.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=cotexplorer
+Group=cotexplorer
+WorkingDirectory=/opt/cot-explorer
+EnvironmentFile=/opt/cot-explorer/.env
+ExecStart=/opt/cot-explorer/venv/bin/uvicorn src.api.app:app --host 0.0.0.0 --port 8000
+Restart=on-failure
+RestartSec=10
+StartLimitIntervalSec=300
+StartLimitBurst=5
+
+# Logging
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=cot-explorer
+
+# Security hardening
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=yes
+ReadWritePaths=/opt/cot-explorer/data /opt/cot-explorer/logs
+PrivateTmp=yes
+ProtectKernelTunables=yes
+ProtectControlGroups=yes
+
+[Install]
+WantedBy=multi-user.target
