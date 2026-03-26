@@ -6,6 +6,7 @@ import json
 from pathlib import Path
 
 from fastapi import APIRouter
+from starlette.responses import Response
 
 from src.api.middleware.cache import macro_cache
 from src.db import repository as repo
@@ -23,27 +24,26 @@ _DATA_DIR = Path(__file__).resolve().parents[3] / "data"
         " Prefers DB snapshot; falls back to data/macro/latest.json."
     ),
 )
-def macro_panel() -> dict:
+def macro_panel():
     """Full macro panel: Dollar Smile, VIX regime, conflicts, prices.
 
     Prefers the DB snapshot; falls back to data/macro/latest.json.
     """
-    cached = macro_cache.get("macro_panel")
+    cached = macro_cache.get("macro_panel_json")
     if cached is not None:
-        return cached
+        return Response(content=cached, media_type="application/json; charset=utf-8")
 
     snap = repo.get_latest_macro()
     if snap and snap.full_json:
-        result = json.loads(snap.full_json)
-        macro_cache.set("macro_panel", result)
-        return result
+        macro_cache.set("macro_panel_json", snap.full_json)
+        return Response(content=snap.full_json, media_type="application/json; charset=utf-8")
 
     macro_path = _DATA_DIR / "macro" / "latest.json"
     if macro_path.exists():
-        with open(macro_path, encoding="utf-8") as f:
-            result = json.load(f)
-        macro_cache.set("macro_panel", result)
-        return result
+        with open(macro_path, "rb") as f:
+            raw = f.read()
+        macro_cache.set("macro_panel_json", raw)
+        return Response(content=raw, media_type="application/json; charset=utf-8")
 
     return {"error": "No macro data available. Run the pipeline first."}
 
