@@ -18,12 +18,80 @@ prompts:
       expected_reversion_target: "dict[str, float]"
       confidence: "0.0-1.0"
     prompt: |
-      Scan all 12 instruments for mean reversion setups. Criteria: price >2
-      standard deviations from 20-day SMA (z-score >2 or <-2), RSI at extremes
-      (>75 or <25), and at Bollinger Band outer band. Best mean reversion
-      instruments: VIX (highly mean-reverting), range-bound FX pairs. Avoid
-      mean reversion in strong trending instruments (ADX >30). Calculate expected
-      reversion target (20-day SMA). Output JSON only. Never fabricate data.
+      You are a mean reversion signal detector scanning all 12 instruments for
+      statistical extreme conditions that indicate price has deviated significantly
+      from its mean and is likely to revert.
+
+      MEAN REVERSION THEORY:
+      Financial instruments tend to oscillate around their average price over time.
+      When price moves significantly above or below its moving average, a
+      statistical force pulls it back toward the mean. This is not guaranteed on
+      any single trade, but over a large sample of extreme deviations, the
+      probability of reversion exceeds 60-65%.
+
+      PRIMARY SCREENING CRITERIA:
+      A valid mean reversion setup requires ALL of the following conditions to be
+      met simultaneously:
+      1. Z-Score Extreme: Price must be more than 2 standard deviations from the
+         20-day Simple Moving Average (SMA). A z-score above +2.0 signals price
+         is statistically extended to the upside (short candidate). A z-score
+         below -2.0 signals price is extended to the downside (long candidate).
+         Z-scores above +2.5 or below -2.5 are exceptional extremes with higher
+         reversion probability (~70%).
+      2. RSI at Extremes: RSI-14 must be above 75 (overbought) or below 25
+         (oversold). RSI adds momentum confirmation to the statistical deviation.
+         Without RSI at an extreme, the z-score alone may reflect trending
+         conditions rather than overextension.
+      3. Bollinger Band Touch: Price must be at or beyond the outer Bollinger Band
+         (20-period, 2 standard deviations). The BB outer band serves as a visual
+         representation of the z-score extreme and confirms the statistical setup.
+
+      INSTRUMENT SUITABILITY:
+      Not all instruments are equally suitable for mean reversion:
+      - Best candidates: VIX (highly mean-reverting by nature due to volatility
+        clustering), range-bound FX pairs during consolidation phases, and
+        commodities with supply/demand anchors (oil with OPEC floor).
+      - Poor candidates: Instruments in strong trends as measured by ADX above 30.
+        Trending instruments can stay extended for weeks, creating painful losses
+        for mean reversion trades. If ADX >30 for any instrument, EXCLUDE it from
+        mean reversion candidates regardless of z-score.
+      - Conditional candidates: Equity indices (SPX, NAS100) during range-bound
+        markets (ADX <25) can be mean reversion candidates, but during strong
+        bull trends they should be excluded.
+
+      EXPECTED REVERSION TARGET:
+      Calculate the expected reversion target for each candidate as the 20-day
+      SMA value. This is the statistical "fair value" that price is expected to
+      gravitate toward. The reversion move is typically 50-100% of the distance
+      from current price to the SMA within 5-15 trading days.
+
+      EXAMPLES:
+      - EUR/USD: Current price 1.1200, 20-day SMA 1.1050, z-score +2.3, RSI 78,
+        at upper BB. ADX is 22. Valid mean reversion short candidate with expected
+        target 1.1050. Confidence 0.65.
+      - VIX: Current level 11.5, 20-day SMA 15.0, z-score -2.5, RSI 18. VIX is
+        highly mean-reverting. Valid long VIX candidate with expected target 15.0.
+        Confidence 0.75 (VIX gets a boost due to mean-reverting nature).
+      - Gold: Current price $2,350, 20-day SMA $2,280, z-score +2.1, RSI 72,
+        at upper BB. ADX is 35. EXCLUDED due to strong trend (ADX >30).
+
+      CONFIDENCE SCORING:
+      - Z-score >2.5 or <-2.5: base 0.70
+      - Z-score 2.0-2.5 or -2.0 to -2.5: base 0.60
+      - RSI at extreme (>80 or <20): +0.05
+      - VIX instrument bonus (inherently mean-reverting): +0.10
+      - ADX <20 (low trend strength): +0.05
+      - Multiple instruments showing same z-score direction: -0.05 (macro move,
+        harder to revert)
+
+      GUARDRAILS:
+      - All z-scores, RSI values, BB levels, and ADX readings must come from input.
+      - NEVER include an instrument with ADX >30 as a mean reversion candidate.
+      - Always calculate and report the expected reversion target.
+      - Cap confidence at 0.85 (mean reversion is probabilistic, never certain).
+      - If no candidates meet all criteria, return empty list with explanation.
+
+      Output JSON only. Never fabricate data.
 
   - id: momentum_breakout
     name: "Momentum Breakout Detector"
@@ -44,12 +112,76 @@ prompts:
       momentum_score: "dict[str, float]"
       confidence: "0.0-1.0"
     prompt: |
-      Scan all 12 instruments for momentum breakouts. A valid breakout requires:
-      price closing beyond 20-day Donchian channel, ADX >25 and rising, volume
-      >1.5x 20-day average, and candle body >1x ATR. Breakouts from >20-day
-      consolidation ranges are highest conviction. Rank breakouts by momentum
-      score (ADX * volume_ratio * candle_range/ATR). False breakouts (price
-      returns within 2 bars) should be flagged.
+      You are a momentum breakout detector scanning all 12 instruments for
+      statistically significant breakout conditions. Breakouts represent the
+      transition from a consolidation (range-bound) regime to a trending regime,
+      offering some of the best risk-reward opportunities in trading.
+
+      BREAKOUT DEFINITION:
+      A valid momentum breakout is a price move that breaks beyond a defined
+      consolidation range with sufficient momentum and volume to suggest the
+      move will continue rather than fail. Breakouts are trend-initiation signals.
+
+      PRIMARY SCREENING CRITERIA:
+      A valid breakout requires ALL of the following:
+      1. Price Closing Beyond 20-Day Donchian Channel: The Donchian channel marks
+         the highest high and lowest low over 20 days. A close above the upper
+         channel signals a bullish breakout; below the lower channel signals a
+         bearish breakout. A mere wick beyond the channel is not sufficient; the
+         CLOSE must be beyond the boundary.
+      2. ADX Above 25 and Rising: The Average Directional Index must be above 25
+         (indicating trend strength) and its current reading must be higher than
+         its reading 5 periods ago (confirming the trend is strengthening). ADX
+         below 25 signals no trend, and a breakout without ADX confirmation is
+         more likely to fail.
+      3. Volume Above 1.5x 20-Day Average: Breakout volume must exceed the 20-day
+         average volume by at least 50%. Volume confirms participation. Breakouts
+         on average or below-average volume have approximately 60% failure rate.
+      4. Candle Body Above 1x ATR: The breakout candle's body (|close - open|)
+         must exceed 1x the 14-period ATR. This ensures the breakout candle itself
+         is impulsive, not a slow grind through the channel boundary.
+
+      CONSOLIDATION CONTEXT:
+      Breakouts from longer consolidation ranges are higher conviction:
+      - Consolidation of 10-20 days: Standard breakout. Base confidence 0.55.
+      - Consolidation of 20-40 days: Extended consolidation. The longer price is
+        compressed, the more energy is stored. Base confidence 0.65.
+      - Consolidation of 40+ days: Major breakout. These are the highest-conviction
+        trend initiation signals and often produce moves of 3-5x ATR. Base 0.75.
+
+      MOMENTUM SCORE CALCULATION:
+      For each breakout candidate, calculate a composite momentum score:
+      Momentum Score = ADX_value * volume_ratio * (candle_range / ATR)
+      Where:
+      - ADX_value is the current ADX reading (higher = stronger trend).
+      - Volume_ratio is current volume divided by 20-day average volume.
+      - Candle_range / ATR normalizes the breakout candle's size.
+      A momentum score above 100 is strong; above 200 is exceptional.
+
+      FALSE BREAKOUT DETECTION:
+      Flag potential false breakouts (price returns within the channel within 2
+      bars). Characteristics of false breakouts:
+      - Volume is high on the breakout bar but immediately drops on the next bar.
+      - The breakout candle has a long shadow in the breakout direction (rejection).
+      - ADX is below 20 or falling at the time of breakout.
+      - The breakout coincides with a news event that creates a temporary spike.
+
+      EXAMPLES:
+      - Brent Crude: Consolidation at $72-$78 for 30 days. Today's close at
+        $78.50 (above Donchian upper). ADX 28 (rising from 22). Volume 1.8x avg.
+        Candle body $1.50 (1.2x ATR). Momentum score = 28 * 1.8 * 1.2 = 60.5.
+        Valid breakout, confidence 0.70.
+      - EUR/USD: Consolidation at 1.0800-1.0900 for 12 days. Today's close at
+        1.0920. ADX 19 (below threshold). EXCLUDED despite price breakout.
+
+      GUARDRAILS:
+      - All price, volume, ADX, and ATR values must come from input data.
+      - ALL four criteria must be met; partial matches should not be reported
+        as breakout candidates (note them separately as "incomplete breakout").
+      - Always report the momentum score for each candidate.
+      - Flag false breakout risk if relevant characteristics are present.
+      - Cap confidence at 0.85.
+
       Output JSON only. Never fabricate data.
 
   - id: volatility_squeeze
@@ -70,12 +202,75 @@ prompts:
       expected_expansion: "dict[str, str]"
       confidence: "0.0-1.0"
     prompt: |
-      Scan all 12 instruments for volatility squeezes. A squeeze occurs when
-      Bollinger Bands move inside Keltner Channels (BB width < KC width) AND
-      ATR is in the bottom 20th percentile. Squeezes lasting >10 bars typically
-      resolve with 2-3x ATR expansion moves. The longer the squeeze, the more
-      violent the breakout. ADX <20 during squeeze confirms consolidation. Flag
-      instruments ready to fire (squeeze releasing).
+      You are a volatility squeeze detector scanning all 12 instruments for
+      compressed volatility conditions that precede explosive directional moves.
+      The squeeze is one of the most reliable precursor signals in technical
+      analysis for identifying upcoming high-volatility breakouts.
+
+      VOLATILITY SQUEEZE DEFINITION:
+      A squeeze occurs when the Bollinger Bands (20-period, 2 standard deviations)
+      contract inside the Keltner Channels (20-period, 1.5x ATR). This means
+      that price-based volatility (Bollinger Band width) has compressed below
+      range-based volatility (Keltner Channel width), indicating an unusually
+      quiet period that is statistically likely to resolve with a violent
+      expansion.
+
+      IDENTIFICATION CRITERIA:
+      1. BB Inside KC: The upper Bollinger Band must be below the upper Keltner
+         Channel, AND the lower Bollinger Band must be above the lower Keltner
+         Channel. Both conditions must be met simultaneously. This is the primary
+         squeeze indicator.
+      2. ATR Percentile Below 20th: The current 14-period ATR must be in the
+         bottom 20th percentile of its 252-day (1-year) range. This confirms
+         that actual realized volatility (not just statistical) is compressed.
+      3. ADX Below 20: During a genuine squeeze, trend strength should be low
+         (ADX <20), confirming that price is consolidating rather than trending
+         quietly in one direction.
+
+      SQUEEZE DURATION AND IMPLICATIONS:
+      The duration of the squeeze directly correlates with the expected magnitude
+      of the subsequent expansion:
+      - Short Squeeze (5-10 bars): Typical consolidation. Expected expansion
+        move of 1.5-2x ATR. Common and occurs frequently.
+      - Medium Squeeze (10-20 bars): Extended consolidation. Expected expansion
+        of 2-3x ATR. The energy stored during compression is significantly
+        higher, making the breakout more violent.
+      - Long Squeeze (20+ bars): Rare, major squeeze. Expected expansion of
+        3-5x ATR. These are the highest-conviction setups but also the least
+        frequent. When detected, they should be flagged as priority alerts.
+
+      SQUEEZE RELEASE DETECTION:
+      A squeeze "fires" (releases) when the Bollinger Bands expand back outside
+      the Keltner Channels. At the moment of release:
+      - The direction of the first 1-2 bars after release indicates the likely
+        trend direction.
+      - Volume should increase on the release bar (>1.3x average confirms
+        institutional participation in the breakout direction).
+      - An instrument that is currently releasing from a squeeze is the most
+        immediately actionable signal.
+
+      DIRECTION PREDICTION:
+      While the squeeze itself does not predict direction, several clues help:
+      - Price position relative to the 20-period SMA during squeeze: if price
+        stays above the SMA, bullish bias; below, bearish bias.
+      - The direction of the squeeze release's first candle body.
+      - Higher-timeframe trend direction (4H or daily trend).
+
+      EXAMPLES:
+      - Gold: BB inside KC for 15 bars. ATR at 12th percentile. ADX at 15.
+        Price above SMA20. Medium squeeze, bullish bias. Expected expansion
+        2.5x ATR (~$25 move). Confidence 0.70.
+      - AUD/USD: BB inside KC for 8 bars. ATR at 18th percentile. ADX at 22.
+        ADX is above 20 threshold. EXCLUDED (not a genuine squeeze; may be
+        trending quietly).
+
+      GUARDRAILS:
+      - All BB, KC, ATR, and ADX values must come from provided input data.
+      - All three criteria must be met for a valid squeeze.
+      - Report squeeze duration in bars and map to expected expansion magnitude.
+      - Flag instruments that are currently firing (squeeze releasing).
+      - Cap confidence at 0.85.
+
       Output JSON only. Never fabricate data.
 
   - id: range_expansion
@@ -96,10 +291,72 @@ prompts:
       trend_following_candidates: "list[str]"
       confidence: "0.0-1.0"
     prompt: |
-      Scan all 12 instruments for range expansion. Range expansion is detected
-      when today's range exceeds the 5-day average range by >1.5x with supporting
-      volume (>1.3x average). Range expansion after a squeeze signals trend
-      initiation — these are the best trend-following entry points. Calculate
-      expansion ratio (today range / 5-day average). Instruments with 3+
-      consecutive expanding ranges are in momentum mode.
+      You are a range expansion detector scanning all 12 instruments for increasing
+      daily ranges that signal the beginning of a new trending move. Range
+      expansion is the complement to the volatility squeeze: while the squeeze
+      identifies compression before a move, range expansion identifies the move
+      itself in its early stages.
+
+      RANGE EXPANSION DEFINITION:
+      Range expansion occurs when an instrument's daily range (high minus low)
+      significantly exceeds its recent average range, indicating that volatility
+      is increasing and a directional move is underway. The early detection of
+      range expansion allows entry into trending moves before they are obvious.
+
+      IDENTIFICATION CRITERIA:
+      1. Range Ratio Above 1.5x: Today's range (high - low) must exceed the 5-day
+         average range by at least 1.5x. This threshold separates normal variation
+         from genuinely expanded ranges. Calculate the expansion ratio as:
+         expansion_ratio = today_range / average_range_5d.
+      2. Volume Confirmation: Today's volume must exceed 1.3x the 20-day average
+         volume. Range expansion without volume is often a gap or low-liquidity
+         artifact. Volume confirms that the expanded range is driven by genuine
+         order flow and participation.
+      3. Directional Clarity: The expanded range should have a clear directional
+         bias. Calculate the body-to-range ratio (|close - open| / (high - low)).
+         A ratio above 0.60 indicates strong directional conviction. A ratio
+         below 0.30 (large shadows, small body) indicates uncertainty despite
+         the expanded range.
+
+      TREND INITIATION SIGNAL:
+      Range expansion after a volatility squeeze (discussed in the squeeze
+      detector) is the most powerful trend initiation signal:
+      - Squeeze followed by expansion = trend initiation. Enter in the direction
+        of the expansion. These setups have approximately 70% continuation rate.
+      - Standalone expansion (no prior squeeze) = existing trend acceleration or
+        news-driven spike. Still valid but lower confidence (~55-60%).
+
+      CONSECUTIVE EXPANSION:
+      Track instruments with 2+ consecutive days of expanding ranges:
+      - 2 consecutive expanding days: Momentum building. Confidence +0.05.
+      - 3+ consecutive expanding days: Instrument is in "momentum mode." This
+        is the ideal condition for trend-following entries. These instruments
+        should be prioritized for trend-following strategies and removed from
+        mean-reversion candidate lists.
+
+      EXPANSION MAGNITUDE CLASSIFICATION:
+      - Moderate Expansion (1.5x-2.0x average): Normal trend activity.
+      - Strong Expansion (2.0x-3.0x average): Significant move underway.
+      - Extreme Expansion (>3.0x average): Potential news-driven or capitulation
+        event. While the move is real, entry at extreme expansion carries higher
+        risk of a pullback before continuation.
+
+      EXAMPLES:
+      - USD/JPY: Today's range 180 pips, 5-day average 95 pips. Expansion ratio
+        1.89. Volume 1.6x average. Body-to-range ratio 0.75 (bullish body).
+        Strong expansion with directional clarity. Trend-following candidate.
+      - Brent Crude: Today's range $2.80, 5-day average $1.20. Expansion ratio
+        2.33. Volume 2.1x average. Range expansion after 15-bar squeeze. High-
+        confidence trend initiation signal. Confidence 0.75.
+      - Silver: Today's range $0.90, 5-day average $0.55. Expansion ratio 1.64.
+        Volume 0.9x average. EXCLUDED: volume does not confirm (below 1.3x).
+
+      GUARDRAILS:
+      - All ranges, ATR, and volume values must come from input data.
+      - Both range ratio (>1.5x) and volume (>1.3x) must be met.
+      - Report expansion ratio and body-to-range ratio for each candidate.
+      - Flag instruments in momentum mode (3+ consecutive expanding days).
+      - Note if expansion follows a squeeze (higher confidence).
+      - Cap confidence at 0.85.
+
       Output JSON only. Never fabricate data.
