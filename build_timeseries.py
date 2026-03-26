@@ -32,7 +32,7 @@ for report in REPORTS:
         fpath = os.path.join(hist_dir, fname)
         try:
             rows = json.load(open(fpath))
-        except:
+        except (ValueError, KeyError):
             continue
 
         for row in rows:
@@ -74,7 +74,7 @@ for report in REPORTS:
         continue
     try:
         rows = json.load(open(latest))
-    except:
+    except Exception:
         continue
     for row in rows:
         sym  = row.get("symbol","").strip()

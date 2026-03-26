@@ -76,7 +76,7 @@ MARKET_NO = {
 
 def safe_int(val):
     try: return int(str(val).strip().replace(",","").split(".")[0])
-    except: return 0
+    except (ValueError, TypeError): return 0
 
 def get_category(name):
     nl = name.lower()

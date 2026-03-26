@@ -40,7 +40,7 @@ for ev in raw:
         if dt.tzinfo is None:
             dt = dt.replace(tzinfo=timezone.utc)
         dt_utc = dt.astimezone(timezone.utc)
-    except:
+    except Exception:
         continue
     cet = dt_utc + timedelta(hours=1)
     events.append({

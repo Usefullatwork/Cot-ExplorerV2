@@ -6,7 +6,7 @@ sys.path.insert(0, os.path.expanduser('~/cot-explorer'))
 try:
     from smc import run_smc
     SMC_OK = True
-except:
+except ImportError:
     SMC_OK = False
     print('  SMC ikke tilgjengelig')
 
@@ -141,7 +141,7 @@ def fetch_twelvedata(symbol, interval="1d", outputsize=365):
         for v in reversed(d.get("values", [])):
             try:
                 rows.append((float(v["high"]), float(v["low"]), float(v["close"])))
-            except:
+            except (ValueError, KeyError):
                 continue
         time.sleep(8)  # Gratis-plan: maks 8 req/min
         return rows
@@ -174,7 +174,7 @@ def fetch_stooq(symbol, range_="1y"):
                 h, l, c = float(parts[2]), float(parts[3]), float(parts[4])
                 if h and l and c:
                     rows.append((h, l, c))
-            except:
+            except (ValueError, KeyError):
                 continue
         return rows
     except Exception as e:
@@ -702,7 +702,7 @@ if os.path.exists(cal_file):
             cal_data = json.load(f)
         calendar_events = cal_data.get('events', [])
         print(f'Kalender: {len(calendar_events)} events lastet')
-    except:
+    except Exception:
         pass
 
 def get_binary_risk(instrument_key, hours=4):
