@@ -4,7 +4,7 @@
 //        uker med reversal i netto-posisjon
 // Valgfritt: SMA200-filter for trendbekreftelse
 // =============================================================================
-//@version=5
+//@version=6
 strategy("COT Explorer: Reversal", shorttitle="COT Rev", overlay=true,
          default_qty_type=strategy.percent_of_equity, default_qty_value=2,
          initial_capital=100000, commission_type=strategy.commission.percent,

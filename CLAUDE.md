@@ -16,7 +16,7 @@ Python 3.11+, FastAPI, SQLAlchemy/SQLite, Pydantic v2, Vite + vanilla JS fronten
 | `src/data/` | 5 | 899 | Price router, rate limiter, providers (CFTC, Stooq, Yahoo, base) |
 | `src/db/` | 3 | 815 | SQLAlchemy engine, ORM models, repository (CRUD) |
 | `src/pipeline/` | 1 | 158 | Full analysis pipeline runner |
-| `src/pine/` | 12 | -- | Pine Script v5 indicators (7), strategies (2), combos (3) |
+| `src/pine/` | 12 | -- | Pine Script v6 indicators (7), strategies (2), combos (3) |
 | `src/publishers/` | 3 | 211 | Telegram, Discord, JSON file signal publishers |
 | `src/security/` | 2 | 62 | Input validator, audit log |
 | `src/trading/core/` | 11 | 2,640 | Fetch scripts, SMC engine, signal push, build scripts |

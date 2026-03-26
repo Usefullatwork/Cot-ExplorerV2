@@ -1,4 +1,4 @@
-"""SQLAlchemy ORM models — 10 tables for the trading signal platform."""
+"""SQLAlchemy ORM models — 14 tables for the trading signal platform."""
 
 from __future__ import annotations
 
@@ -342,4 +342,146 @@ class AuditLog(Base):
     __table_args__ = (
         Index("ix_audit_timestamp", "timestamp"),
         Index("ix_audit_event_type", "event_type"),
+    )
+
+
+# ---------------------------------------------------------------------------
+# 11. BotConfig
+# ---------------------------------------------------------------------------
+class BotConfig(Base):
+    """Trading bot configuration with master on/off, broker mode, and risk limits.
+
+    A single row controls the bot's operational parameters including
+    position limits, risk percentage, minimum signal quality, and a
+    kill-switch for emergency shutdown.
+    """
+
+    __tablename__ = "bot_config"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    updated_at = Column(DateTime, nullable=False, default=lambda: datetime.now(timezone.utc))
+    active = Column(Boolean, default=False, nullable=False)  # master on/off
+    broker_mode = Column(String(16), default="paper", nullable=False)  # paper/demo/live
+    max_positions = Column(Integer, default=3, nullable=False)
+    max_daily_trades = Column(Integer, default=10, nullable=False)
+    risk_pct = Column(Float, default=0.01, nullable=False)  # 1% risk per trade
+    min_grade = Column(String(4), default="B", nullable=False)
+    min_score = Column(Integer, default=6, nullable=False)
+    kill_switch_active = Column(Boolean, default=False)
+    kill_switch_reason = Column(Text, nullable=True)
+    kill_switch_at = Column(DateTime, nullable=True)
+
+
+# ---------------------------------------------------------------------------
+# 12. BotSignal
+# ---------------------------------------------------------------------------
+class BotSignal(Base):
+    """Inbound trading signal received by the bot for confirmation or rejection.
+
+    Links optionally to an analysis ``Signal`` and stores entry/SL/target
+    levels, source (pipeline or TradingView webhook), and confirmation
+    status with rejection reason if applicable.
+    """
+
+    __tablename__ = "bot_signals"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    signal_id = Column(Integer, ForeignKey("signals.id"), nullable=True)
+    received_at = Column(DateTime, nullable=False, default=lambda: datetime.now(timezone.utc))
+    source = Column(String(32), nullable=False)  # "pipeline" or "tradingview"
+    instrument = Column(String(32), nullable=False)
+    direction = Column(String(8), nullable=False)  # bull/bear
+    grade = Column(String(4), nullable=False)
+    score = Column(Integer, nullable=False)
+    entry_price = Column(Float, nullable=False)
+    stop_loss = Column(Float, nullable=False)
+    target_1 = Column(Float, nullable=False)
+    target_2 = Column(Float, nullable=True)
+    status = Column(String(16), nullable=False, default="pending")  # pending/confirmed/rejected/expired
+    confirmed_at = Column(DateTime, nullable=True)
+    rejection_reason = Column(Text, nullable=True)
+    tv_payload = Column(Text, nullable=True)  # raw TradingView JSON
+
+    signal_rel = relationship("Signal")
+
+    __table_args__ = (
+        Index("ix_bot_signal_status", "status"),
+        Index("ix_bot_signal_instrument", "instrument"),
+        Index("ix_bot_signal_received", "received_at"),
+    )
+
+
+# ---------------------------------------------------------------------------
+# 13. BotPosition
+# ---------------------------------------------------------------------------
+class BotPosition(Base):
+    """Live or closed trading position managed by the bot.
+
+    Tracks entry/exit prices, lot sizing (full/half/quarter), VIX regime,
+    partial close state (T1 hit), candle-based exit rules, and realised
+    PnL in pips, USD, and risk-reward multiples.
+    """
+
+    __tablename__ = "bot_positions"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    bot_signal_id = Column(Integer, ForeignKey("bot_signals.id"), nullable=True)
+    broker_position_id = Column(String(64), nullable=True)  # broker's position reference
+    instrument = Column(String(32), nullable=False)
+    direction = Column(String(8), nullable=False)
+    opened_at = Column(DateTime, nullable=False, default=lambda: datetime.now(timezone.utc))
+    closed_at = Column(DateTime, nullable=True)
+    entry_price = Column(Float, nullable=False)
+    current_price = Column(Float, nullable=True)
+    exit_price = Column(Float, nullable=True)
+    stop_loss = Column(Float, nullable=False)
+    target_1 = Column(Float, nullable=False)
+    target_2 = Column(Float, nullable=True)
+    lot_size = Column(Float, nullable=False)
+    lot_tier = Column(String(16), nullable=False)  # full/half/quarter
+    vix_regime = Column(String(16), nullable=False)
+    status = Column(String(16), nullable=False, default="open")  # open/partial/closed
+    t1_hit = Column(Boolean, default=False)
+    t1_closed_pct = Column(Float, default=0.0)
+    candles_since_entry = Column(Integer, default=0)
+    exit_reason = Column(String(32), nullable=True)  # t1/t2/stop_loss/ema9_cross/candle_8/candle_16/geo_spike/kill_switch
+    pnl_pips = Column(Float, nullable=True)
+    pnl_usd = Column(Float, nullable=True)
+    pnl_rr = Column(Float, nullable=True)
+
+    bot_signal_rel = relationship("BotSignal")
+
+    __table_args__ = (
+        Index("ix_bot_pos_status", "status"),
+        Index("ix_bot_pos_instrument", "instrument"),
+        Index("ix_bot_pos_opened", "opened_at"),
+    )
+
+
+# ---------------------------------------------------------------------------
+# 14. BotTradeLog
+# ---------------------------------------------------------------------------
+class BotTradeLog(Base):
+    """Immutable event log for all bot trading activity.
+
+    Records order submissions, fills, partial closes, stop-loss hits,
+    target hits, EMA exits, candle-rule exits, kill-switch activations,
+    geopolitical spikes, errors, and connection events with a JSON
+    ``details`` payload.
+    """
+
+    __tablename__ = "bot_trade_log"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    timestamp = Column(DateTime, nullable=False, default=lambda: datetime.now(timezone.utc))
+    position_id = Column(Integer, ForeignKey("bot_positions.id"), nullable=True)
+    event_type = Column(String(32), nullable=False)  # order_sent/fill/partial_close/sl_hit/t1_hit/ema9_exit/candle_rule/kill_switch/geo_spike/error/connection
+    details = Column(Text, nullable=True)  # JSON
+
+    position_rel = relationship("BotPosition")
+
+    __table_args__ = (
+        Index("ix_trade_log_ts", "timestamp"),
+        Index("ix_trade_log_event", "event_type"),
+        Index("ix_trade_log_position", "position_id"),
     )

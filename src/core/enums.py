@@ -60,3 +60,60 @@ class CotBias(str, Enum):
     LONG = "LONG"
     SHORT = "SHORT"
     NOYTRAL = "NØYTRAL"
+
+
+class BotState(str, Enum):
+    """Trading bot lifecycle state."""
+
+    STOPPED = "STOPPED"
+    STARTING = "STARTING"
+    RUNNING = "RUNNING"
+    STOPPING = "STOPPING"
+    ERROR = "ERROR"
+
+
+class PositionStatus(str, Enum):
+    """Position lifecycle status.
+
+    PENDING  – signal received but not yet filled.
+    OPEN     – position active.
+    PARTIAL  – T1 hit and 50 % closed.
+    CLOSED   – fully closed.
+    """
+
+    PENDING = "PENDING"
+    OPEN = "OPEN"
+    PARTIAL = "PARTIAL"
+    CLOSED = "CLOSED"
+
+
+class ExitReason(str, Enum):
+    """Reason a position was closed."""
+
+    T1 = "T1"
+    T2 = "T2"
+    STOP_LOSS = "STOP_LOSS"
+    EMA9_CROSS = "EMA9_CROSS"
+    CANDLE_8 = "CANDLE_8"
+    CANDLE_16 = "CANDLE_16"
+    GEO_SPIKE = "GEO_SPIKE"
+    KILL_SWITCH = "KILL_SWITCH"
+    MANUAL = "MANUAL"
+    EXPIRED = "EXPIRED"
+
+
+class SignalStatus(str, Enum):
+    """Status of a queued bot signal."""
+
+    PENDING = "PENDING"
+    CONFIRMED = "CONFIRMED"
+    REJECTED = "REJECTED"
+    EXPIRED = "EXPIRED"
+
+
+class BrokerMode(str, Enum):
+    """Active broker execution mode."""
+
+    PAPER = "PAPER"
+    DEMO = "DEMO"
+    LIVE = "LIVE"

@@ -11,23 +11,23 @@
 // Each entry: { name, file, category, description }
 
 const PINE_SCRIPTS = [
-  // Indicators
-  { name: 'COT Momentum', file: 'cot_momentum.pine', category: 'Indicators', description: 'COT speculator net position momentum with divergence detection.' },
-  { name: 'Dollar Smile Model', file: 'dollar_smile.pine', category: 'Indicators', description: 'Three-regime USD model: risk-off, goldilocks, growth.' },
-  { name: 'VIX Regime Overlay', file: 'vix_regime.pine', category: 'Indicators', description: 'Color-coded VIX regime bands for position sizing.' },
-  { name: 'SMC Market Structure', file: 'smc_structure.pine', category: 'Indicators', description: 'Break of structure, order blocks, and fair value gaps.' },
-  { name: 'Level-to-Level Map', file: 'level_to_level.pine', category: 'Indicators', description: 'Multi-timeframe support/resistance with proximity alerts.' },
+  // Indicators (7)
+  { name: 'COT Overlay', file: 'indicators/cot_overlay.pine', category: 'Indicators', description: 'Spekulant- og kommersiell netto-posisjon med persentilrangering.' },
+  { name: 'Confluence Score', file: 'indicators/confluence_score.pine', category: 'Indicators', description: '12-punkts konfluensvurdering for handelssetups.' },
+  { name: 'SMC Zones', file: 'indicators/smc_zones.pine', category: 'Indicators', description: 'Supply/Demand-soner med BOS-linjer og strukturklassifisering.' },
+  { name: 'L2L Levels', file: 'indicators/l2l_levels.pine', category: 'Indicators', description: 'Level-to-Level setup overlay med entry, SL, T1, T2 og R:R-beregning.' },
+  { name: 'VIX Regime', file: 'indicators/vix_regime.pine', category: 'Indicators', description: 'Bakgrunnsfarge og posisjonsstorrelse basert pa VIX-niva.' },
+  { name: 'Macro Dashboard', file: 'indicators/macro_dashboard.pine', category: 'Indicators', description: 'Tabell med makroindikatorer og Dollar Smile.' },
+  { name: 'Dollar Smile', file: 'indicators/dollar_smile.pine', category: 'Indicators', description: 'USD-styrkeindikator med regimeklassifisering.' },
 
-  // Strategies
-  { name: 'COT Swing Strategy', file: 'cot_swing.pine', category: 'Strategies', description: 'Weekly COT-based swing entries with ATR-scaled stops.' },
-  { name: 'SMC Scalp Strategy', file: 'smc_scalp.pine', category: 'Strategies', description: 'Intraday smart money concept entries on 15m/1H.' },
-  { name: 'Macro Regime Strategy', file: 'macro_regime.pine', category: 'Strategies', description: 'Dollar smile regime filter with carry trade entries.' },
-  { name: 'Binary Risk Filter', file: 'binary_risk.pine', category: 'Strategies', description: 'Event-driven position reduction around high-impact releases.' },
+  // Strategies (2)
+  { name: 'COT Reversal', file: 'strategies/cot_reversal.pine', category: 'Strategies', description: 'Backtestbar strategi med COT-ekstremreversal og SMA200-filter.' },
+  { name: 'SMC Confluence', file: 'strategies/smc_confluence.pine', category: 'Strategies', description: 'Backtestbar strategi med confluence score og SMC demand/supply-soner.' },
 
-  // Combos
-  { name: 'Full Confluence Engine', file: 'confluence_engine.pine', category: 'Combos', description: 'Combined 12-point scoring: COT + SMC + Macro + Levels.' },
-  { name: 'Risk Dashboard', file: 'risk_dashboard.pine', category: 'Combos', description: 'Portfolio heat, correlation matrix, and VIX scaling overlay.' },
-  { name: 'Alert Hub', file: 'alert_hub.pine', category: 'Combos', description: 'Unified alerts for all signals — webhook-ready for automation.' },
+  // Combos (3)
+  { name: 'COT Explorer Overlay', file: 'combos/cot_explorer_overlay.pine', category: 'Combos', description: 'Slot 1: SMC Zones + L2L Levels + VIX bakgrunn + PDH/PDL/PWH/PWL.' },
+  { name: 'COT Explorer Score', file: 'combos/cot_explorer_score.pine', category: 'Combos', description: 'Slot 2: Confluence Score histogram + COT netto-posisjon.' },
+  { name: 'COT Explorer Macro', file: 'combos/cot_explorer_macro.pine', category: 'Combos', description: 'Slot 3: Macro Dashboard tabell + Dollar Smile label.' },
 ];
 
 const CATEGORIES = ['Indicators', 'Strategies', 'Combos'];

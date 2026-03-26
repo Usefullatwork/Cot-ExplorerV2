@@ -3,7 +3,7 @@
 // Viser entry, SL, T1, T2 med R:R-beregning.
 // Manuelle inputs fra Python-analysen + auto PDH/PDL/PWH/PWL.
 // =============================================================================
-//@version=5
+//@version=6
 indicator("COT Explorer: L2L Levels", shorttitle="L2L", overlay=true, max_lines_count=30, max_labels_count=20)
 
 // ── Fargepalett (mork tema) ─────────────────────────────────────────────────

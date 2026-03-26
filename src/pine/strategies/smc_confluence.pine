@@ -4,7 +4,7 @@
 // SL: Sonegrense + 0.3x ATR buffer
 // TP: min_rr x risiko
 // =============================================================================
-//@version=5
+//@version=6
 strategy("COT Explorer: SMC Confluence", shorttitle="SMC+Score", overlay=true,
          default_qty_type=strategy.percent_of_equity, default_qty_value=2,
          initial_capital=100000, commission_type=strategy.commission.percent,

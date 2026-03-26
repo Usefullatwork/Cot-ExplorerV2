@@ -29,6 +29,7 @@ dev = [
     "pip-audit>=2.0",
     "httpx>=0.24",
 ]
+tradingview = ["TradingView-API>=1.0"]
 
 [tool.ruff]
 line-length = 120

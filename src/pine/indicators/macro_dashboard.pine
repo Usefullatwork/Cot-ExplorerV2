@@ -2,7 +2,7 @@
 // Macro Dashboard — Tabell med makroindikatorer og Dollar Smile
 // Henter VIX, DXY, TNX, IRX, HYG, TIP, Kobber, EEM
 // =============================================================================
-//@version=5
+//@version=6
 indicator("COT Explorer: Macro Dashboard", shorttitle="Macro", overlay=true)
 
 // ── Fargepalett (mork tema) ─────────────────────────────────────────────────

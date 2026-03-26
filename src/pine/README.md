@@ -1,7 +1,7 @@
-# Pine Script v5 Library — COT Explorer
+# Pine Script v6 Library — COT Explorer
 
 TradingView indicators, strategies, and combo scripts for the COT Explorer trading system.
-All scripts are Pine Script v5 (`//@version=5`), validated by `scripts/validate_pine.py`.
+All scripts are Pine Script v6 (`//@version=6`), validated by `scripts/validate_pine.py`.
 
 ## Installation on TradingView
 
@@ -85,7 +85,7 @@ python scripts/validate_pine.py
 ```
 
 Checks performed:
-1. `//@version=5` header present
+1. `//@version=6` header present
 2. `indicator()` or `strategy()` declaration found
 3. Balanced brackets/parentheses
 4. No deprecated Pine v4 `study()` calls

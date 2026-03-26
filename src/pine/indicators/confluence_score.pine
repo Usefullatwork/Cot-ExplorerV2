@@ -3,7 +3,7 @@
 // 7 av 12 kriterier beregnes automatisk fra prisdata.
 // 5 kriterier er manuelle inputs (COT, nyheter, fundamentals).
 // =============================================================================
-//@version=5
+//@version=6
 indicator("COT Explorer: Confluence Score", shorttitle="Score", overlay=false, max_labels_count=5)
 
 // ── Fargepalett (mork tema) ─────────────────────────────────────────────────

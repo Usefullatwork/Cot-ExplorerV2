@@ -18,6 +18,7 @@ const TABS = [
   'backtest',
   'pine',
   'competitor',
+  'trading',
 ];
 
 const DEFAULT_TAB = 'setups';

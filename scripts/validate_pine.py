@@ -1,7 +1,7 @@
-"""Validate Pine Script v5 syntax for all .pine files in src/pine/.
+"""Validate Pine Script v6 syntax for all .pine files in src/pine/.
 
 Checks:
-1. //@version=5 header present
+1. //@version=6 header present
 2. indicator() or strategy() declaration present
 3. Balanced brackets/parentheses
 4. No Pine v4 deprecated syntax (study())
@@ -34,11 +34,11 @@ def validate_file(path: Path) -> dict:
     total_checks = 4
 
     # 1. Version header
-    has_version = any("//@version=5" in line for line in lines[:10])
+    has_version = any("//@version=6" in line for line in lines[:10])
     if has_version:
         checks_passed += 1
     else:
-        issues.append("Missing //@version=5 header in first 5 lines")
+        issues.append("Missing //@version=6 header in first 5 lines")
 
     # 2. indicator() or strategy() declaration
     has_decl = bool(re.search(r'\b(indicator|strategy)\s*\(', content))
@@ -87,7 +87,7 @@ def generate_report(results: list[dict], output_path: Path) -> str:
     failed = total - passed
 
     lines = [
-        "# Pine Script v5 Validation Report",
+        "# Pine Script v6 Validation Report",
         "",
         f"**Total**: {total} files | **Passed**: {passed} | **Failed**: {failed}",
         "",

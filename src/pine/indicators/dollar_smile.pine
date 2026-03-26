@@ -2,7 +2,7 @@
 // Dollar Smile — USD-styrkeindikator med regimeklassifisering
 // VENSTRE (risk-off, sterk USD) / MIDTEN (Goldilocks, svak USD) / HOYRE (vekst, moderat USD)
 // =============================================================================
-//@version=5
+//@version=6
 indicator("COT Explorer: Dollar Smile", shorttitle="$Smile", overlay=false)
 
 // ── Fargepalett (mork tema) ─────────────────────────────────────────────────

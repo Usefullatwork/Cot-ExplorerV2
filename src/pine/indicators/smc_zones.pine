@@ -2,7 +2,7 @@
 // SMC Zones — Supply/Demand-soner med BOS-linjer og strukturklassifisering
 // Basert pa FluidTrades SMC Lite, tilpasset COT Explorer
 // =============================================================================
-//@version=5
+//@version=6
 indicator("COT Explorer: SMC Zones", shorttitle="SMC", overlay=true, max_boxes_count=50, max_lines_count=50, max_labels_count=20)
 
 // ── Fargepalett (mork tema) ─────────────────────────────────────────────────

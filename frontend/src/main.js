@@ -33,6 +33,7 @@ import * as CalendarPanel from './components/CalendarPanel.js';
 import * as ScoreRadar from './components/ScoreRadar.js';
 import * as PinePanel from './components/PinePanel.js';
 import * as CompetitorPanel from './components/CompetitorPanel.js';
+import * as BotPanel from './components/BotPanel.js';
 
 /* ── Error boundary ──────────────────────────────────────── */
 
@@ -108,6 +109,9 @@ function buildShell() {
       <div class="panel" id="panel-competitor" role="tabpanel" aria-labelledby="tab-competitor" aria-hidden="true">
         <div class="loading" role="status"><div class="spinner" aria-hidden="true"></div>Laster konkurrentanalyse...</div>
       </div>
+      <div class="panel" id="panel-trading" role="tabpanel" aria-labelledby="tab-trading" aria-hidden="true">
+        <div class="loading" role="status"><div class="spinner" aria-hidden="true"></div>Laster trading bot...</div>
+      </div>
     </main>
     <footer role="contentinfo">
       <span>Kilde: <a href="https://cftc.gov" target="_blank" rel="noopener noreferrer">CFTC.gov</a> &middot; Yahoo Finance &middot; ForexFactory</span>
@@ -159,6 +163,10 @@ function initComponents() {
   // Competitor panel
   const compPanel = document.getElementById('panel-competitor');
   safeCall('CompetitorPanel', () => CompetitorPanel.render(compPanel), compPanel);
+
+  // Trading bot panel
+  const tradingPanel = document.getElementById('panel-trading');
+  safeCall('BotPanel', () => BotPanel.render(tradingPanel), tradingPanel);
 }
 
 /* ── State subscriptions ──────────────────────────────────── */
@@ -200,6 +208,16 @@ function wireSubscriptions() {
   subscribe('selectedInstrument', (data) => {
     safeCall('ScoreRadar.update', () => ScoreRadar.update(data));
   });
+
+  // Trading tab -> BotPanel: fetch data when tab becomes active
+  subscribe('activeTab', (tab) => {
+    if (tab === 'trading') {
+      safeAsync('BotPanel.refreshAll', () => BotPanel.refreshAll());
+    } else {
+      // Clean up charts when leaving trading tab
+      safeCall('BotPanel.cleanup', () => BotPanel.cleanup());
+    }
+  });
 }
 
 /* ── Data fetching ────────────────────────────────────────── */
@@ -233,6 +251,13 @@ function startPolling() {
   setInterval(() => {
     fetchAll();
   }, 300_000);
+
+  // Bot status polling — every 10s when trading tab is active
+  setInterval(() => {
+    if (state.activeTab === 'trading') {
+      safeAsync('BotPanel.refresh', () => BotPanel.refreshAll());
+    }
+  }, 10_000);
 }
 
 /* ── Bootstrap ────────────────────────────────────────────── */

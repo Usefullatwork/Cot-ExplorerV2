@@ -10,6 +10,20 @@ const base = () => window.__API_BASE ?? '';
 /**
  * Thin fetch wrapper with JSON parsing and error normalisation.
  */
+async function post(path, body = {}) {
+  const url = new URL(path, base() || window.location.origin);
+  const res = await fetch(url.toString(), {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) {
+    const text = await res.text().catch(() => '');
+    throw new Error(`API ${res.status}: ${text || res.statusText}`);
+  }
+  return res.json();
+}
+
 async function get(path, params = {}) {
   const url = new URL(path, base() || window.location.origin);
   Object.entries(params).forEach(([k, v]) => {
@@ -89,4 +103,51 @@ export function fetchHealth() {
 
 export function fetchMetrics() {
   return get('/metrics');
+}
+
+// ── Trading Bot ──────────────────────────────────────────────
+
+export function fetchBotStatus() {
+  return get('/api/v1/trading/status');
+}
+
+export function fetchBotPositions() {
+  return get('/api/v1/trading/positions');
+}
+
+export function fetchBotSignals() {
+  return get('/api/v1/trading/signals');
+}
+
+/**
+ * @param {number} [limit=50]
+ */
+export function fetchBotHistory(limit = 50) {
+  return get('/api/v1/trading/history', { limit });
+}
+
+export function fetchBotConfig() {
+  return get('/api/v1/trading/config');
+}
+
+/**
+ * @param {Object} config  Bot configuration payload
+ */
+export function updateBotConfig(config) {
+  return post('/api/v1/trading/config', config);
+}
+
+/**
+ * @param {string} reason  Reason for kill switch activation
+ */
+export function invalidateBot(reason) {
+  return post('/api/v1/trading/invalidate', { reason });
+}
+
+export function startBot() {
+  return post('/api/v1/trading/start');
+}
+
+export function stopBot() {
+  return post('/api/v1/trading/stop');
 }

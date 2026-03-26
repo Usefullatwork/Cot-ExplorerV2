@@ -2,7 +2,7 @@
 // COT Overlay — Spekulant- og kommersiell netto-posisjon med persentilrangering
 // Bruker TradingViews innebygde CFTC-data via COT:-prefikset
 // =============================================================================
-//@version=5
+//@version=6
 indicator("COT Explorer: Overlay", shorttitle="COT", overlay=false, max_labels_count=10)
 
 // ── Fargepalett (mork tema) ─────────────────────────────────────────────────

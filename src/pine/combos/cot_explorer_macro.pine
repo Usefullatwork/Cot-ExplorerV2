@@ -2,7 +2,7 @@
 // COT Explorer Macro COMBO — Slot 3 (overlay=true, free account)
 // Kombinerer: Macro Dashboard tabell + Dollar Smile label
 // =============================================================================
-//@version=5
+//@version=6
 indicator("COT Explorer: Macro Combo", shorttitle="CE Macro", overlay=true)
 
 // ── Fargepalett (mork tema) ─────────────────────────────────────────────────

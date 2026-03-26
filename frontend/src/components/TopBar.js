@@ -16,6 +16,7 @@ const TABS = [
   { key: 'backtest',   label: 'Backtest' },
   { key: 'pine',       label: 'Pine' },
   { key: 'competitor', label: 'Konkurrent' },
+  { key: 'trading',    label: 'Trading' },
 ];
 
 // ── Ticker display names ────────────────────────────────────

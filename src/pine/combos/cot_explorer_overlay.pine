@@ -2,7 +2,7 @@
 // COT Explorer Overlay COMBO — Slot 1 (overlay=true, free account)
 // Kombinerer: SMC Zones + L2L Levels + VIX bakgrunn + PDH/PDL/PWH/PWL
 // =============================================================================
-//@version=5
+//@version=6
 indicator("COT Explorer: Overlay Combo", shorttitle="CE Overlay", overlay=true,
          max_boxes_count=50, max_lines_count=50, max_labels_count=50)
 
@@ -83,6 +83,10 @@ show_bos      = input.bool(true, "Vis BOS-linjer",      group=grp_smc)
 
 atr_val = ta.atr(50)
 atr_buf = atr_val * (zone_atr_frac / 10)
+
+// Bid/Ask estimation (spread proxy via ATR)
+float bid_est = close - atr_val * 0.001
+float ask_est = close + atr_val * 0.001
 
 ph = ta.pivothigh(high, swing_len, swing_len)
 pl = ta.pivotlow(low, swing_len, swing_len)
@@ -232,7 +236,7 @@ if has_l2l and barstate.islast
 // INFOTABELL (ovre venstre)
 // ══════════════════════════════════════════════════════════════════════════════
 if barstate.islast
-    var table it = table.new(position.top_left, 2, 4, bgcolor=C_BG, border_width=1, border_color=color.new(C_TEXT, 70))
+    var table it = table.new(position.top_left, 2, 5, bgcolor=C_BG, border_width=1, border_color=color.new(C_TEXT, 70))
 
     // VIX
     v_col = vix >= extreme_thr ? C_RED : vix >= normal_thr ? C_YELLOW : C_GREEN
@@ -256,3 +260,42 @@ if barstate.islast
     else
         table.cell(it, 0, 3, "L2L",  text_color=C_TEXT,   text_size=size.tiny, text_halign=text.align_left)
         table.cell(it, 1, 3, "---",  text_color=color.gray, text_size=size.tiny)
+
+    // Bid/Ask row
+    table.cell(it, 0, 4, "Bid/Ask", text_color=C_TEXT, text_size=size.tiny, text_halign=text.align_left)
+    table.cell(it, 1, 4, str.tostring(bid_est, "#0.00000") + " / " + str.tostring(ask_est, "#0.00000"), text_color=C_TEXT, text_size=size.tiny)
+
+// ══════════════════════════════════════════════════════════════════════════════
+// ALERTS — L2L setup signals with SL/T1/T2 enrichment
+// ══════════════════════════════════════════════════════════════════════════════
+grp_alerts = "Alerts"
+enable_alerts = input.bool(true, "Aktiver alerts", group=grp_alerts)
+
+if enable_alerts
+    // ── L2L setup active + price touches entry level ─────────────────────
+    if has_l2l
+        float entry_dist = math.abs(close - entry_price)
+        bool at_entry = entry_dist <= atr_val * 0.15
+
+        if at_entry
+            string t2_str = t2_price != 0.0 ? ',"t2":' + str.tostring(t2_price, "#0.00000") + ',"rr2":' + str.tostring(l2l_rr2, "#0.0") : ""
+            alert('{"source":"tradingview","indicator":"ce_overlay","instrument":"' + syminfo.ticker + '","signal":"l2l_entry","direction":"' + l2l_dir + '","entry":' + str.tostring(entry_price, "#0.00000") + ',"sl":' + str.tostring(sl_price, "#0.00000") + ',"t1":' + str.tostring(t1_price, "#0.00000") + ',"rr1":' + str.tostring(l2l_rr1, "#0.0") + t2_str + ',"entry_source":"' + l2l_src + '","bid":' + str.tostring(bid_est, "#0.00000") + ',"ask":' + str.tostring(ask_est, "#0.00000") + ',"timeframe":"' + timeframe.period + '","vix":' + str.tostring(vix, "#0.1") + ',"vix_regime":"' + vix_regime_str + '","pos_size":"' + pos_size_str + '","structure":"' + struct_str + '"}', alert.freq_once_per_bar)
+
+    // ── SMC demand zone touch (bullish structure) ────────────────────────
+    if show_smc and struct_str == "BULLISH" and array.size(d_bots) > 0
+        for i = 0 to array.size(d_bots) - 1
+            if close <= array.get(d_tops, i) and close >= array.get(d_bots, i)
+                alert('{"source":"tradingview","indicator":"ce_overlay","instrument":"' + syminfo.ticker + '","signal":"demand_zone_touch","direction":"bull","zone_top":' + str.tostring(array.get(d_tops, i), "#0.00000") + ',"zone_bot":' + str.tostring(array.get(d_bots, i), "#0.00000") + ',"price":' + str.tostring(close) + ',"bid":' + str.tostring(bid_est, "#0.00000") + ',"ask":' + str.tostring(ask_est, "#0.00000") + ',"vix":' + str.tostring(vix, "#0.1") + ',"structure":"' + struct_str + '","timeframe":"' + timeframe.period + '"}', alert.freq_once_per_bar)
+                break
+
+    // ── SMC supply zone touch (bearish structure) ────────────────────────
+    if show_smc and struct_str == "BEARISH" and array.size(s_tops) > 0
+        for i = 0 to array.size(s_tops) - 1
+            if close >= array.get(s_bots, i) and close <= array.get(s_tops, i)
+                alert('{"source":"tradingview","indicator":"ce_overlay","instrument":"' + syminfo.ticker + '","signal":"supply_zone_touch","direction":"bear","zone_top":' + str.tostring(array.get(s_tops, i), "#0.00000") + ',"zone_bot":' + str.tostring(array.get(s_bots, i), "#0.00000") + ',"price":' + str.tostring(close) + ',"bid":' + str.tostring(bid_est, "#0.00000") + ',"ask":' + str.tostring(ask_est, "#0.00000") + ',"vix":' + str.tostring(vix, "#0.1") + ',"structure":"' + struct_str + '","timeframe":"' + timeframe.period + '"}', alert.freq_once_per_bar)
+                break
+
+    // ── VIX regime change alert ──────────────────────────────────────────
+    string prev_regime = nz(vix[1]) >= extreme_thr ? "EXTREME" : nz(vix[1]) >= elevated_thr ? "ELEVATED" : nz(vix[1]) >= normal_thr ? "FORHOY" : "NORMAL"
+    if vix_regime_str != prev_regime
+        alert('{"source":"tradingview","indicator":"ce_overlay","instrument":"' + syminfo.ticker + '","signal":"vix_regime_change","vix":' + str.tostring(vix, "#0.1") + ',"regime":"' + vix_regime_str + '","prev_regime":"' + prev_regime + '","pos_size":"' + pos_size_str + '","timeframe":"' + timeframe.period + '"}', alert.freq_once_per_bar)

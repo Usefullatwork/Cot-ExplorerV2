@@ -2,7 +2,7 @@
 // COT Explorer Score COMBO — Slot 2 (overlay=false, free account)
 // Kombinerer: Confluence Score histogram + COT netto-posisjon
 // =============================================================================
-//@version=5
+//@version=6
 indicator("COT Explorer: Score Combo", shorttitle="CE Score", overlay=false, max_labels_count=10)
 
 // ── Fargepalett (mork tema) ─────────────────────────────────────────────────
@@ -186,3 +186,40 @@ if barstate.islast
 
     table.cell(st, 0, 7, "Manuell", text_color=C_TEXT, text_size=size.tiny, text_halign=text.align_left)
     table.cell(st, 1, 7, str.tostring(manual_hits) + "/5", text_color=manual_hits >= 4 ? C_GREEN : manual_hits >= 2 ? C_YELLOW : C_RED, text_size=size.tiny)
+
+// ══════════════════════════════════════════════════════════════════════════════
+// ALERTS — Automated trading signals via JSON payload
+// ══════════════════════════════════════════════════════════════════════════════
+grp_alerts = "Alerts"
+enable_alerts = input.bool(true, "Aktiver alerts", group=grp_alerts)
+
+// Cast score to float for ta.crossover (v6 requires numeric, not int literal)
+float score_f = score
+
+// Bid/Ask estimation (spread proxy via ATR)
+float bid = close - atr14 * 0.01
+float ask = close + atr14 * 0.01
+
+// Direction string for JSON payload
+string dir_str = is_long ? "bull" : "bear"
+
+if enable_alerts
+    // ── Grade A (score crosses UP through 9) — LONG signal ───────────────
+    if ta.crossover(score_f, 9.0) and is_long
+        alert('{"source":"tradingview","indicator":"ce_score","instrument":"' + syminfo.ticker + '","direction":"bull","score":' + str.tostring(score) + ',"grade":"A","entry":' + str.tostring(close) + ',"timeframe":"' + timeframe.period + '","bid":' + str.tostring(bid, "#0.00000") + ',"ask":' + str.tostring(ask, "#0.00000") + ',"momentum":"' + mom_str + '","cot_percentile":' + str.tostring(percentile, "#0") + ',"spec_net":' + str.tostring(spec_net, "#0") + '}', alert.freq_once_per_bar)
+
+    // ── Grade A (score crosses UP through 9) — SHORT signal ──────────────
+    if ta.crossover(score_f, 9.0) and not is_long
+        alert('{"source":"tradingview","indicator":"ce_score","instrument":"' + syminfo.ticker + '","direction":"bear","score":' + str.tostring(score) + ',"grade":"A","entry":' + str.tostring(close) + ',"timeframe":"' + timeframe.period + '","bid":' + str.tostring(bid, "#0.00000") + ',"ask":' + str.tostring(ask, "#0.00000") + ',"momentum":"' + mom_str + '","cot_percentile":' + str.tostring(percentile, "#0") + ',"spec_net":' + str.tostring(spec_net, "#0") + '}', alert.freq_once_per_bar)
+
+    // ── Grade A+ (score crosses UP through 11) — strong LONG signal ──────
+    if ta.crossover(score_f, 11.0) and is_long
+        alert('{"source":"tradingview","indicator":"ce_score","instrument":"' + syminfo.ticker + '","direction":"bull","score":' + str.tostring(score) + ',"grade":"A+","entry":' + str.tostring(close) + ',"timeframe":"' + timeframe.period + '","bid":' + str.tostring(bid, "#0.00000") + ',"ask":' + str.tostring(ask, "#0.00000") + ',"momentum":"' + mom_str + '","cot_percentile":' + str.tostring(percentile, "#0") + ',"spec_net":' + str.tostring(spec_net, "#0") + ',"strength":"strong"}', alert.freq_once_per_bar)
+
+    // ── Grade A+ (score crosses UP through 11) — strong SHORT signal ─────
+    if ta.crossover(score_f, 11.0) and not is_long
+        alert('{"source":"tradingview","indicator":"ce_score","instrument":"' + syminfo.ticker + '","direction":"bear","score":' + str.tostring(score) + ',"grade":"A+","entry":' + str.tostring(close) + ',"timeframe":"' + timeframe.period + '","bid":' + str.tostring(bid, "#0.00000") + ',"ask":' + str.tostring(ask, "#0.00000") + ',"momentum":"' + mom_str + '","cot_percentile":' + str.tostring(percentile, "#0") + ',"spec_net":' + str.tostring(spec_net, "#0") + ',"strength":"strong"}', alert.freq_once_per_bar)
+
+    // ── Score drops below 6 (grade B threshold) — watchlist/exit alert ────
+    if ta.crossunder(score_f, 6.0)
+        alert('{"source":"tradingview","indicator":"ce_score","instrument":"' + syminfo.ticker + '","action":"exit_watchlist","score":' + str.tostring(score) + ',"grade":"' + grade + '","price":' + str.tostring(close) + ',"timeframe":"' + timeframe.period + '","direction":"' + dir_str + '","momentum":"' + mom_str + '","reason":"score_degraded_below_B"}', alert.freq_once_per_bar)

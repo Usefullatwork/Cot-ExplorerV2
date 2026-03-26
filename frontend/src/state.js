@@ -18,6 +18,11 @@ export const state = {
   metrics:            null,
   activeTab:          'setups',
   selectedInstrument: null,
+  botStatus:          null,
+  botPositions:       null,
+  botSignals:         null,
+  botConfig:          null,
+  botHistory:         null,
 };
 
 /** @type {Map<string, Set<Function>>} */

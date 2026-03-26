@@ -12,6 +12,10 @@ from sqlalchemy.orm import Session
 from src.db.engine import session_scope
 from src.db.models import (
     AuditLog,
+    BotConfig,
+    BotPosition,
+    BotSignal,
+    BotTradeLog,
     CotPosition,
     MacroSnapshot,
     PriceDaily,
@@ -369,6 +373,389 @@ def save_audit_log(
         session.add(entry)
         session.flush()
         return entry
+
+    if db is not None:
+        return _do(db)
+    gen = session_scope()
+    session = next(gen)
+    try:
+        result = _do(session)
+        try:
+            gen.send(None)
+        except StopIteration:
+            pass
+    except Exception:
+        try:
+            gen.throw(Exception)
+        except StopIteration:
+            pass
+        raise
+    return result
+
+
+# ---------------------------------------------------------------------------
+# BotConfig
+# ---------------------------------------------------------------------------
+def get_bot_config(db: Session | None = None) -> BotConfig:
+    """Return the single bot config row, creating a default if none exists."""
+
+    def _do(session: Session) -> BotConfig:
+        stmt = select(BotConfig).limit(1)
+        config = session.execute(stmt).scalar_one_or_none()
+        if config is None:
+            config = BotConfig()
+            session.add(config)
+            session.flush()
+        return config
+
+    if db is not None:
+        return _do(db)
+    gen = session_scope()
+    session = next(gen)
+    try:
+        result = _do(session)
+        try:
+            gen.send(None)
+        except StopIteration:
+            pass
+    except Exception:
+        try:
+            gen.throw(Exception)
+        except StopIteration:
+            pass
+        raise
+    return result
+
+
+def update_bot_config(db: Session | None = None, **kwargs: Any) -> BotConfig:
+    """Update bot config fields and return the updated row."""
+
+    def _do(session: Session) -> BotConfig:
+        stmt = select(BotConfig).limit(1)
+        config = session.execute(stmt).scalar_one_or_none()
+        if config is None:
+            config = BotConfig()
+            session.add(config)
+        for key, value in kwargs.items():
+            if hasattr(config, key):
+                setattr(config, key, value)
+        session.flush()
+        return config
+
+    if db is not None:
+        return _do(db)
+    gen = session_scope()
+    session = next(gen)
+    try:
+        result = _do(session)
+        try:
+            gen.send(None)
+        except StopIteration:
+            pass
+    except Exception:
+        try:
+            gen.throw(Exception)
+        except StopIteration:
+            pass
+        raise
+    return result
+
+
+# ---------------------------------------------------------------------------
+# BotSignal
+# ---------------------------------------------------------------------------
+def save_bot_signal(db: Session | None = None, **kwargs: Any) -> BotSignal:
+    """Create a new bot signal record."""
+
+    def _do(session: Session) -> BotSignal:
+        tv_payload = kwargs.pop("tv_payload", None)
+        sig = BotSignal(
+            **kwargs,
+            tv_payload=json.dumps(tv_payload) if isinstance(tv_payload, dict) else tv_payload,
+        )
+        session.add(sig)
+        session.flush()
+        return sig
+
+    if db is not None:
+        return _do(db)
+    gen = session_scope()
+    session = next(gen)
+    try:
+        result = _do(session)
+        try:
+            gen.send(None)
+        except StopIteration:
+            pass
+    except Exception:
+        try:
+            gen.throw(Exception)
+        except StopIteration:
+            pass
+        raise
+    return result
+
+
+def get_bot_signals(
+    status: str | None = None,
+    instrument: str | None = None,
+    limit: int = 50,
+    db: Session | None = None,
+) -> Sequence[BotSignal]:
+    """List bot signals with optional status and instrument filters."""
+
+    def _do(session: Session) -> Sequence[BotSignal]:
+        stmt = select(BotSignal).order_by(BotSignal.received_at.desc())
+        if status:
+            stmt = stmt.where(BotSignal.status == status)
+        if instrument:
+            stmt = stmt.where(BotSignal.instrument == instrument)
+        stmt = stmt.limit(limit)
+        return session.execute(stmt).scalars().all()
+
+    if db is not None:
+        return _do(db)
+    gen = session_scope()
+    session = next(gen)
+    try:
+        result = _do(session)
+        try:
+            gen.send(None)
+        except StopIteration:
+            pass
+    except Exception:
+        try:
+            gen.throw(Exception)
+        except StopIteration:
+            pass
+        raise
+    return result
+
+
+def update_bot_signal(
+    signal_id: int,
+    db: Session | None = None,
+    **kwargs: Any,
+) -> Optional[BotSignal]:
+    """Update fields on a bot signal by id."""
+
+    def _do(session: Session) -> Optional[BotSignal]:
+        stmt = select(BotSignal).where(BotSignal.id == signal_id)
+        sig = session.execute(stmt).scalar_one_or_none()
+        if sig is None:
+            return None
+        for key, value in kwargs.items():
+            if hasattr(sig, key):
+                setattr(sig, key, value)
+        session.flush()
+        return sig
+
+    if db is not None:
+        return _do(db)
+    gen = session_scope()
+    session = next(gen)
+    try:
+        result = _do(session)
+        try:
+            gen.send(None)
+        except StopIteration:
+            pass
+    except Exception:
+        try:
+            gen.throw(Exception)
+        except StopIteration:
+            pass
+        raise
+    return result
+
+
+# ---------------------------------------------------------------------------
+# BotPosition
+# ---------------------------------------------------------------------------
+def save_bot_position(db: Session | None = None, **kwargs: Any) -> BotPosition:
+    """Create a new bot position record."""
+
+    def _do(session: Session) -> BotPosition:
+        pos = BotPosition(**kwargs)
+        session.add(pos)
+        session.flush()
+        return pos
+
+    if db is not None:
+        return _do(db)
+    gen = session_scope()
+    session = next(gen)
+    try:
+        result = _do(session)
+        try:
+            gen.send(None)
+        except StopIteration:
+            pass
+    except Exception:
+        try:
+            gen.throw(Exception)
+        except StopIteration:
+            pass
+        raise
+    return result
+
+
+def get_bot_positions(
+    status: str | None = None,
+    instrument: str | None = None,
+    db: Session | None = None,
+) -> Sequence[BotPosition]:
+    """List bot positions with optional status and instrument filters."""
+
+    def _do(session: Session) -> Sequence[BotPosition]:
+        stmt = select(BotPosition).order_by(BotPosition.opened_at.desc())
+        if status:
+            stmt = stmt.where(BotPosition.status == status)
+        if instrument:
+            stmt = stmt.where(BotPosition.instrument == instrument)
+        return session.execute(stmt).scalars().all()
+
+    if db is not None:
+        return _do(db)
+    gen = session_scope()
+    session = next(gen)
+    try:
+        result = _do(session)
+        try:
+            gen.send(None)
+        except StopIteration:
+            pass
+    except Exception:
+        try:
+            gen.throw(Exception)
+        except StopIteration:
+            pass
+        raise
+    return result
+
+
+def get_bot_position(
+    position_id: int,
+    db: Session | None = None,
+) -> Optional[BotPosition]:
+    """Return a single bot position by id."""
+
+    def _do(session: Session) -> Optional[BotPosition]:
+        stmt = select(BotPosition).where(BotPosition.id == position_id)
+        return session.execute(stmt).scalar_one_or_none()
+
+    if db is not None:
+        return _do(db)
+    gen = session_scope()
+    session = next(gen)
+    try:
+        result = _do(session)
+        try:
+            gen.send(None)
+        except StopIteration:
+            pass
+    except Exception:
+        try:
+            gen.throw(Exception)
+        except StopIteration:
+            pass
+        raise
+    return result
+
+
+def update_bot_position(
+    position_id: int,
+    db: Session | None = None,
+    **kwargs: Any,
+) -> Optional[BotPosition]:
+    """Update fields on a bot position by id."""
+
+    def _do(session: Session) -> Optional[BotPosition]:
+        stmt = select(BotPosition).where(BotPosition.id == position_id)
+        pos = session.execute(stmt).scalar_one_or_none()
+        if pos is None:
+            return None
+        for key, value in kwargs.items():
+            if hasattr(pos, key):
+                setattr(pos, key, value)
+        session.flush()
+        return pos
+
+    if db is not None:
+        return _do(db)
+    gen = session_scope()
+    session = next(gen)
+    try:
+        result = _do(session)
+        try:
+            gen.send(None)
+        except StopIteration:
+            pass
+    except Exception:
+        try:
+            gen.throw(Exception)
+        except StopIteration:
+            pass
+        raise
+    return result
+
+
+# ---------------------------------------------------------------------------
+# BotTradeLog
+# ---------------------------------------------------------------------------
+def save_bot_trade_log(
+    position_id: int | None,
+    event_type: str,
+    details: dict[str, Any] | str | None = None,
+    db: Session | None = None,
+) -> BotTradeLog:
+    """Create a new bot trade log entry."""
+
+    def _do(session: Session) -> BotTradeLog:
+        entry = BotTradeLog(
+            position_id=position_id,
+            event_type=event_type,
+            details=json.dumps(details) if isinstance(details, dict) else details,
+        )
+        session.add(entry)
+        session.flush()
+        return entry
+
+    if db is not None:
+        return _do(db)
+    gen = session_scope()
+    session = next(gen)
+    try:
+        result = _do(session)
+        try:
+            gen.send(None)
+        except StopIteration:
+            pass
+    except Exception:
+        try:
+            gen.throw(Exception)
+        except StopIteration:
+            pass
+        raise
+    return result
+
+
+def get_bot_trade_log(
+    position_id: int | None = None,
+    event_type: str | None = None,
+    limit: int = 100,
+    db: Session | None = None,
+) -> Sequence[BotTradeLog]:
+    """List bot trade log entries with optional filters."""
+
+    def _do(session: Session) -> Sequence[BotTradeLog]:
+        stmt = select(BotTradeLog).order_by(BotTradeLog.timestamp.desc())
+        if position_id is not None:
+            stmt = stmt.where(BotTradeLog.position_id == position_id)
+        if event_type:
+            stmt = stmt.where(BotTradeLog.event_type == event_type)
+        stmt = stmt.limit(limit)
+        return session.execute(stmt).scalars().all()
 
     if db is not None:
         return _do(db)

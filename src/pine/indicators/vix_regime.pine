@@ -2,7 +2,7 @@
 // VIX Regime — Bakgrunnsfarge og posisjonsstorrelse basert pa VIX-niva
 // Henter VIX fra CBOE:VIX daglig
 // =============================================================================
-//@version=5
+//@version=6
 indicator("COT Explorer: VIX Regime", shorttitle="VIX", overlay=true)
 
 // ── Fargepalett (mork tema) ─────────────────────────────────────────────────

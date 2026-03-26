@@ -30,11 +30,11 @@ describe('TopBar', () => {
     expect(logo.textContent).toContain('puls');
   });
 
-  it('renders all 7 navigation tabs', () => {
+  it('renders all 8 navigation tabs', () => {
     render(container);
 
     const tabs = container.querySelectorAll('.nt');
-    expect(tabs.length).toBe(7);
+    expect(tabs.length).toBe(8);
 
     const labels = Array.from(tabs).map((t) => t.textContent);
     expect(labels).toContain('Setups');
@@ -44,6 +44,7 @@ describe('TopBar', () => {
     expect(labels).toContain('Backtest');
     expect(labels).toContain('Pine');
     expect(labels).toContain('Konkurrent');
+    expect(labels).toContain('Trading');
   });
 
   it('renders ticker bar container', () => {
