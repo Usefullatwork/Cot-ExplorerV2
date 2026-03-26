@@ -1,0 +1,55 @@
+version: "3.9"
+
+services:
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: cot-explorer-api
+    ports:
+      - "8000:8000"
+    volumes:
+      - cot-data:/app/data
+    environment:
+      - DATABASE_URL=sqlite:///data/cot-explorer.db
+      - CORS_ORIGINS=http://localhost:3000,http://localhost:5173
+    env_file:
+      - .env
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+  scheduler:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: cot-explorer-scheduler
+    volumes:
+      - cot-data:/app/data
+    environment:
+      - DATABASE_URL=sqlite:///data/cot-explorer.db
+    env_file:
+      - .env
+    command: >
+      sh -c "
+        echo '45 6 * * 1-5 cd /app && python -m src.pipeline.runner' > /tmp/cron &&
+        echo '30 11 * * 1-5 cd /app && python -m src.pipeline.runner' >> /tmp/cron &&
+        echo '15 13 * * 1-5 cd /app && python -m src.pipeline.runner' >> /tmp/cron &&
+        echo '15 16 * * 1-5 cd /app && python -m src.pipeline.runner' >> /tmp/cron &&
+        crontab /tmp/cron &&
+        crond -f
+      "
+    restart: unless-stopped
+    depends_on:
+      api:
+        condition: service_healthy
+    profiles:
+      - with-scheduler
+
+volumes:
+  cot-data:
+    driver: local
