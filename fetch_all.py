@@ -5,12 +5,13 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 log = logging.getLogger(__name__)
+logging.basicConfig(level=logging.INFO, format="%(asctime)s %(name)s %(levelname)s %(message)s")
 try:
     from smc import run_smc
     SMC_OK = True
 except ImportError:
     SMC_OK = False
-    print('  SMC ikke tilgjengelig')
+    log.warning('  SMC ikke tilgjengelig')
 
 BASE = Path(__file__).resolve().parent / "data"
 OUT  = os.path.join(BASE, "macro", "latest.json")
@@ -119,7 +120,7 @@ def fetch_yahoo(symbol, interval="1d", range_="1y"):
         rows = [(h,l,c) for h,l,c in zip(q.get("high",[]),q.get("low",[]),q.get("close",[])) if h and l and c]
         return rows
     except Exception as e:
-        print(f"  FEIL {symbol} ({interval}): {e}")
+        log.error(f"  FEIL {symbol} ({interval}): {e}")
         return []
 
 def fetch_twelvedata(symbol, interval="1d", outputsize=365):
@@ -137,7 +138,7 @@ def fetch_twelvedata(symbol, interval="1d", outputsize=365):
         with urllib.request.urlopen(req, timeout=12) as r:
             d = json.loads(r.read())
         if d.get("status") == "error":
-            print(f"  TD {td_sym}: {d.get('message','ukjent feil')}")
+            log.info(f"  TD {td_sym}: {d.get('message','ukjent feil')}")
             return []
         rows = []
         for v in reversed(d.get("values", [])):
@@ -148,7 +149,7 @@ def fetch_twelvedata(symbol, interval="1d", outputsize=365):
         time.sleep(8)  # Gratis-plan: maks 8 req/min
         return rows
     except Exception as e:
-        print(f"  TD FEIL {td_sym} ({interval}): {e}")
+        log.error(f"  TD FEIL {td_sym} ({interval}): {e}")
         return []
 
 def fetch_stooq(symbol, range_="1y"):
@@ -180,7 +181,7 @@ def fetch_stooq(symbol, range_="1y"):
                 continue
         return rows
     except Exception as e:
-        print(f"  Stooq FEIL {stooq_sym}: {e}")
+        log.error(f"  Stooq FEIL {stooq_sym}: {e}")
         return []
 
 def fetch_finnhub_quote(symbol):
@@ -200,7 +201,7 @@ def fetch_finnhub_quote(symbol):
             return (h, l, c)
         return None
     except Exception as e:
-        print(f"  FH FEIL {fh_sym}: {e}")
+        log.error(f"  FH FEIL {fh_sym}: {e}")
         return None
 
 def fetch_fred(series_id):
@@ -216,7 +217,7 @@ def fetch_fred(series_id):
                 return float(parts[1])
         return None
     except Exception as e:
-        print(f"  FRED {series_id} FEIL: {e}")
+        log.error(f"  FRED {series_id} FEIL: {e}")
         return None
 
 def fetch_prices(symbol, interval, range_or_size):
@@ -542,7 +543,7 @@ def fetch_fear_greed():
         return {"score": round(d["fear_and_greed"]["score"],1),
                 "rating": d["fear_and_greed"]["rating"]}
     except Exception as e:
-        print(f"  Fear&Greed FEIL: {e}")
+        log.error(f"  Fear&Greed FEIL: {e}")
         return None
 
 def fetch_news_sentiment():
@@ -578,7 +579,7 @@ def fetch_news_sentiment():
                 titles = re.findall(r"<title>(.*?)</title>", txt)
             headlines.extend(titles[1:16])
         except Exception as e:
-            print(f"  Nyheter FEIL ({url[:45]}): {e}")
+            log.error(f"  Nyheter FEIL ({url[:45]}): {e}")
     if not headlines:
         return None
     ro_count = roff_count = 0
@@ -599,7 +600,7 @@ def fetch_news_sentiment():
     else:
         net   = round((ro_count - roff_count) / total, 2)
         label = "risk_on" if net >= 0.3 else "risk_off" if net <= -0.3 else "neutral"
-    print(f"  Nyhetssentiment: {label} (score={net:+.2f}, ro={ro_count}, roff={roff_count}, n={len(headlines)})")
+    log.info(f"  Nyhetssentiment: {label} (score={net:+.2f}, ro={ro_count}, roff={roff_count}, n={len(headlines)})")
     return {
         "score":          net,
         "label":          label,
@@ -626,12 +627,12 @@ def fetch_macro_indicators():
     out = {}
 
     # Renter fra FRED (DGS10 = 10Y, DTB3 = 3-måneds T-bill)
-    print("  FRED: henter renter...")
+    log.info("  FRED: henter renter...")
     for key, series in [("TNX", "DGS10"), ("IRX", "DTB3")]:
         val = fetch_fred(series)
         if val:
             out[key] = {"price": round(val, 3), "chg1d": 0, "chg5d": 0}
-            print(f"    {key} ({series}): {val:.3f}%")
+            log.info(f"    {key} ({series}): {val:.3f}%")
         else:
             # Fallback til Yahoo
             daily = fetch_yahoo(MACRO_SYMBOLS[key], "1d", "30d")
@@ -691,7 +692,7 @@ if os.path.exists(fund_file):
         with open(fund_file) as f:
             fund_data = json.load(f)
         n = len(fund_data.get("indicators", {}))
-        print(f"Fundamentals: {n} indikatorer lastet ({fund_data.get('usd_fundamental',{}).get('bias','?')} USD)")
+        log.info(f"Fundamentals: {n} indikatorer lastet ({fund_data.get('usd_fundamental',{}).get('bias','?')} USD)")
     except Exception:
         pass
 
@@ -703,7 +704,7 @@ if os.path.exists(cal_file):
         with open(cal_file) as f:
             cal_data = json.load(f)
         calendar_events = cal_data.get('events', [])
-        print(f'Kalender: {len(calendar_events)} events lastet')
+        log.info(f'Kalender: {len(calendar_events)} events lastet')
     except Exception:
         pass
 
@@ -727,19 +728,19 @@ if os.path.exists(cot_file):
             cot_data[d["market"].lower()] = d
 
 # ── Fear & Greed ──────────────────────────────────────────
-print("Henter Fear & Greed...")
+log.info("Henter Fear & Greed...")
 fg = fetch_fear_greed()
-if fg: print(f"  → {fg['score']} ({fg['rating']})")
+if fg: log.info(f"  → {fg['score']} ({fg['rating']})")
 
 # ── Nyhetssentiment ────────────────────────────────────────
-print("Henter nyhetssentiment...")
+log.info("Henter nyhetssentiment...")
 news_sentiment = fetch_news_sentiment()
 
 # ── Priser og setups ──────────────────────────────────────
 prices, levels = {}, {}
 
 for inst in INSTRUMENTS:
-    print(f"Henter {inst['navn']}...")
+    log.info(f"Henter {inst['navn']}...")
 
     daily    = fetch_prices(inst["symbol"], "1d",  "1y")
     rows_15m = fetch_prices(inst["symbol"], "15m", "5d")
@@ -779,17 +780,17 @@ for inst in INSTRUMENTS:
         try:
             smc = run_smc(rows_15m, swing_length=5)
         except Exception as e:
-            print(f"  SMC 15m FEIL: {e}")
+            log.error(f"  SMC 15m FEIL: {e}")
     if SMC_OK and rows_1h and len(rows_1h) > 50:
         try:
             smc_1h = run_smc(rows_1h, swing_length=10)
         except Exception as e:
-            print(f"  SMC 1H FEIL: {e}")
+            log.error(f"  SMC 1H FEIL: {e}")
     if SMC_OK and h4 and len(h4) > 30:
         try:
             smc_4h = run_smc(h4, swing_length=5)
         except Exception as e:
-            print(f"  SMC 4H FEIL: {e}")
+            log.error(f"  SMC 4H FEIL: {e}")
 
     # ── Nivåer med tidsvindus-vekting ────────────────────
     #  weight 5 = Ukentlig (sterkest), 4 = PDH/PDL, 3 = D1 swing/PDC,
@@ -1058,7 +1059,7 @@ for inst in INSTRUMENTS:
     st      = "🟢" if at_level_now else "🟡"
     dir_tag = "▲" if dir_color == "bull" else "▼"
     htf_tag = f"HTF:w{max(nearest_sup_w, nearest_res_w)}" if htf_level_nearby else "noHTF"
-    print(f"  {st} {inst['navn']:10s} {curr:.5f}  ATR15m={atr_s}  {grade}({score}/8) {dir_tag} {htf_tag}  T1:{t1_s}  R:R:{rr_s}")
+    log.info(f"  {st} {inst['navn']:10s} {curr:.5f}  ATR15m={atr_s}  {grade}({score}/8) {dir_tag} {htf_tag}  T1:{t1_s}  R:R:{rr_s}")
 
     levels[inst["key"]] = {
         "name":          inst["navn"],
@@ -1152,11 +1153,11 @@ for inst in INSTRUMENTS:
     }
 
 # ── Makro-indikatorer ──────────────────────────────────────
-print("Henter makro-indikatorer (HYG, TIP, TNX, IRX, Kobber, EM)...")
+log.info("Henter makro-indikatorer (HYG, TIP, TNX, IRX, Kobber, EM)...")
 macro_ind = fetch_macro_indicators()
 for k, v in macro_ind.items():
-    if v: print(f"  {k}: {v['price']}  5d={v['chg5d']:+.2f}%")
-    else: print(f"  {k}: FEIL")
+    if v: log.info(f"  {k}: {v['price']}  5d={v['chg5d']:+.2f}%")
+    else: log.error(f"  {k}: FEIL")
 
 # HY kredittrisiko: HYG ned > 1.5% siste 5d = kredittpress
 hyg         = macro_ind.get("HYG") or {}
@@ -1239,6 +1240,6 @@ macro = {
 
 with open(OUT,"w") as f:
     json.dump(macro, f, ensure_ascii=False, indent=2)
-print(f"\nOK → {OUT}  ({len(levels)} instruments)")
+log.info(f"\nOK → {OUT}  ({len(levels)} instruments)")
 if conflicts:
-    print("Konflikter:"); [print(f"  ⚠️  {c}") for c in conflicts]
+    log.info("Konflikter:"); [log.warning(f"  ⚠️  {c}") for c in conflicts]

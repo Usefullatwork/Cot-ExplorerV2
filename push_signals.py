@@ -13,6 +13,7 @@ Miljøvariabler:
 Støtter begge plattformer samtidig (pusher til alle som er konfigurert).
 """
 
+import logging
 import os
 import json
 import sys
@@ -20,6 +21,9 @@ import urllib.request
 import urllib.error
 from pathlib import Path
 from datetime import datetime, timezone
+
+log = logging.getLogger(__name__)
+logging.basicConfig(level=logging.INFO, format="%(asctime)s %(name)s %(levelname)s %(message)s")
 
 # ── Konfigurasjon ─────────────────────────────────────────
 BASE           = Path(__file__).parent
@@ -34,7 +38,7 @@ SCALP_API_KEY  = os.environ.get("SCALP_API_KEY",   "")
 
 # ── Hent data ─────────────────────────────────────────────
 if not DATA_FILE.exists():
-    print(f"FEIL: {DATA_FILE} finnes ikke — kjør fetch_all.py først")
+    log.error(f"FEIL: {DATA_FILE} finnes ikke — kjør fetch_all.py først")
     sys.exit(1)
 
 with open(DATA_FILE) as f:
@@ -59,7 +63,7 @@ candidates.sort(key=score_key, reverse=True)
 top = candidates[:MAX_SIGNALS]
 
 if not top:
-    print(f"Ingen signaler med score >= {MIN_SCORE}")
+    log.info(f"Ingen signaler med score >= {MIN_SCORE}")
     sys.exit(0)
 
 # ── Formater signal-kort ──────────────────────────────────
@@ -120,8 +124,8 @@ def build_message():
 
 
 message = build_message()
-print(message)
-print()
+log.info(message)
+log.info("")
 
 # ── Push til Telegram ─────────────────────────────────────
 def push_telegram(text):
@@ -137,9 +141,9 @@ def push_telegram(text):
                                  headers={"Content-Type": "application/json"})
     try:
         with urllib.request.urlopen(req, timeout=10) as resp:
-            print(f"Telegram OK ({resp.status})")
+            log.info(f"Telegram OK ({resp.status})")
     except urllib.error.URLError as e:
-        print(f"Telegram FEIL: {e}")
+        log.error(f"Telegram FEIL: {e}")
 
 
 # ── Push til Discord ──────────────────────────────────────
@@ -151,9 +155,9 @@ def push_discord(text):
                                  headers={"Content-Type": "application/json"})
     try:
         with urllib.request.urlopen(req, timeout=10) as resp:
-            print(f"Discord OK ({resp.status})")
+            log.info(f"Discord OK ({resp.status})")
     except urllib.error.URLError as e:
-        print(f"Discord FEIL: {e}")
+        log.error(f"Discord FEIL: {e}")
 
 
 # ── Push til Flask /push-alert ────────────────────────────
@@ -168,9 +172,9 @@ def push_flask(signals):
     )
     try:
         with urllib.request.urlopen(req, timeout=10) as resp:
-            print(f"Flask /push-alert OK ({resp.status})")
+            log.info(f"Flask /push-alert OK ({resp.status})")
     except urllib.error.URLError as e:
-        print(f"Flask FEIL: {e}")
+        log.error(f"Flask FEIL: {e}")
 
 
 # ── Kjør pushes ───────────────────────────────────────────

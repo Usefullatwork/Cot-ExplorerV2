@@ -1,9 +1,13 @@
 #!/usr/bin/env python3
 """Henter live priser fra Yahoo Finance og bygger data/macro/latest.json"""
+import logging
 import urllib.request, json, os
 from datetime import datetime, timezone
 
 from pathlib import Path
+
+log = logging.getLogger(__name__)
+logging.basicConfig(level=logging.INFO, format="%(asctime)s %(name)s %(levelname)s %(message)s")
 
 BASE = Path(__file__).resolve().parent / "data"
 OUT  = os.path.join(BASE, "macro", "latest.json")
@@ -50,17 +54,17 @@ def fetch_yahoo(symbol):
             "chg20d": round((now/day20 - 1)*100, 2),
         }
     except Exception as e:
-        print(f"  FEIL {symbol}: {e}")
+        log.error(f"  FEIL {symbol}: {e}")
         return None
 
 import urllib.parse
 prices = {}
 for key, sym in SYMBOLS.items():
-    print(f"Henter {key} ({sym})...")
+    log.info(f"Henter {key} ({sym})...")
     v = fetch_yahoo(sym)
     if v:
         prices[key] = v
-        print(f"  → {v['price']} ({v['chg1d']:+.2f}%)")
+        log.info(f"  → {v['price']} ({v['chg1d']:+.2f}%)")
 
 vix = (prices.get("VIX") or {}).get("price", 20)
 dxy_5d = (prices.get("DXY") or {}).get("chg5d", 0)
@@ -107,4 +111,4 @@ macro = {
 
 with open(OUT, "w") as f:
     json.dump(macro, f, ensure_ascii=False, indent=2)
-print(f"\nOK → {OUT}")
+log.info(f"\nOK → {OUT}")

@@ -4,8 +4,12 @@ Bygger data/combined/latest.json fra siste ukes rådata.
 Leser fra data/{report}/latest.json — IKKE timeseries (historikk).
 Timeseries brukes kun til COT-historikk-fanen.
 """
+import logging
 import json, os
 from pathlib import Path
+
+log = logging.getLogger(__name__)
+logging.basicConfig(level=logging.INFO, format="%(asctime)s %(name)s %(levelname)s %(message)s")
 
 BASE = Path(__file__).resolve().parent / "data"
 OUT  = os.path.join(BASE, "combined", "latest.json")
@@ -21,13 +25,13 @@ seen = {}  # market.lower() → entry
 for rep in REPORTS:
     fpath = os.path.join(BASE, rep, "latest.json")
     if not os.path.exists(fpath):
-        print(f"  Mangler: {fpath}")
+        log.warning(f"  Mangler: {fpath}")
         continue
 
     with open(fpath) as f:
         rows = json.load(f)
 
-    print(f"  {rep}: {len(rows)} markeder, dato={rows[0].get('date','?') if rows else '?'}")
+    log.info(f"  {rep}: {len(rows)} markeder, dato={rows[0].get('date','?') if rows else '?'}")
 
     for row in rows:
         market = row.get("market","").strip()
@@ -60,5 +64,5 @@ with open(OUT, "w") as f:
     json.dump(result, f, ensure_ascii=False, indent=2)
 
 dato = result[0]["date"] if result else "?"
-print(f"\nOK: {len(result)} markeder → {OUT}")
-print(f"COT-dato: {dato}")
+log.info(f"\nOK: {len(result)} markeder → {OUT}")
+log.info(f"COT-dato: {dato}")

@@ -5,6 +5,7 @@ from datetime import datetime, timezone, timedelta
 from pathlib import Path
 
 log = logging.getLogger(__name__)
+logging.basicConfig(level=logging.INFO, format="%(asctime)s %(name)s %(levelname)s %(message)s")
 
 BASE = str(Path(__file__).resolve().parent / "data" / "calendar")
 os.makedirs(BASE, exist_ok=True)
@@ -27,7 +28,7 @@ try:
     with urllib.request.urlopen(req, timeout=10) as r:
         raw = json.loads(r.read())
 except Exception as e:
-    print(f"FEIL: {e}")
+    log.error(f"FEIL: {e}")
     exit(1)
 
 now    = datetime.now(timezone.utc)
@@ -64,6 +65,6 @@ out = {"updated": now.isoformat(), "events": events}
 with open(OUT,"w") as f:
     json.dump(out, f, ensure_ascii=False, indent=2)
 
-print(f"Lagret {len(events)} events ({sum(1 for e in events if e['impact']=='High')} High)")
+log.info(f"Lagret {len(events)} events ({sum(1 for e in events if e['impact']=='High')} High)")
 for e in events[:8]:
-    print(f"  {e['cet']:18s} {e['country']:4s} [{e['impact']:6s}] {e['title'][:40]}")
+    log.info(f"  {e['cet']:18s} {e['country']:4s} [{e['impact']:6s}] {e['title'][:40]}")

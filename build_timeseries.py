@@ -9,6 +9,7 @@ from datetime import datetime
 from pathlib import Path
 
 log = logging.getLogger(__name__)
+logging.basicConfig(level=logging.INFO, format="%(asctime)s %(name)s %(levelname)s %(message)s")
 
 BASE    = Path(__file__).resolve().parent / "data"
 HIST    = os.path.join(BASE, "history")
@@ -24,11 +25,11 @@ markets = {}  # key = (symbol, report) → metadata + data[]
 for report in REPORTS:
     hist_dir = os.path.join(HIST, report)
     if not os.path.exists(hist_dir):
-        print(f"Mangler: {hist_dir}")
+        log.warning(f"Mangler: {hist_dir}")
         continue
 
     files = sorted(os.listdir(hist_dir))
-    print(f"\n{report}: {len(files)} år")
+    log.info(f"\n{report}: {len(files)} år")
 
     for fname in files:
         if not fname.endswith(".json"):
@@ -153,10 +154,10 @@ index.sort(key=lambda x: (-x["weeks"], x["navn_no"]))
 with open(os.path.join(TS_DIR, "index.json"), "w") as f:
     json.dump(index, f, ensure_ascii=False, indent=2)
 
-print(f"\nFerdig! {written} filer skrevet, {skipped} hoppet over (<10 uker)")
-print(f"Index: {len(index)} markeder")
+log.info(f"\nFerdig! {written} filer skrevet, {skipped} hoppet over (<10 uker)")
+log.info(f"Index: {len(index)} markeder")
 
 # Vis topp 10
-print("\nTopp 10 med mest data:")
+log.info("\nTopp 10 med mest data:")
 for entry in index[:10]:
-    print(f"  {entry['weeks']:4d} uker  {entry['navn_no']:30s}  {entry['report']}")
+    log.info(f"  {entry['weeks']:4d} uker  {entry['navn_no']:30s}  {entry['report']}")

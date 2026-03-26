@@ -3,6 +3,9 @@
 Python-port av FluidTrades SMC Lite (Pine Script → Python)
 Beregner: Swing H/L, HH/LH/HL/LL, Supply/Demand soner, POI, BOS
 """
+import logging
+
+log = logging.getLogger(__name__)
 
 def calc_atr(rows, n=50):
     if len(rows) < n+1: return None
@@ -248,6 +251,7 @@ def run_smc(rows, swing_length=10, box_width=2.5):
 
 # ── Test ──────────────────────────────────────────────────
 if __name__ == "__main__":
+    logging.basicConfig(level=logging.INFO, format="%(asctime)s %(name)s %(levelname)s %(message)s")
     import urllib.request, urllib.parse, json
 
     def fetch(symbol, interval="15m", range_="5d"):
@@ -259,27 +263,27 @@ if __name__ == "__main__":
         return [(h,l,c) for h,l,c in zip(q["high"],q["low"],q["close"]) if h and l and c]
 
     for sym, name in [("EURUSD=X","EUR/USD"), ("GC=F","Gull"), ("CL=F","WTI")]:
-        print(f"\n{'='*50}")
-        print(f"{name} — 15m SMC")
+        log.debug(f"\n{'='*50}")
+        log.debug(f"{name} — 15m SMC")
         rows = fetch(sym)
         if not rows:
-            print("  Ingen data"); continue
+            log.debug("  Ingen data"); continue
         result = run_smc(rows, swing_length=5)
         if not result:
-            print("  For lite data"); continue
+            log.debug("  For lite data"); continue
         curr = rows[-1][2]
-        print(f"  Nåpris:    {curr:.5f}")
-        print(f"  Struktur:  {result['structure']}")
-        print(f"  Siste HH/LH: {result['last_swing_high']}")
-        print(f"  Siste HL/LL: {result['last_swing_low']}")
-        print(f"  Supply soner ({len(result['supply_zones'])}):")
+        log.debug(f"  Nåpris:    {curr:.5f}")
+        log.debug(f"  Struktur:  {result['structure']}")
+        log.debug(f"  Siste HH/LH: {result['last_swing_high']}")
+        log.debug(f"  Siste HL/LL: {result['last_swing_low']}")
+        log.debug(f"  Supply soner ({len(result['supply_zones'])}):")
         for z in result['supply_zones']:
             dist = abs(z['poi'] - curr) / result['atr']
-            print(f"    {z['top']:.5f} – {z['bottom']:.5f}  POI:{z['poi']:.5f}  {dist:.1f}×ATR")
-        print(f"  Demand soner ({len(result['demand_zones'])}):")
+            log.debug(f"    {z['top']:.5f} – {z['bottom']:.5f}  POI:{z['poi']:.5f}  {dist:.1f}×ATR")
+        log.debug(f"  Demand soner ({len(result['demand_zones'])}):")
         for z in result['demand_zones']:
             dist = abs(z['poi'] - curr) / result['atr']
-            print(f"    {z['top']:.5f} – {z['bottom']:.5f}  POI:{z['poi']:.5f}  {dist:.1f}×ATR")
-        print(f"  BOS ({len(result['bos_levels'])}):")
+            log.debug(f"    {z['top']:.5f} – {z['bottom']:.5f}  POI:{z['poi']:.5f}  {dist:.1f}×ATR")
+        log.debug(f"  BOS ({len(result['bos_levels'])}):")
         for b in result['bos_levels']:
-            print(f"    {b['type']}  nivå:{b['level']:.5f}")
+            log.debug(f"    {b['type']}  nivå:{b['level']:.5f}")
