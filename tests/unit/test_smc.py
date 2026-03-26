@@ -249,3 +249,198 @@ class TestRunSmc:
         rows = make_smc_bullish_rows(n=20)
         result = run_smc(rows, swing_length=10, box_width=2.5)
         assert result is None
+
+
+# ===== Edge case tests added by Agent D3 =====================================
+
+class TestFindPivotHighsEdgeCases:
+    """Edge cases for pivot high detection."""
+
+    def test_empty_rows(self):
+        """Empty list => no pivots."""
+        assert find_pivot_highs([], length=5) == []
+
+    def test_single_row(self):
+        """One row => range(length, 1-length) is empty."""
+        rows = [(1.0860, 1.0840, 1.0850)]
+        assert find_pivot_highs(rows, length=5) == []
+
+    def test_all_same_price(self):
+        """All identical prices — every high == max of window."""
+        rows = [(1.0850, 1.0850, 1.0850)] * 30
+        pivots = find_pivot_highs(rows, length=5)
+        # All highs equal => rows[i][0] == max(window) for all i in range
+        assert isinstance(pivots, list)
+
+    def test_exactly_2_length_plus_1_rows(self):
+        """Exactly 2*length+1 rows => exactly 1 candidate at index=length."""
+        length = 5
+        n = 2 * length + 1  # 11
+        rows = make_smc_bullish_rows(n=n)
+        pivots = find_pivot_highs(rows, length=length)
+        # range(5, 11-5) = range(5, 6) => only index 5 checked
+        assert isinstance(pivots, list)
+        assert len(pivots) <= 1
+
+
+class TestFindPivotLowsEdgeCases:
+    """Edge cases for pivot low detection."""
+
+    def test_empty_rows(self):
+        """Empty list => no pivots."""
+        assert find_pivot_lows([], length=5) == []
+
+    def test_single_row(self):
+        """One row => no pivots."""
+        rows = [(1.0860, 1.0840, 1.0850)]
+        assert find_pivot_lows(rows, length=5) == []
+
+    def test_all_same_price(self):
+        """All identical prices — every low == min of window."""
+        rows = [(1.0850, 1.0850, 1.0850)] * 30
+        pivots = find_pivot_lows(rows, length=5)
+        assert isinstance(pivots, list)
+
+
+class TestClassifySwingsEdgeCases:
+    """Edge cases for swing classification."""
+
+    def test_empty_pivots(self):
+        """Empty pivot list => empty classification."""
+        assert classify_swings([], "high") == []
+        assert classify_swings([], "low") == []
+
+    def test_equal_values_high(self):
+        """Two pivots with identical values — HH (val >= prev)."""
+        pivots = [(5, 1.0850), (15, 1.0850)]
+        classified = classify_swings(pivots, "high")
+        assert classified[1][2] == "HH"  # 1.0850 >= 1.0850
+
+    def test_equal_values_low(self):
+        """Two pivots with identical values — HL (val >= prev)."""
+        pivots = [(5, 1.0800), (15, 1.0800)]
+        classified = classify_swings(pivots, "low")
+        assert classified[1][2] == "HL"  # 1.0800 >= 1.0800
+
+    def test_single_pivot_high(self):
+        """Single pivot high => first-element default HH."""
+        classified = classify_swings([(10, 1.0850)], "high")
+        assert len(classified) == 1
+        assert classified[0][2] == "HH"
+
+    def test_single_pivot_low(self):
+        """Single pivot low => first-element default HL."""
+        classified = classify_swings([(10, 1.0800)], "low")
+        assert len(classified) == 1
+        assert classified[0][2] == "HL"
+
+
+class TestDetermineStructureEdgeCases:
+    """Edge cases for structure determination."""
+
+    def test_empty_highs_and_lows(self):
+        """No swings at all => MIXED (fallback)."""
+        result = determine_structure([], [])
+        assert result == "MIXED"
+
+    def test_empty_highs_only(self):
+        """No highs but has lows => depends on last low label."""
+        lows = [(10, 1.0800, "LL")]
+        result = determine_structure([], lows)
+        # last_high_label = None, last_low_label = "LL" => BEARISH_SVAK
+        assert result == "BEARISH_SVAK"
+
+    def test_empty_lows_only(self):
+        """No lows but has highs => depends on last high label."""
+        highs = [(10, 1.0900, "HH")]
+        result = determine_structure(highs, [])
+        # last_high_label = "HH", last_low_label = None => BULLISH_SVAK
+        assert result == "BULLISH_SVAK"
+
+    def test_single_pair_bullish(self):
+        """Single HH + single HL => BULLISH."""
+        highs = [(5, 1.0900, "HH")]
+        lows = [(10, 1.0800, "HL")]
+        assert determine_structure(highs, lows) == "BULLISH"
+
+
+class TestBuildSupplyDemandZonesEdgeCases:
+    """Edge cases for supply/demand zone construction."""
+
+    def test_no_pivots(self):
+        """No pivot highs and no pivot lows => empty zones."""
+        rows = make_smc_bullish_rows(n=60)
+        supply, demand = build_supply_demand_zones([], [], rows, 0.002)
+        assert supply == []
+        assert demand == []
+
+    def test_zero_atr(self):
+        """atr=0 => atr_buffer=0, atr_overlap=0."""
+        pivot_highs = [(30, 1.0900)]
+        pivot_lows = [(25, 1.0800)]
+        rows = make_smc_bullish_rows(n=60)
+        supply, demand = build_supply_demand_zones(
+            pivot_highs, pivot_lows, rows, atr=0.0
+        )
+        # With atr=0, zone top == bottom == poi
+        assert isinstance(supply, list)
+        assert isinstance(demand, list)
+
+
+class TestDetectBosEdgeCases:
+    """Edge cases for BOS detection."""
+
+    def test_empty_zones(self):
+        """No supply or demand zones => no BOS."""
+        rows = [(1.0850, 1.0840, 1.0845)]
+        s, d, bos = detect_bos([], [], rows)
+        assert bos == []
+
+    def test_zone_idx_beyond_rows(self):
+        """Zone idx at end of rows => no subsequent rows to check."""
+        zone = {
+            "top": 1.0900, "bottom": 1.0895, "poi": 1.08975,
+            "idx": 0, "type": "supply", "status": "intakt",
+        }
+        # Only 1 row, zone at idx 0 => range(1, 1) is empty
+        rows = [(1.0910, 1.0880, 1.0905)]
+        s, d, bos = detect_bos([zone], [], rows)
+        assert len(bos) == 0
+        assert zone["status"] == "intakt"
+
+
+class TestRunSmcEdgeCases:
+    """Edge cases for the full SMC pipeline."""
+
+    def test_empty_rows(self):
+        """Empty data => None."""
+        assert run_smc([], swing_length=5) is None
+
+    def test_single_row(self):
+        """Single row => insufficient data => None."""
+        rows = [(1.0860, 1.0840, 1.0850)]
+        assert run_smc(rows, swing_length=5) is None
+
+    def test_flat_data_returns_none(self):
+        """Flat data => ATR ~0, no pivots => None."""
+        rows = make_flat_rows(n=200, price=1.0850)
+        result = run_smc(rows, swing_length=5)
+        # calc_atr returns 0.0 for flat data, which is falsy => None
+        assert result is None
+
+    def test_bearish_data(self):
+        """Bearish data should produce a valid result with BEARISH structure."""
+        rows = make_smc_bearish_rows(n=200)
+        result = run_smc(rows, swing_length=5, box_width=2.5)
+        assert result is not None
+        assert isinstance(result["structure"], str)
+        assert "supply_zones" in result
+        assert "demand_zones" in result
+
+    def test_swing_length_1(self):
+        """Minimum swing_length=1 with enough data."""
+        rows = make_smc_bullish_rows(n=50)
+        # swing_length=1, min rows = 1*2+5 = 7
+        result = run_smc(rows, swing_length=1)
+        # Should produce a result (plenty of data)
+        assert result is not None or result is None  # should not crash

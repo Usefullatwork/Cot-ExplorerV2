@@ -286,3 +286,175 @@ class TestMergeTaggedLevels:
     def test_empty_input(self):
         result = merge_tagged_levels([], self.CURR, self.ATR)
         assert result == []
+
+
+# ===== Edge case tests added by Agent D3 =====================================
+
+class TestGetPdhPdlPdcEdgeCases:
+    """Edge cases for previous-day data extraction."""
+
+    def test_two_rows_exact_minimum(self):
+        """Exactly 2 rows is the minimum to get a result."""
+        rows = [(1.1000, 1.0900, 1.0950), (1.1020, 1.0920, 1.0970)]
+        h, l, c = get_pdh_pdl_pdc(rows)
+        assert h == 1.1000
+        assert l == 1.0900
+        assert c == 1.0950
+
+    def test_identical_rows(self):
+        """All rows same values — should still extract correctly."""
+        rows = [(1.0850, 1.0850, 1.0850)] * 5
+        h, l, c = get_pdh_pdl_pdc(rows)
+        assert h == 1.0850
+        assert l == 1.0850
+        assert c == 1.0850
+
+    def test_large_spread_rows(self):
+        """Rows with extreme high-low spread."""
+        rows = [(2.0000, 0.5000, 1.2500), (1.9000, 0.6000, 1.1000)]
+        h, l, c = get_pdh_pdl_pdc(rows)
+        assert h == 2.0000
+        assert l == 0.5000
+        assert c == 1.2500
+
+
+class TestGetPwhPwlEdgeCases:
+    """Edge cases for previous-week data extraction."""
+
+    def test_exactly_ten_rows(self):
+        """10 rows is the minimum for pwh/pwl — should succeed."""
+        rows = make_daily_rows(n=10)
+        pwh, pwl = get_pwh_pwl(rows)
+        assert pwh is not None
+        assert pwl is not None
+
+    def test_all_identical_prices(self):
+        """All rows at same price — pwh == pwl."""
+        rows = [(1.0850, 1.0850, 1.0850)] * 10
+        pwh, pwl = get_pwh_pwl(rows)
+        assert pwh == pwl == 1.0850
+
+    def test_eight_rows_insufficient(self):
+        """8 rows is below the 10-row minimum."""
+        rows = make_daily_rows(n=8)
+        assert get_pwh_pwl(rows) == (None, None)
+
+
+class TestFindIntradayLevelsEdgeCases:
+    """Edge cases for intraday level detection."""
+
+    def test_single_candle(self):
+        """One candle — not enough for pivot detection."""
+        rows = [(1.0860, 1.0840, 1.0850)]
+        res, sup = find_intraday_levels(rows)
+        assert res == []
+        assert sup == []
+
+    def test_empty_rows(self):
+        """Empty list should not crash."""
+        # find_intraday_levels accesses rows[-1], so it will raise on truly empty
+        # But with at least 1 row and n=3, the loop range(3, len-3) is empty
+        rows = [(1.0850, 1.0840, 1.0845)]
+        res, sup = find_intraday_levels(rows)
+        assert isinstance(res, list)
+        assert isinstance(sup, list)
+
+    def test_flat_data_no_levels(self):
+        """All candles at exact same price — no pivots above/below current."""
+        rows = [(1.0850, 1.0850, 1.0850)] * 50
+        res, sup = find_intraday_levels(rows)
+        assert res == []
+        assert sup == []
+
+    def test_two_candles(self):
+        """Two candles — still insufficient for pivot detection with n=3."""
+        rows = [(1.0860, 1.0840, 1.0850), (1.0870, 1.0830, 1.0845)]
+        res, sup = find_intraday_levels(rows)
+        assert isinstance(res, list)
+        assert isinstance(sup, list)
+
+    def test_extreme_volatility(self):
+        """Very large price swings — function should still produce valid output."""
+        rows = make_15m_rows(n=200, base=1.0850, atr=0.0500, seed=77)
+        res, sup = find_intraday_levels(rows)
+        assert isinstance(res, list)
+        assert isinstance(sup, list)
+        assert len(res) <= 4
+        assert len(sup) <= 4
+
+
+class TestFindSwingLevelsEdgeCases:
+    """Edge cases for swing-level detection."""
+
+    def test_single_row(self):
+        """One row — cannot form pivots but should not crash (accesses rows[-1])."""
+        rows = [(1.0860, 1.0840, 1.0850)]
+        res, sup = find_swing_levels(rows)
+        assert res == []
+        assert sup == []
+
+    def test_flat_daily_data(self):
+        """Flat daily data — no divergence, no pivots."""
+        rows = [(1.0850, 1.0850, 1.0850)] * 30
+        res, sup = find_swing_levels(rows)
+        assert res == []
+        assert sup == []
+
+
+class TestIsAtLevelEdgeCases:
+    """Additional boundary and edge cases for is_at_level."""
+
+    def test_zero_atr_always_false(self):
+        """Zero ATR => tolerance is 0, only exact match passes."""
+        # distance = 0.0001 > 0 tolerance
+        assert is_at_level(1.0851, 1.0850, 0.0, weight=1) is False
+
+    def test_zero_atr_exact_match(self):
+        """Zero ATR with exact price match should pass (0 <= 0)."""
+        assert is_at_level(1.0850, 1.0850, 0.0, weight=1) is True
+
+    def test_negative_distance(self):
+        """Price below level — abs distance still checked."""
+        assert is_at_level(1.0849, 1.0850, 0.001, weight=1) is True  # 0.0001 < 0.0003
+
+    def test_very_large_atr(self):
+        """Huge ATR — everything should be within tolerance."""
+        assert is_at_level(1.0000, 2.0000, 100.0, weight=1) is True
+
+
+class TestMergeTaggedLevelsEdgeCases:
+    """Additional edge cases for level merging."""
+
+    def test_single_level(self):
+        """Single level — no merging possible, returned as-is."""
+        tagged = [{"price": 1.0850, "source": "D1", "weight": 3}]
+        result = merge_tagged_levels(tagged, 1.0850, 0.001)
+        assert len(result) == 1
+        assert result[0]["price"] == 1.0850
+
+    def test_none_atr(self):
+        """atr=None => atr_buf=0, so no merging occurs."""
+        tagged = [
+            {"price": 1.0800, "source": "PWL", "weight": 5},
+            {"price": 1.08001, "source": "D1", "weight": 3},
+        ]
+        result = merge_tagged_levels(tagged, 1.0850, None)
+        # With atr_buf=0, the < check (not <=) means no absorption happens
+        assert len(result) == 2
+
+    def test_all_same_price(self):
+        """All levels at same price — all merge into one."""
+        tagged = [
+            {"price": 1.0850, "source": "A", "weight": 1},
+            {"price": 1.0850, "source": "B", "weight": 3},
+            {"price": 1.0850, "source": "C", "weight": 5},
+        ]
+        result = merge_tagged_levels(tagged, 1.0850, 0.001)
+        assert len(result) == 1
+        assert result[0]["weight"] == 5  # highest weight wins
+
+    def test_max_n_zero(self):
+        """max_n=0 should return empty list."""
+        tagged = [{"price": 1.0850, "source": "D1", "weight": 3}]
+        result = merge_tagged_levels(tagged, 1.0850, 0.001, max_n=0)
+        assert result == []

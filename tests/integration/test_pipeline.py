@@ -106,3 +106,91 @@ def test_pipeline_result_values_are_strings():
 
     for stage, outcome in results.items():
         assert isinstance(outcome, str), f"Stage {stage} has non-string outcome: {type(outcome)}"
+
+
+# ===== Edge case tests added by Agent D3 =====================================
+
+def test_multiple_stage_failures(mock_stage_functions):
+    """Multiple stages failing should not halt the pipeline."""
+    mock_stage_functions["calendar"].side_effect = RuntimeError("calendar down")
+    mock_stage_functions["cot"].side_effect = ValueError("bad COT data")
+    mock_stage_functions["prices"].side_effect = TimeoutError("price fetch timeout")
+
+    results = run_full_pipeline()
+
+    assert "error" in results["calendar"]
+    assert "error" in results["cot"]
+    assert "error" in results["prices"]
+    # Non-failing stages should be ok
+    assert results["combine"] == "ok"
+    assert results["fundamentals"] == "ok"
+    assert results["scoring"] == "ok"
+    assert results["output"] == "ok"
+    assert results["push"] == "ok"
+
+
+def test_all_stages_fail(mock_stage_functions):
+    """All stages failing should still return results for all 8 stages."""
+    for name, mock_fn in mock_stage_functions.items():
+        mock_fn.side_effect = RuntimeError(f"{name} failed")
+
+    results = run_full_pipeline()
+
+    assert len(results) == 8
+    for stage, outcome in results.items():
+        assert "error" in outcome
+
+
+def test_stage_returns_none_not_crash(mock_stage_functions):
+    """A stage function that returns None (normal) should be 'ok'."""
+    mock_stage_functions["calendar"].return_value = None
+
+    results = run_full_pipeline()
+    assert results["calendar"] == "ok"
+
+
+def test_first_stage_failure_last_stage_runs(mock_stage_functions):
+    """First stage (calendar) fails, last stage (push) should still run."""
+    mock_stage_functions["calendar"].side_effect = RuntimeError("first fails")
+
+    results = run_full_pipeline()
+
+    assert "error" in results["calendar"]
+    assert results["push"] == "ok"
+    assert mock_stage_functions["push"].called
+
+
+def test_last_stage_failure(mock_stage_functions):
+    """Last stage (push) failing should not affect earlier results."""
+    mock_stage_functions["push"].side_effect = RuntimeError("push failed")
+
+    results = run_full_pipeline()
+
+    assert results["calendar"] == "ok"
+    assert results["cot"] == "ok"
+    assert "error" in results["push"]
+
+
+def test_stage_failure_error_message_contains_exception_text(mock_stage_functions):
+    """Error outcome should contain the exception message."""
+    mock_stage_functions["fundamentals"].side_effect = ValueError("FRED API rate limited")
+
+    results = run_full_pipeline()
+
+    assert "FRED API rate limited" in results["fundamentals"]
+
+
+def test_stage_keyboard_interrupt_propagates(mock_stage_functions):
+    """KeyboardInterrupt is not caught by except Exception — should propagate."""
+    mock_stage_functions["scoring"].side_effect = KeyboardInterrupt()
+
+    with pytest.raises(KeyboardInterrupt):
+        run_full_pipeline()
+
+
+def test_pipeline_order_preserved(mock_stage_functions):
+    """Results dict should have stages in pipeline order."""
+    results = run_full_pipeline()
+
+    expected_order = ["calendar", "cot", "combine", "fundamentals", "prices", "scoring", "output", "push"]
+    assert list(results.keys()) == expected_order

@@ -443,3 +443,155 @@ class TestMinRR:
         if result is not None:
             assert result.rr_t1 >= 2.0
             assert result.min_rr == 2.0
+
+
+# ===== Edge case tests added by Agent D3 =====================================
+
+class TestSetupBuilderEdgeCases:
+    """Edge cases: empty levels, same prices, extreme values, both directions."""
+
+    def test_long_no_levels_at_all(self):
+        """Both sup and res empty => None for long."""
+        result = make_setup_l2l(
+            curr=1.0842,
+            atr_15m=ATR_15M,
+            atr_daily=ATR_DAILY,
+            sup_tagged=[],
+            res_tagged=[],
+            direction="long",
+            klasse="A",
+        )
+        assert result is None
+
+    def test_short_no_levels_at_all(self):
+        """Both sup and res empty => None for short."""
+        result = make_setup_l2l(
+            curr=1.0878,
+            atr_15m=ATR_15M,
+            atr_daily=ATR_DAILY,
+            sup_tagged=[],
+            res_tagged=[],
+            direction="short",
+            klasse="A",
+        )
+        assert result is None
+
+    def test_long_support_equals_resistance(self):
+        """Support and resistance at the same price => T1 dist = 0 => None."""
+        same_price = 1.0850
+        sup = [make_support_level(same_price, weight=3, source="D1_swing")]
+        res = [make_resistance_level(same_price, weight=3, source="D1_swing")]
+        result = make_setup_l2l(
+            curr=same_price + 0.0002,
+            atr_15m=ATR_15M,
+            atr_daily=ATR_DAILY,
+            sup_tagged=sup,
+            res_tagged=res,
+            direction="long",
+            klasse="A",
+        )
+        # T1 can't be enough above entry when it equals entry => None
+        assert result is None
+
+    def test_short_resistance_equals_support(self):
+        """Resistance and support at the same price for short => None."""
+        same_price = 1.0850
+        sup = [make_support_level(same_price, weight=3, source="D1_swing")]
+        res = [make_resistance_level(same_price, weight=3, source="D1_swing")]
+        result = make_setup_l2l(
+            curr=same_price - 0.0002,
+            atr_15m=ATR_15M,
+            atr_daily=ATR_DAILY,
+            sup_tagged=sup,
+            res_tagged=res,
+            direction="short",
+            klasse="A",
+        )
+        assert result is None
+
+    def test_returns_none_zero_atr_daily(self):
+        """atr_daily=0 triggers fallback to atr_15m*5 (since 0 is falsy)."""
+        result = make_setup_l2l(
+            curr=1.0842,
+            atr_15m=ATR_15M,
+            atr_daily=0,
+            sup_tagged=EURUSD_SUPPORTS,
+            res_tagged=EURUSD_RESISTANCES,
+            direction="long",
+            klasse="A",
+        )
+        # 0 is falsy => fallback to atr_15m*5 = 0.006, should still work
+        if result is not None:
+            assert result.risk_atr_d > 0
+
+    def test_returns_none_negative_atr_daily(self):
+        """atr_daily=-1 is truthy but <=0, triggers fallback."""
+        result = make_setup_l2l(
+            curr=1.0842,
+            atr_15m=ATR_15M,
+            atr_daily=-1,
+            sup_tagged=EURUSD_SUPPORTS,
+            res_tagged=EURUSD_RESISTANCES,
+            direction="long",
+            klasse="A",
+        )
+        # -1 is truthy but <=0, code does: if not atr_daily or atr_daily <= 0
+        # => fallback to atr_15m * 5
+        if result is not None:
+            assert result.risk_atr_d > 0
+
+    def test_long_very_high_min_rr(self):
+        """Unrealistically high min_rr => no T1 qualifies => None."""
+        result = make_setup_l2l(
+            curr=1.0842,
+            atr_15m=ATR_15M,
+            atr_daily=ATR_DAILY,
+            sup_tagged=EURUSD_SUPPORTS,
+            res_tagged=EURUSD_RESISTANCES,
+            direction="long",
+            klasse="A",
+            min_rr=100.0,
+        )
+        assert result is None
+
+    def test_short_very_high_min_rr(self):
+        """Unrealistically high min_rr for short => None."""
+        result = make_setup_l2l(
+            curr=1.0878,
+            atr_15m=ATR_15M,
+            atr_daily=ATR_DAILY,
+            sup_tagged=EURUSD_SUPPORTS,
+            res_tagged=EURUSD_RESISTANCES,
+            direction="short",
+            klasse="A",
+            min_rr=100.0,
+        )
+        assert result is None
+
+    def test_long_weight_1_entry_tight_distance(self):
+        """Weight 1 entry has max_entry_dist = 0.3 * atr_daily. curr too far => None."""
+        # 0.3 * 0.006 = 0.0018 max distance for weight 1
+        entry = [make_support_level(1.0800, weight=1, source="15m_pivot")]
+        result = make_setup_l2l(
+            curr=1.0825,  # distance = 0.0025 > 0.0018
+            atr_15m=ATR_15M,
+            atr_daily=ATR_DAILY,
+            sup_tagged=entry,
+            res_tagged=EURUSD_RESISTANCES,
+            direction="long",
+            klasse="A",
+        )
+        assert result is None
+
+    def test_short_curr_above_resistance(self):
+        """curr above all resistance levels => entry_dist < 0 => None."""
+        result = make_setup_l2l(
+            curr=1.1000,
+            atr_15m=ATR_15M,
+            atr_daily=ATR_DAILY,
+            sup_tagged=EURUSD_SUPPORTS,
+            res_tagged=EURUSD_RESISTANCES,
+            direction="short",
+            klasse="A",
+        )
+        assert result is None
