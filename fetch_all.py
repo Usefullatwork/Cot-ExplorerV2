@@ -1,18 +1,13 @@
 #!/usr/bin/env python3
-"""Macro analysis pipeline — thin wrapper that imports analysis from src/.
+"""Macro analysis pipeline — orchestrates price fetching, technical/SMC/COT/
+sentiment analysis, writes combined output to data/macro/latest.json.
 
-Fetches price data from multiple sources (Twelvedata, Stooq, Yahoo, Finnhub,
-FRED), runs technical/SMC/COT/sentiment analysis via src/analysis/ modules,
-and writes the combined output to data/macro/latest.json.
-
-This is the production entry point called by update.sh and src/pipeline/runner.py.
+Production entry point called by update.sh and src/pipeline/runner.py.
 """
-import logging
-import urllib.request, urllib.parse, json, os, time, re
+import json, logging, os
 from datetime import datetime, timezone
 from pathlib import Path
 
-# ── Analysis imports from src/ ────────────────────────────────────
 from src.analysis.technical import calc_atr, calc_ema, to_4h
 from src.analysis.levels import (
     get_pdh_pdl_pdc, get_pwh_pwl, get_session_status,
@@ -20,8 +15,14 @@ from src.analysis.levels import (
 )
 from src.analysis.setup_builder import make_setup_l2l
 from src.analysis.cot_analyzer import classify_cot_bias, classify_cot_momentum
-from src.analysis.sentiment import detect_conflict
+from src.analysis.sentiment import (
+    detect_conflict, fetch_fear_greed as _fetch_fg,
+    fetch_news_sentiment as _fetch_news, fetch_macro_indicators as _fetch_macro,
+)
 from src.analysis.smc import run_smc
+from src.trading.core.price_fetcher import (
+    fetch_prices, INSTRUMENTS, NEWS_CONFIRMS_MAP, COT_MAP,
+)
 
 log = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(name)s %(levelname)s %(message)s")
@@ -30,284 +31,7 @@ BASE = Path(__file__).resolve().parent / "data"
 OUT  = os.path.join(BASE, "macro", "latest.json")
 os.makedirs(os.path.join(BASE, "macro"), exist_ok=True)
 
-# ── Instrument config ─────────────────────────────────────────────
-INSTRUMENTS = [
-    {"key":"EURUSD","navn":"EUR/USD", "symbol":"EURUSD=X","label":"Valuta", "kat":"valuta", "klasse":"A","session":"London 08:00–12:00 CET"},
-    {"key":"USDJPY","navn":"USD/JPY", "symbol":"JPY=X",   "label":"Valuta", "kat":"valuta", "klasse":"A","session":"London 08:00–12:00 CET"},
-    {"key":"GBPUSD","navn":"GBP/USD", "symbol":"GBPUSD=X","label":"Valuta", "kat":"valuta", "klasse":"A","session":"London 08:00–12:00 CET"},
-    {"key":"AUDUSD","navn":"AUD/USD", "symbol":"AUDUSD=X","label":"Valuta", "kat":"valuta", "klasse":"A","session":"London 08:00–12:00 CET"},
-    {"key":"Gold",  "navn":"Gull",   "symbol":"GC=F",    "label":"Råvare", "kat":"ravarer","klasse":"B","session":"London Fix 10:30 / NY Fix 15:00 CET"},
-    {"key":"Silver","navn":"Sølv",   "symbol":"SI=F",    "label":"Råvare", "kat":"ravarer","klasse":"B","session":"London Fix 10:30 / NY Fix 15:00 CET"},
-    {"key":"Brent", "navn":"Brent",  "symbol":"BZ=F",    "label":"Råvare", "kat":"ravarer","klasse":"B","session":"London Fix 10:30 / NY Fix 15:00 CET"},
-    {"key":"WTI",   "navn":"WTI",    "symbol":"CL=F",    "label":"Råvare", "kat":"ravarer","klasse":"B","session":"London Fix 10:30 / NY Fix 15:00 CET"},
-    {"key":"SPX",   "navn":"S&P 500","symbol":"^GSPC",   "label":"Aksjer", "kat":"aksjer", "klasse":"C","session":"NY Open 14:30–17:00 CET"},
-    {"key":"NAS100","navn":"Nasdaq", "symbol":"^NDX",    "label":"Aksjer", "kat":"aksjer", "klasse":"C","session":"NY Open 14:30–17:00 CET"},
-    {"key":"VIX",   "navn":"VIX",    "symbol":"^VIX",    "label":"Vol",    "kat":"aksjer", "klasse":"C","session":"NY Open 14:30–17:00 CET"},
-    {"key":"DXY",   "navn":"DXY",    "symbol":"DX-Y.NYB","label":"Valuta", "kat":"valuta", "klasse":"A","session":"London 08:00–12:00 CET"},
-]
-
-TWELVEDATA_API_KEY = os.environ.get("TWELVEDATA_API_KEY", "")
-FINNHUB_API_KEY    = os.environ.get("FINNHUB_API_KEY", "")
-
-TD_FREE_SYMBOLS = {"EURUSD=X", "JPY=X", "GBPUSD=X", "AUDUSD=X", "GC=F", "HYG", "TIP", "EEM"}
-TWELVEDATA_MAP = {"EURUSD=X":"EUR/USD","JPY=X":"USD/JPY","GBPUSD=X":"GBP/USD","AUDUSD=X":"AUD/USD","GC=F":"XAU/USD","HYG":"HYG","TIP":"TIP","EEM":"EEM"}
-TD_INTERVAL = {"1d": "1day", "15m": "15min", "60m": "1h"}
-TD_SIZE     = {"1y": 365, "5d": 500, "60d": 500, "30d": 35}
-
-STOOQ_MAP = {
-    "EURUSD=X":"eurusd","JPY=X":"usdjpy","GBPUSD=X":"gbpusd","AUDUSD=X":"audusd",
-    "GC=F":"xauusd","SI=F":"xagusd","BZ=F":"co.f","CL=F":"cl.f",
-    "^GSPC":"^spx","^NDX":"^ndx","^VIX":"^vix","DX-Y.NYB":"dxy.f",
-    "HG=F":"hg.f","HYG":"hyg.us","TIP":"tip.us","EEM":"eem.us",
-}
-STOOQ_DAYS = {"1y": 400, "30d": 35, "5d": 7}
-
-FINNHUB_QUOTE_MAP = {"^GSPC":"^GSPC","^NDX":"^NDX","^VIX":"^VIX","SI=F":"SI1!","BZ=F":"UKOIL","CL=F":"USOIL","HG=F":"HG1!"}
-
-NEWS_CONFIRMS_MAP = {
-    "SPX":("bull","bear"),"NAS100":("bull","bear"),"Gold":("bear","bull"),"Silver":("bear","bull"),
-    "EURUSD":("bull","bear"),"GBPUSD":("bull","bear"),"AUDUSD":("bull","bear"),"USDJPY":("bull","bear"),
-    "DXY":("bear","bull"),"Brent":(None,None),"WTI":(None,None),"VIX":("bear","bull"),
-}
-
-COT_MAP = {
-    "EURUSD":"euro fx","USDJPY":"japanese yen","GBPUSD":"british pound",
-    "Gold":"gold","Silver":"silver","Brent":"crude oil, light sweet",
-    "WTI":"crude oil, light sweet","SPX":"s&p 500 consolidated",
-    "NAS100":"nasdaq mini","DXY":"usd index",
-}
-
-MACRO_SYMBOLS = {
-    "HYG":"HYG","TIP":"TIP","TNX":"^TNX","IRX":"^IRX","Copper":"HG=F","EEM":"EEM",
-}
-
-
-# ══════════════════════════════════════════════════════════════════
-# Data fetchers — multi-source (Twelvedata/Stooq/Yahoo/Finnhub/FRED)
-# These are NOT in src/analysis/ because they are I/O, not pure analysis.
-# ══════════════════════════════════════════════════════════════════
-
-def fetch_yahoo(symbol, interval="1d", range_="1y"):
-    url = f"https://query1.finance.yahoo.com/v8/finance/chart/{urllib.parse.quote(symbol)}?interval={interval}&range={range_}"
-    req = urllib.request.Request(url, headers={"User-Agent":"Mozilla/5.0","Accept":"application/json"})
-    try:
-        with urllib.request.urlopen(req, timeout=10) as r:
-            d = json.loads(r.read())
-        res = d["chart"]["result"][0]
-        q   = res["indicators"]["quote"][0]
-        return [(h,l,c) for h,l,c in zip(q.get("high",[]),q.get("low",[]),q.get("close",[])) if h and l and c]
-    except Exception as e:
-        log.error(f"  FEIL {symbol} ({interval}): {e}")
-        return []
-
-def fetch_twelvedata(symbol, interval="1d", outputsize=365):
-    if not TWELVEDATA_API_KEY or symbol not in TD_FREE_SYMBOLS:
-        return []
-    td_sym = TWELVEDATA_MAP.get(symbol, symbol)
-    td_int = TD_INTERVAL.get(interval, interval)
-    url = (f"https://api.twelvedata.com/time_series?symbol={urllib.parse.quote(td_sym)}"
-           f"&interval={td_int}&outputsize={outputsize}&apikey={TWELVEDATA_API_KEY}")
-    req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
-    try:
-        with urllib.request.urlopen(req, timeout=12) as r:
-            d = json.loads(r.read())
-        if d.get("status") == "error":
-            log.info(f"  TD {td_sym}: {d.get('message','ukjent feil')}")
-            return []
-        rows = []
-        for v in reversed(d.get("values", [])):
-            try:
-                rows.append((float(v["high"]), float(v["low"]), float(v["close"])))
-            except (ValueError, KeyError):
-                continue
-        time.sleep(8)
-        return rows
-    except Exception as e:
-        log.error(f"  TD FEIL {td_sym} ({interval}): {e}")
-        return []
-
-def fetch_stooq(symbol, range_="1y"):
-    from datetime import timedelta
-    stooq_sym = STOOQ_MAP.get(symbol)
-    if not stooq_sym:
-        return []
-    days = STOOQ_DAYS.get(range_, 400)
-    d2 = datetime.now(timezone.utc).strftime("%Y%m%d")
-    d1 = (datetime.now(timezone.utc) - timedelta(days=days)).strftime("%Y%m%d")
-    url = f"https://stooq.com/q/d/l/?s={stooq_sym}&i=d&d1={d1}&d2={d2}"
-    req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
-    try:
-        with urllib.request.urlopen(req, timeout=10) as r:
-            text = r.read().decode(errors="replace")
-        lines = text.strip().split("\n")
-        rows = []
-        for line in lines[1:]:
-            parts = line.strip().split(",")
-            if len(parts) < 5:
-                continue
-            try:
-                h, l, c = float(parts[2]), float(parts[3]), float(parts[4])
-                if h and l and c:
-                    rows.append((h, l, c))
-            except (ValueError, KeyError):
-                continue
-        return rows
-    except Exception as e:
-        log.error(f"  Stooq FEIL {stooq_sym}: {e}")
-        return []
-
-def fetch_finnhub_quote(symbol):
-    if not FINNHUB_API_KEY:
-        return None
-    fh_sym = FINNHUB_QUOTE_MAP.get(symbol)
-    if not fh_sym:
-        return None
-    url = f"https://finnhub.io/api/v1/quote?symbol={urllib.parse.quote(fh_sym)}&token={FINNHUB_API_KEY}"
-    req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
-    try:
-        with urllib.request.urlopen(req, timeout=8) as r:
-            d = json.loads(r.read())
-        c, h, l = d.get("c", 0), d.get("h", 0), d.get("l", 0)
-        if c and h and l:
-            return (h, l, c)
-        return None
-    except Exception as e:
-        log.error(f"  FH FEIL {fh_sym}: {e}")
-        return None
-
-def fetch_fred(series_id):
-    url = f"https://fred.stlouisfed.org/graph/fredgraph.csv?id={series_id}"
-    req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
-    try:
-        with urllib.request.urlopen(req, timeout=10) as r:
-            lines = r.read().decode().strip().split("\n")
-        for line in reversed(lines[1:]):
-            parts = line.strip().split(",")
-            if len(parts) == 2 and parts[1] not in (".", ""):
-                return float(parts[1])
-        return None
-    except Exception as e:
-        log.error(f"  FRED {series_id} FEIL: {e}")
-        return None
-
-def fetch_prices(symbol, interval, range_or_size):
-    """Prioritet: Twelvedata (forex/gull) -> Stooq (daglig) -> Yahoo.
-    Oppdaterer siste bar med Finnhub sanntidspris hvis tilgjengelig."""
-    if TWELVEDATA_API_KEY and symbol in TD_FREE_SYMBOLS:
-        rows = fetch_twelvedata(symbol, interval, TD_SIZE.get(range_or_size, 365))
-        if rows:
-            if interval == "1d":
-                qt = fetch_finnhub_quote(symbol)
-                if qt:
-                    rows[-1] = qt
-            return rows
-    if interval == "1d":
-        rows = fetch_stooq(symbol, range_or_size)
-        if rows:
-            qt = fetch_finnhub_quote(symbol)
-            if qt:
-                rows[-1] = qt
-            return rows
-    return fetch_yahoo(symbol, interval, range_or_size)
-
-def fetch_fear_greed():
-    try:
-        url = "https://production.dataviz.cnn.io/index/fearandgreed/graphdata"
-        req = urllib.request.Request(url, headers={
-            "User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 Chrome/120.0",
-            "Accept": "application/json, text/plain, */*",
-            "Referer": "https://edition.cnn.com/markets/fear-and-greed",
-            "Origin": "https://edition.cnn.com",
-        })
-        with urllib.request.urlopen(req, timeout=8) as r:
-            d = json.loads(r.read())
-        return {"score": round(d["fear_and_greed"]["score"],1),
-                "rating": d["fear_and_greed"]["rating"]}
-    except Exception as e:
-        log.error(f"  Fear&Greed FEIL: {e}")
-        return None
-
-def fetch_news_sentiment():
-    """Henter RSS-nyheter, scorer risk-on/risk-off nøkkelord."""
-    RISK_ON = ["peace","ceasefire","deal","agreement","truce","treaty","stimulus","rate cut","rate cuts",
-               "recovery","trade deal","tariff pause","tariff reduction","tariff removed","de-escalation",
-               "deescalation","accord","optimism","soft landing","talks progress","diplomatic",
-               "breakthrough","resolved","lifted sanctions"]
-    RISK_OFF = ["war","attack","invasion","escalation","sanctions","default","crisis","collapse",
-                "recession","military strike","nuclear","terror","conflict","threatens","tariff hike",
-                "new tariffs","imposed tariffs","sell-off","selloff","bank run","debt crisis",
-                "banking crisis","crash","downgrade","emergency","missile"]
-    feeds = [
-        "https://news.google.com/rss/search?q=economy+markets+geopolitics&hl=en-US&gl=US&ceid=US:en",
-        "https://feeds.bbci.co.uk/news/world/rss.xml",
-    ]
-    headlines = []
-    for url in feeds:
-        try:
-            req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
-            with urllib.request.urlopen(req, timeout=7) as r:
-                txt = r.read().decode("utf-8", errors="replace")
-            titles = re.findall(r"<title><!\[CDATA\[(.*?)\]\]></title>", txt)
-            if not titles:
-                titles = re.findall(r"<title>(.*?)</title>", txt)
-            headlines.extend(titles[1:16])
-        except Exception as e:
-            log.error(f"  Nyheter FEIL ({url[:45]}): {e}")
-    if not headlines:
-        return None
-    ro_count = roff_count = 0
-    drivers = []
-    for h in headlines:
-        hl = h.lower()
-        ro   = sum(1 for w in RISK_ON  if w in hl)
-        roff = sum(1 for w in RISK_OFF if w in hl)
-        if ro > roff:
-            ro_count += 1
-            drivers.append({"headline": h[:90], "type": "risk_on"})
-        elif roff > ro:
-            roff_count += 1
-            drivers.append({"headline": h[:90], "type": "risk_off"})
-    total = ro_count + roff_count
-    if total == 0:
-        label, net = "neutral", 0.0
-    else:
-        net   = round((ro_count - roff_count) / total, 2)
-        label = "risk_on" if net >= 0.3 else "risk_off" if net <= -0.3 else "neutral"
-    log.info(f"  Nyhetssentiment: {label} (score={net:+.2f}, ro={ro_count}, roff={roff_count}, n={len(headlines)})")
-    return {"score":net,"label":label,"top_headlines":headlines[:5],"key_drivers":drivers[:6],
-            "ro_count":ro_count,"roff_count":roff_count,"headlines_n":len(headlines)}
-
-def fetch_macro_indicators():
-    """Henter tilleggsindikatorer for makrobilde."""
-    out = {}
-    log.info("  FRED: henter renter...")
-    for key, series in [("TNX", "DGS10"), ("IRX", "DTB3")]:
-        val = fetch_fred(series)
-        if val:
-            out[key] = {"price": round(val, 3), "chg1d": 0, "chg5d": 0}
-            log.info(f"    {key} ({series}): {val:.3f}%")
-        else:
-            daily = fetch_yahoo(MACRO_SYMBOLS[key], "1d", "30d")
-            if daily and len(daily) >= 2:
-                curr = daily[-1][2]
-                c5   = daily[-6][2] if len(daily) >= 6 else curr
-                out[key] = {"price": round(curr, 3), "chg1d": 0, "chg5d": round((curr/c5-1)*100, 2)}
-            else:
-                out[key] = None
-    for key in ["HYG", "TIP", "Copper", "EEM"]:
-        sym = MACRO_SYMBOLS[key]
-        daily = fetch_prices(sym, "1d", "30d")
-        if not daily or len(daily) < 6:
-            out[key] = None
-            continue
-        curr = daily[-1][2]
-        c5   = daily[-6][2] if len(daily) >= 6 else curr
-        c1   = daily[-2][2] if len(daily) >= 2 else curr
-        out[key] = {"price": round(curr, 4 if curr < 10 else 2),
-                    "chg1d": round((curr / c1 - 1) * 100, 2),
-                    "chg5d": round((curr / c5 - 1) * 100, 2)}
-    return out
-
+# ── Helpers ───────────────────────────────────────────────────────
 
 def _setup_to_dict(setup):
     """Convert SetupL2L Pydantic model to plain dict, or pass through None/dict."""
@@ -317,10 +41,6 @@ def _setup_to_dict(setup):
         return setup.model_dump()
     return setup
 
-
-# ══════════════════════════════════════════════════════════════════
-# Pipeline orchestration
-# ══════════════════════════════════════════════════════════════════
 
 def get_binary_risk(calendar_events, instrument_key, hours=4):
     risks = []
@@ -361,50 +81,44 @@ def _smc_block(smc_result):
         "last_swing_low":  smc_result["last_swing_low"],
     }
 
+# ── Pipeline orchestration ────────────────────────────────────────
+
+def _load_json(path):
+    """Load JSON file or return None."""
+    if not os.path.exists(path):
+        return None
+    try:
+        with open(path) as f:
+            return json.load(f)
+    except Exception:
+        return None
+
 
 def main():
-    # ── Load fundamentals ─────────────────────────────────────
-    fund_data = {}
-    fund_file = os.path.join(BASE, "fundamentals", "latest.json")
-    if os.path.exists(fund_file):
-        try:
-            with open(fund_file) as f:
-                fund_data = json.load(f)
-            n = len(fund_data.get("indicators", {}))
-            log.info(f"Fundamentals: {n} indikatorer lastet ({fund_data.get('usd_fundamental',{}).get('bias','?')} USD)")
-        except Exception:
-            pass
+    fund_data = _load_json(os.path.join(BASE, "fundamentals", "latest.json")) or {}
+    if fund_data:
+        log.info(f"Fundamentals: {len(fund_data.get('indicators',{}))} indikatorer lastet ({fund_data.get('usd_fundamental',{}).get('bias','?')} USD)")
 
-    # ── Load calendar ─────────────────────────────────────────
-    calendar_events = []
-    cal_file = os.path.join(BASE, 'calendar', 'latest.json')
-    if os.path.exists(cal_file):
-        try:
-            with open(cal_file) as f:
-                cal_data = json.load(f)
-            calendar_events = cal_data.get('events', [])
-            log.info(f'Kalender: {len(calendar_events)} events lastet')
-        except Exception:
-            pass
+    cal_data = _load_json(os.path.join(BASE, 'calendar', 'latest.json')) or {}
+    calendar_events = cal_data.get('events', [])
+    if calendar_events:
+        log.info(f'Kalender: {len(calendar_events)} events lastet')
 
-    # ── Load COT ──────────────────────────────────────────────
     cot_data = {}
-    cot_file = os.path.join(BASE, "combined", "latest.json")
-    if os.path.exists(cot_file):
-        with open(cot_file) as f:
-            for d in json.load(f):
-                cot_data[d["market"].lower()] = d
+    cot_raw = _load_json(os.path.join(BASE, "combined", "latest.json"))
+    if cot_raw:
+        for d in cot_raw:
+            cot_data[d["market"].lower()] = d
 
-    # ── Fear & Greed ──────────────────────────────────────────
     log.info("Henter Fear & Greed...")
-    fg = fetch_fear_greed()
+    fg_model = _fetch_fg()
+    fg = fg_model.model_dump() if fg_model else None
     if fg: log.info(f"  -> {fg['score']} ({fg['rating']})")
 
-    # ── News sentiment ────────────────────────────────────────
     log.info("Henter nyhetssentiment...")
-    news_sentiment = fetch_news_sentiment()
+    ns_model = _fetch_news()
+    news_sentiment = ns_model.model_dump() if ns_model else None
 
-    # ── Prices and setups ─────────────────────────────────────
     prices, levels = {}, {}
 
     for inst in INSTRUMENTS:
@@ -439,7 +153,6 @@ def main():
 
         if inst["key"] == "VIX": continue
 
-        # ── SMC analysis (15m, 1H, 4H) via src.analysis.smc ──
         smc = smc_1h = smc_4h = None
         if rows_15m and len(rows_15m) > 50:
             try: smc = run_smc(rows_15m, swing_length=5)
@@ -451,38 +164,23 @@ def main():
             try: smc_4h = run_smc(h4, swing_length=5)
             except Exception as e: log.error(f"  SMC 4H FEIL: {e}")
 
-        # ── Levels with timeframe weighting ───────────────────
         pdh, pdl, pdc = get_pdh_pdl_pdc(daily)
         pwh, pwl      = get_pwh_pwl(daily)
-
         raw_res, raw_sup = [], []
-
-        # Weekly key levels (weight 5)
         if pwh and pwh > curr: raw_res.append({"price": pwh, "source": "PWH", "weight": 5})
         if pwl and pwl < curr: raw_sup.append({"price": pwl, "source": "PWL", "weight": 5})
-        # Daily key levels (weight 4)
         if pdh and pdh > curr: raw_res.append({"price": pdh, "source": "PDH", "weight": 4})
         if pdl and pdl < curr: raw_sup.append({"price": pdl, "source": "PDL", "weight": 4})
-        # PDC (weight 3)
         if pdc:
             if pdc > curr: raw_res.append({"price": pdc, "source": "PDC", "weight": 3})
             elif pdc < curr: raw_sup.append({"price": pdc, "source": "PDC", "weight": 3})
 
-        # Daily swing levels (weight 3)
         res_d, sup_d = find_swing_levels(daily)
-        for r in res_d:
-            if r > curr: raw_res.append({"price": r, "source": "D1", "weight": 3})
-        for s in sup_d:
-            if s < curr: raw_sup.append({"price": s, "source": "D1", "weight": 3})
-
-        # 4H swing levels (weight 2)
+        raw_res.extend({"price": r, "source": "D1", "weight": 3} for r in res_d if r > curr)
+        raw_sup.extend({"price": s, "source": "D1", "weight": 3} for s in sup_d if s < curr)
         res_4h, sup_4h = find_swing_levels(h4, n=3) if len(h4) >= 10 else ([], [])
-        for r in res_4h:
-            if r > curr: raw_res.append({"price": r, "source": "4H", "weight": 2})
-        for s in sup_4h:
-            if s < curr: raw_sup.append({"price": s, "source": "4H", "weight": 2})
-
-        # SMC zones
+        raw_res.extend({"price": r, "source": "4H", "weight": 2} for r in res_4h if r > curr)
+        raw_sup.extend({"price": s, "source": "4H", "weight": 2} for s in sup_4h if s < curr)
         for smc_result, src_label, w in [(smc_1h,"SMC1H",3),(smc_4h,"SMC4H",2),(smc,"SMC15m",1)]:
             if not smc_result: continue
             for z in smc_result.get("supply_zones", []):
@@ -494,18 +192,13 @@ def main():
                     raw_sup.append({"price":z["poi"],"source":src_label,"weight":w,
                                     "zone_top":z["top"],"zone_bottom":z["bottom"]})
 
-        # 15m intraday pivots (weight 1)
         res_15m, sup_15m = find_intraday_levels(rows_15m) if rows_15m else ([], [])
-        for r in res_15m:
-            if r > curr: raw_res.append({"price": r, "source": "15m", "weight": 1})
-        for s in sup_15m:
-            if s < curr: raw_sup.append({"price": s, "source": "15m", "weight": 1})
-
+        raw_res.extend({"price": r, "source": "15m", "weight": 1} for r in res_15m if r > curr)
+        raw_sup.extend({"price": s, "source": "15m", "weight": 1} for s in sup_15m if s < curr)
         atr_for_merge = atr_15m if atr_15m else (atr_d * 0.4 if atr_d else None)
         tagged_res = merge_tagged_levels(raw_res, curr, atr_for_merge)
         tagged_sup = merge_tagged_levels(raw_sup, curr, atr_for_merge)
 
-        # ── EMA9 + Regime ─────────────────────────────────────
         closes_d  = [r[2] for r in daily]
         closes_15 = [r[2] for r in rows_15m] if rows_15m else []
         ema9_d    = calc_ema(closes_d,  9)
@@ -521,8 +214,6 @@ def main():
         else:                           align = "mixed"
 
         session_now = get_session_status()
-
-        # ── COT via src.analysis.cot_analyzer ─────────────────
         cot_key   = COT_MAP.get(inst["key"],"")
         cot_entry = cot_data.get(cot_key, {})
         spec_net  = (cot_entry.get("spekulanter") or {}).get("net", 0) or 0
@@ -531,8 +222,6 @@ def main():
         cot_color = "bull" if cot_pct>4 else "bear" if cot_pct<-4 else "neutral"
         _cot_chg  = cot_entry.get("change_spec_net", 0) or 0
         cot_momentum = classify_cot_momentum(_cot_chg, spec_net)
-
-        # ── Score ─────────────────────────────────────────────
         above_sma = curr > sma200
         chg5      = prices[inst["key"]]["chg5d"]
         chg20     = prices[inst["key"]]["chg20d"]
@@ -584,21 +273,15 @@ def main():
             news_confirms_dir = (nc_map[1] == dir_color)
         else:
             news_confirms_dir = False
-        news_headwind = False
-        if ns_label == "risk_on" and nc_map[0] and nc_map[0] != dir_color:
-            news_headwind = True
-        elif ns_label == "risk_off" and nc_map[1] and nc_map[1] != dir_color:
-            news_headwind = True
-
-        # Fundamentals
+        news_headwind = (
+            (ns_label == "risk_on" and nc_map[0] and nc_map[0] != dir_color) or
+            (ns_label == "risk_off" and nc_map[1] and nc_map[1] != dir_color)
+        )
         inst_fund       = fund_data.get("instrument_scores", {}).get(inst["key"], {})
         inst_fund_score = inst_fund.get("score", 0)
         inst_fund_bias  = inst_fund.get("bias", "neutral")
         fund_confirms   = (inst_fund_score > 0.3 and dir_color == "bull") or \
                           (inst_fund_score < -0.3 and dir_color == "bear")
-
-        # Score details (kept inline — scoring.py uses Pydantic ScoringInput which
-        # would require constructing a model; the inline logic is identical and simpler)
         score_details = [
             {"kryss": "Over SMA200 (D1 trend)",         "verdi": above_sma},
             {"kryss": "Momentum 20d bekrefter",          "verdi": (chg20 > 0 if dir_color == "bull" else chg20 < 0)},
@@ -629,32 +312,22 @@ def main():
 
         vix_price = (prices.get("VIX") or {}).get("price", 20)
         pos_size  = "Full" if vix_price<20 else "Halv" if vix_price<30 else "Kvart"
-
-        # ── Setups via src.analysis.setup_builder ─────────────
         atr_for_setup = atr_15m if atr_15m else (atr_d * 0.4)
         setup_long  = _setup_to_dict(make_setup_l2l(curr, atr_for_setup, atr_d, tagged_sup, tagged_res, "long",  klasse))
         setup_short = _setup_to_dict(make_setup_l2l(curr, atr_for_setup, atr_d, tagged_sup, tagged_res, "short", klasse))
         for s in [setup_long, setup_short]:
             if s: s["session"] = inst["session"]
-
-        # Log summary
-        atr_s = f"{atr_15m:.5f}" if atr_15m else "N/A"
         active_setup = setup_long if dir_color == "bull" else setup_short
-        t1_s = active_setup["t1"]    if active_setup else None
+        t1_s = active_setup["t1"] if active_setup else None
         rr_s = active_setup["rr_t1"] if active_setup else None
         if t1_s is None:
-            min_dist = (atr_15m or atr_d * 0.4) * 1.5
-            cands = tagged_res if dir_color == "bull" else tagged_sup
-            cands = [l for l in cands if abs(l["price"] - curr) >= min_dist]
+            cands = [l for l in (tagged_res if dir_color == "bull" else tagged_sup)
+                     if abs(l["price"] - curr) >= (atr_15m or atr_d * 0.4) * 1.5]
             pot = next((l for l in cands if l["weight"] >= 2), cands[0] if cands else None)
-            if pot:
-                p = pot["price"]
-                t1_s = f"~{round(p, 5 if p < 100 else 2)}"
-            else:
-                t1_s = "-"
+            t1_s = f"~{round(pot['price'], 5 if pot['price'] < 100 else 2)}" if pot else "-"
             rr_s = "-"
-        dir_tag = "^" if dir_color == "bull" else "v"
-        htf_tag = f"HTF:w{max(nearest_sup_w, nearest_res_w)}" if htf_level_nearby else "noHTF"
+        atr_s = f"{atr_15m:.5f}" if atr_15m else "N/A"
+        dir_tag, htf_tag = ("^" if dir_color == "bull" else "v"), (f"HTF:w{max(nearest_sup_w, nearest_res_w)}" if htf_level_nearby else "noHTF")
         log.info(f"  {inst['navn']:10s} {curr:.5f}  ATR15m={atr_s}  {grade}({score}/{max_score}) {dir_tag} {htf_tag}  T1:{t1_s}  R:R:{rr_s}")
 
         levels[inst["key"]] = {
@@ -727,29 +400,19 @@ def main():
             },
         }
 
-    # ── Macro indicators ──────────────────────────────────────
     log.info("Henter makro-indikatorer (HYG, TIP, TNX, IRX, Kobber, EM)...")
-    macro_ind = fetch_macro_indicators()
+    macro_ind = _fetch_macro()
     for k, v in macro_ind.items():
         if v: log.info(f"  {k}: {v['price']}  5d={v['chg5d']:+.2f}%")
         else: log.error(f"  {k}: FEIL")
-
-    hyg         = macro_ind.get("HYG") or {}
-    hy_chg5d    = hyg.get("chg5d", 0)
-    hy_stress   = hy_chg5d < -1.5
-    tip         = macro_ind.get("TIP") or {}
+    hyg, tip = macro_ind.get("HYG") or {}, macro_ind.get("TIP") or {}
+    tnx, irx = macro_ind.get("TNX") or {}, macro_ind.get("IRX") or {}
+    hy_chg5d, hy_stress = hyg.get("chg5d", 0), hyg.get("chg5d", 0) < -1.5
     tip_trend_5d = tip.get("chg5d", 0)
-    tnx         = macro_ind.get("TNX") or {}
-    irx         = macro_ind.get("IRX") or {}
-    yield_10y   = tnx.get("price")
-    yield_3m    = irx.get("price")
+    yield_10y, yield_3m = tnx.get("price"), irx.get("price")
     yield_curve = round(yield_10y - yield_3m, 2) if (yield_10y and yield_3m) else None
-    copper      = macro_ind.get("Copper") or {}
-    copper_5d   = copper.get("chg5d", 0)
-    eem         = macro_ind.get("EEM") or {}
-    em_5d       = eem.get("chg5d", 0)
-
-    # ── Dollar Smile + VIX regime ─────────────────────────────
+    copper_5d = (macro_ind.get("Copper") or {}).get("chg5d", 0)
+    em_5d = (macro_ind.get("EEM") or {}).get("chg5d", 0)
     vix_price   = (prices.get("VIX") or {}).get("price", 20)
     dxy_5d      = (prices.get("DXY") or {}).get("chg5d", 0)
     brent_p     = (prices.get("Brent") or {}).get("price", 80)
