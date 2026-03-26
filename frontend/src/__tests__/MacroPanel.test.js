@@ -26,6 +26,11 @@ vi.mock('../charts/miniSparkline.js', () => ({
   createSparkline: vi.fn(() => ({ chart: { remove: vi.fn() }, series: {} })),
 }));
 
+// Mock priceLineChart
+vi.mock('../charts/priceLineChart.js', () => ({
+  createPriceChart: vi.fn(() => ({ chart: { remove: vi.fn() }, series: {}, _ro: { disconnect: vi.fn() } })),
+}));
+
 import { render, update } from '../components/MacroPanel.js';
 
 /** Minimal macro data payload. */
@@ -108,10 +113,10 @@ describe('MacroPanel', () => {
   it('renders the Rente & Kreditt section heading', () => {
     render(container);
 
-    const heading = container.querySelector('.sh-t');
-    expect(heading).not.toBeNull();
-    expect(heading.textContent).toContain('Rente');
-    expect(heading.textContent).toContain('Kreditt');
+    const headings = container.querySelectorAll('.sh-t');
+    expect(headings.length).toBeGreaterThanOrEqual(2);
+    const texts = Array.from(headings).map((h) => h.textContent);
+    expect(texts).toContain('Rente & Kreditt');
   });
 
   it('handles null data in update() gracefully', () => {

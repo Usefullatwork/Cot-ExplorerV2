@@ -1,12 +1,15 @@
 /**
- * MacroPanel component — Dollar Smile, VIX regime, macro stats, rates & credit.
+ * MacroPanel component — Dollar Smile, VIX regime, sentiment, macro stats,
+ * rates & credit, and conflicts.
  *
  * Ports the renderMakro function from v1 index.html.
- * Enhanced with interactive Chart.js charts, drill-down, trend arrows, and sparklines.
+ * Enhanced with full-size lightweight-charts, drill-down, trend arrows,
+ * 1d/5d/20d change bars, sentiment card, and conflicts section.
  */
 
 import { formatPct } from '../utils.js';
 import { createSparkline } from '../charts/miniSparkline.js';
+import { createPriceChart } from '../charts/priceLineChart.js';
 import {
   Chart,
   LineController,
@@ -23,7 +26,7 @@ Chart.register(LineController, LineElement, PointElement, CategoryScale, LinearS
 /** @type {Chart|null} */
 let vixChart = null;
 /** @type {{ chart: any, series: any }[]} */
-const sparklineInstances = [];
+const chartInstances = [];
 
 /**
  * Trend arrow helper.
@@ -37,23 +40,41 @@ function trendArrow(val) {
 }
 
 /**
- * Generate fake sparkline data from a current value and 5d change.
+ * Generate synthetic sparkline/chart data from a current value and change percentage.
  * @param {number} current
- * @param {number} chg5d  Percentage change over 5 days
+ * @param {number} chgPct  Percentage change over the period
+ * @param {number} [numPoints=20]  Number of data points to generate
  * @returns {{ time: string, value: number }[]}
  */
-function syntheticSparkData(current, chg5d) {
+function syntheticSparkData(current, chgPct, numPoints = 20) {
   if (!current) return [];
-  const start = current / (1 + (chg5d || 0) / 100);
+  const start = current / (1 + (chgPct || 0) / 100);
   const points = [];
-  for (let i = 0; i < 5; i++) {
+  for (let i = 0; i < numPoints; i++) {
     const t = new Date();
-    t.setDate(t.getDate() - (4 - i));
-    const frac = (i + 1) / 5;
+    t.setDate(t.getDate() - (numPoints - 1 - i));
+    const frac = (i + 1) / numPoints;
     const val = start + (current - start) * frac + (Math.random() - 0.5) * Math.abs(current - start) * 0.3;
     points.push({ time: t.toISOString().slice(0, 10), value: val });
   }
   return points;
+}
+
+/**
+ * Build a 1d/5d/20d change bar HTML string.
+ * @param {number|null} chg1d
+ * @param {number|null} chg5d
+ * @param {number|null} chg20d
+ * @returns {string}
+ */
+function changeBar(chg1d, chg5d, chg20d) {
+  const fmt = (label, val) => {
+    if (val == null) return `<span style="color:var(--m)">${label}: --</span>`;
+    const color = val > 0 ? 'var(--bull)' : val < 0 ? 'var(--bear)' : 'var(--m)';
+    const arrow = val > 0 ? '\u25B2' : val < 0 ? '\u25BC' : '';
+    return `<span style="color:${color}">${label}: ${arrow} ${formatPct(val)}</span>`;
+  };
+  return `<div style="display:flex;gap:12px;margin-top:8px;font-size:11px;font-family:'DM Mono',monospace">${fmt('1d', chg1d)}${fmt('5d', chg5d)}${fmt('20d', chg20d)}</div>`;
 }
 
 /**
@@ -73,7 +94,7 @@ export function render(container) {
         <div class="card" style="margin-bottom:12px" role="region" aria-label="VIX regime">
           <div class="ct">VIX-regime</div>
           <div id="vixDet" aria-live="polite"></div>
-          <div style="height:100px;position:relative;margin-top:10px" role="img" aria-label="VIX trend diagram">
+          <div style="height:200px;position:relative;margin-top:10px" role="img" aria-label="VIX trend diagram">
             <canvas id="vixMiniChart" aria-hidden="true"></canvas>
           </div>
           <div style="margin-top:12px;font-size:12px;color:var(--m);line-height:2" role="note">
@@ -82,15 +103,21 @@ export function render(container) {
             Over 30 - Kvart storrelse
           </div>
         </div>
+        <div class="card" style="margin-bottom:12px" role="region" aria-label="Sentiment">
+          <div class="ct">Sentiment</div>
+          <div id="sentimentBody" aria-live="polite" style="font-size:13px;color:var(--m);line-height:1.8"></div>
+        </div>
         <div class="card" role="region" aria-label="Safe-haven hierarki">
           <div class="ct">Safe-haven hierarki</div>
           <div id="safeH" style="font-size:13px;line-height:1.8;color:var(--m)" aria-live="polite"></div>
         </div>
       </div>
     </div>
-    <div class="g4" id="macroStats" role="group" aria-label="Makro noekkeltall"></div>
+    <div class="sh"><h2 class="sh-t">Makro Noekkeltall</h2><div class="sh-b">VIX, DXY, Brent, Gull</div></div>
+    <div class="g2" id="macroStats" role="group" aria-label="Makro noekkeltall"></div>
     <div class="sh" style="margin-top:16px"><h2 class="sh-t">Rente &amp; Kreditt</h2><div class="sh-b">Realrenter, spreader, vekst</div></div>
     <div class="g4" id="macroRente" role="group" aria-label="Rente og kreditt indikatorer"></div>
+    <div id="macroConflicts" style="display:none;margin-top:16px" role="alert" aria-label="Konflikter"></div>
     <div id="macroDrilldown" style="display:none;margin-top:16px" role="region" aria-label="Detaljer">
       <div class="card">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
@@ -182,6 +209,51 @@ export function update(m) {
     vixDetEl.innerHTML = `<div class="snum ${vx.color || ''}">${(vx.value || 0).toFixed(1)}</div><div class="slabel" style="margin-top:4px;color:var(--${vx.color || 'm'})">${vx.label || ''}</div>`;
   }
 
+  // ── Sentiment card ─────────────────────────────────────────
+  const sentEl = document.getElementById('sentimentBody');
+  if (sentEl) {
+    const sent = m.sentiment || {};
+    const fg = sent.fear_greed || {};
+    const news = sent.news || {};
+
+    // Fear & Greed score with color coding
+    let fgColor = 'var(--m)';
+    const fgScore = fg.score != null ? fg.score : null;
+    if (fgScore != null) {
+      if (fgScore <= 25) fgColor = 'var(--bear)';
+      else if (fgScore <= 45) fgColor = 'var(--warn)';
+      else if (fgScore >= 75) fgColor = 'var(--bull)';
+      else fgColor = 'var(--m)';
+    }
+
+    // News sentiment label
+    const newsLabel = news.label || 'neutral';
+    const newsColor = newsLabel === 'risk_on' ? 'var(--bull)' : newsLabel === 'risk_off' ? 'var(--bear)' : 'var(--warn)';
+    const newsDisplay = newsLabel.replace('_', ' ').toUpperCase();
+
+    // Top headlines
+    const headlines = (news.top_headlines || []).slice(0, 3);
+    const headlineHtml = headlines.length
+      ? headlines.map((h) => `<div style="margin-left:8px;font-size:11px;color:var(--m);line-height:1.5">- ${typeof h === 'string' ? h : h.title || h}</div>`).join('')
+      : '<div style="font-size:11px;color:var(--m)">Ingen overskrifter</div>';
+
+    sentEl.innerHTML = `
+      <div style="display:flex;gap:24px;align-items:center;margin-bottom:10px">
+        <div>
+          <div style="font-size:11px;color:var(--m);margin-bottom:4px">Fear & Greed</div>
+          <div style="font-family:'DM Mono',monospace;font-size:28px;font-weight:600;color:${fgColor}">${fgScore != null ? fgScore.toFixed(0) : '--'}</div>
+          <div style="font-size:10px;color:${fgColor};text-transform:uppercase;font-weight:600">${fg.rating || '--'}</div>
+        </div>
+        <div>
+          <div style="font-size:11px;color:var(--m);margin-bottom:4px">Nyhetssentiment</div>
+          <div style="font-family:'DM Mono',monospace;font-size:16px;font-weight:600;color:${newsColor}">${newsDisplay}</div>
+          <div style="font-size:10px;color:var(--m)">Score: ${news.score != null ? news.score.toFixed(2) : '--'}</div>
+        </div>
+      </div>
+      <div style="font-size:11px;color:var(--m);font-weight:600;margin-bottom:4px">Topp overskrifter:</div>
+      ${headlineHtml}`;
+  }
+
   // ── Safe-haven hierarchy ──────────────────────────────────
   const riskOff = inp.vix > 20 || inp.hy_stress || (inp.yield_curve != null && inp.yield_curve < -0.3);
   const safeEl = document.getElementById('safeH');
@@ -196,7 +268,7 @@ export function update(m) {
   if (vixCanvas && p.VIX) {
     if (vixChart) { vixChart.destroy(); vixChart = null; }
     const vixVal = p.VIX.price || 0;
-    const vixData = syntheticSparkData(vixVal, p.VIX.chg5d || 0);
+    const vixData = syntheticSparkData(vixVal, p.VIX.chg20d || p.VIX.chg5d || 0, 20);
     const vixLabels = vixData.map((d) => d.time.slice(5));
     const vixValues = vixData.map((d) => d.value);
     const vixColor = vixVal > 25 ? 'rgba(248,81,73,0.8)' : vixVal > 20 ? 'rgba(210,153,34,0.8)' : 'rgba(63,185,80,0.8)';
@@ -242,40 +314,68 @@ export function update(m) {
     });
   }
 
-  // ── Macro stats (VIX, DXY, Brent, Gold) — with trend arrows & sparklines ──
+  // ── Macro stats (VIX, DXY, Brent, Gold) — big charts with 1d/5d/20d ──
   const ms = [
-    ['VIX', (p.VIX || {}).price, (p.VIX || {}).chg5d || 0, (p.VIX || {}).chg5d > 0 ? 'bear' : 'bull', 'Volatilitetsindeks. Over 20 = forsiktig, over 30 = defensiv.'],
-    ['DXY', (p.DXY || {}).price, (p.DXY || {}).chg5d || 0, (p.DXY || {}).chg5d > 0 ? 'bull' : 'bear', 'Dollar-indeks. Styres av Dollar Smile-modellen.'],
-    ['Brent', (p.Brent || {}).price, (p.Brent || {}).chg5d || 0, 'warn', 'Brent-olje. Over $85 = inflasjonspress.'],
-    ['Gull', (p.Gold || {}).price, (p.Gold || {}).chg5d || 0, (p.Gold || {}).chg5d > 0 ? 'bull' : 'bear', 'Gull-pris. Safe haven ved risk-off.'],
+    {
+      name: 'VIX', data: p.VIX || {},
+      colorFn: (d) => (d.chg5d || 0) > 0 ? 'bear' : 'bull',
+      desc: 'Volatilitetsindeks. Over 20 = forsiktig, over 30 = defensiv.',
+    },
+    {
+      name: 'DXY', data: p.DXY || {},
+      colorFn: (d) => (d.chg5d || 0) > 0 ? 'bull' : 'bear',
+      desc: 'Dollar-indeks. Styres av Dollar Smile-modellen.',
+    },
+    {
+      name: 'Brent', data: p.Brent || {},
+      colorFn: () => 'warn',
+      desc: 'Brent-olje. Over $85 = inflasjonspress.',
+    },
+    {
+      name: 'Gull', data: p.Gold || {},
+      colorFn: (d) => (d.chg5d || 0) > 0 ? 'bull' : 'bear',
+      desc: 'Gull-pris. Safe haven ved risk-off.',
+    },
   ];
 
-  // Clean up old sparklines
-  sparklineInstances.forEach((s) => { try { s.chart.remove(); } catch { /* noop */ } });
-  sparklineInstances.length = 0;
+  // Clean up old chart instances
+  chartInstances.forEach((inst) => {
+    try {
+      if (inst.chart && inst.chart.remove) inst.chart.remove();
+      if (inst._ro) inst._ro.disconnect();
+    } catch { /* noop */ }
+  });
+  chartInstances.length = 0;
 
   const msEl = document.getElementById('macroStats');
   if (msEl) {
     msEl.innerHTML = ms
       .map(
-        (x, i) =>
-          `<div class="card macro-stat-card" data-macro-idx="${i}" style="cursor:pointer">
-            <div class="ct">${x[0]}</div>
-            <div class="snum">${x[1] ? x[1].toFixed(x[1] > 100 ? 0 : 2) : '-'}</div>
-            <div style="margin-top:4px">${trendArrow(x[2])}</div>
-            <div class="macro-spark" id="macroSpark${i}" style="width:100%;height:30px;margin-top:8px"></div>
-          </div>`
+        (x, i) => {
+          const price = x.data.price;
+          const chg1d = x.data.chg1d;
+          const chg5d = x.data.chg5d;
+          const chg20d = x.data.chg20d;
+          const col = x.colorFn(x.data);
+          return `<div class="card macro-stat-card" data-macro-idx="${i}" style="cursor:pointer">
+            <div class="ct">${x.name}</div>
+            <div class="snum">${price ? price.toFixed(price > 100 ? 0 : 2) : '-'}</div>
+            <div style="margin-top:4px">${trendArrow(chg5d || 0)}</div>
+            ${changeBar(chg1d, chg5d, chg20d)}
+            <div class="macro-price-chart" id="macroPriceChart${i}" style="width:100%;height:180px;margin-top:12px;border-radius:6px;overflow:hidden"></div>
+          </div>`;
+        }
       )
       .join('');
 
-    // Render sparklines for each stat card
+    // Render full price charts for each stat card
     ms.forEach((x, i) => {
-      const sparkEl = document.getElementById('macroSpark' + i);
-      if (sparkEl && x[1]) {
-        const data = syntheticSparkData(x[1], x[2]);
-        const color = x[3] === 'bull' ? '#3fb950' : x[3] === 'bear' ? '#f85149' : '#d29922';
-        const inst = createSparkline(sparkEl, data, color);
-        sparklineInstances.push(inst);
+      const chartEl = document.getElementById('macroPriceChart' + i);
+      if (chartEl && x.data.price) {
+        const chgForData = x.data.chg20d || x.data.chg5d || 0;
+        const data = syntheticSparkData(x.data.price, chgForData, 20);
+        const inst = createPriceChart(chartEl, data);
+        chartInstances.push(inst);
       }
     });
 
@@ -290,12 +390,16 @@ export function update(m) {
       const title = document.getElementById('drilldownTitle');
       const body = document.getElementById('drilldownBody');
       if (dd && title && body) {
-        title.textContent = item[0] + ' — Detaljer';
+        const price = item.data.price;
+        const col = item.colorFn(item.data);
+        title.textContent = item.name + ' \u2014 Detaljer';
         body.innerHTML = `
-          <div style="margin-bottom:8px"><strong>Napris:</strong> ${item[1] ? item[1].toFixed(item[1] > 100 ? 2 : 5) : '-'}</div>
-          <div style="margin-bottom:8px"><strong>5-dagers endring:</strong> ${trendArrow(item[2])}</div>
-          <div style="margin-bottom:8px"><strong>Regime:</strong> <span class="${item[3]}" style="font-weight:600">${item[3].toUpperCase()}</span></div>
-          <div style="color:var(--m)">${item[4]}</div>`;
+          <div style="margin-bottom:8px"><strong>Napris:</strong> ${price ? price.toFixed(price > 100 ? 2 : 5) : '-'}</div>
+          <div style="margin-bottom:8px"><strong>1-dags endring:</strong> ${trendArrow(item.data.chg1d)}</div>
+          <div style="margin-bottom:8px"><strong>5-dagers endring:</strong> ${trendArrow(item.data.chg5d)}</div>
+          <div style="margin-bottom:8px"><strong>20-dagers endring:</strong> ${trendArrow(item.data.chg20d)}</div>
+          <div style="margin-bottom:8px"><strong>Regime:</strong> <span class="${col}" style="font-weight:600">${col.toUpperCase()}</span></div>
+          <div style="color:var(--m)">${item.desc}</div>`;
         dd.style.display = 'block';
       }
     });
@@ -304,27 +408,62 @@ export function update(m) {
   // ── Rate & Credit panel ───────────────────────────────────
   const mi = m.macro_indicators || {};
   const rc = [
-    ['10Y rente', mi.TNX ? mi.TNX.price.toFixed(2) + '%' : '-', inp.yield_curve != null && inp.yield_curve < 0 ? 'bear' : 'bull'],
-    ['3M rente', mi.IRX ? mi.IRX.price.toFixed(2) + '%' : '-', 'neutral'],
-    ['Rentekurve', ycTxt, ycCol],
-    ['HY (HYG) 5d', mi.HYG ? formatPct(mi.HYG.chg5d) : '-', mi.HYG && mi.HYG.chg5d < -1.5 ? 'bear' : mi.HYG && mi.HYG.chg5d < 0 ? 'warn' : 'bull'],
-    ['TIPS 5d', mi.TIP ? formatPct(mi.TIP.chg5d) : '-', mi.TIP && mi.TIP.chg5d > 0 ? 'bull' : 'bear'],
-    ['Kobber 5d', mi.Copper ? formatPct(mi.Copper.chg5d) : '-', mi.Copper && mi.Copper.chg5d > 0 ? 'bull' : 'bear'],
-    ['EM (EEM) 5d', mi.EEM ? formatPct(mi.EEM.chg5d) : '-', mi.EEM && mi.EEM.chg5d > 0 ? 'bull' : 'bear'],
+    { name: '10Y rente', val: mi.TNX ? mi.TNX.price.toFixed(2) + '%' : '-', col: inp.yield_curve != null && inp.yield_curve < 0 ? 'bear' : 'bull', chg5d: mi.TNX ? mi.TNX.chg5d : null, price: mi.TNX ? mi.TNX.price : null },
+    { name: '3M rente', val: mi.IRX ? mi.IRX.price.toFixed(2) + '%' : '-', col: 'neutral', chg5d: mi.IRX ? mi.IRX.chg5d : null, price: mi.IRX ? mi.IRX.price : null },
+    { name: 'Rentekurve', val: ycTxt, col: ycCol, chg5d: null, price: null },
+    { name: 'HY (HYG) 5d', val: mi.HYG ? formatPct(mi.HYG.chg5d) : '-', col: mi.HYG && mi.HYG.chg5d < -1.5 ? 'bear' : mi.HYG && mi.HYG.chg5d < 0 ? 'warn' : 'bull', chg5d: mi.HYG ? mi.HYG.chg5d : null, price: mi.HYG ? mi.HYG.price : null },
+    { name: 'TIPS 5d', val: mi.TIP ? formatPct(mi.TIP.chg5d) : '-', col: mi.TIP && mi.TIP.chg5d > 0 ? 'bull' : 'bear', chg5d: mi.TIP ? mi.TIP.chg5d : null, price: mi.TIP ? mi.TIP.price : null },
+    { name: 'Kobber 5d', val: mi.Copper ? formatPct(mi.Copper.chg5d) : '-', col: mi.Copper && mi.Copper.chg5d > 0 ? 'bull' : 'bear', chg5d: mi.Copper ? mi.Copper.chg5d : null, price: mi.Copper ? mi.Copper.price : null },
+    { name: 'EM (EEM) 5d', val: mi.EEM ? formatPct(mi.EEM.chg5d) : '-', col: mi.EEM && mi.EEM.chg5d > 0 ? 'bull' : 'bear', chg5d: mi.EEM ? mi.EEM.chg5d : null, price: mi.EEM ? mi.EEM.price : null },
   ];
 
   const renteEl = document.getElementById('macroRente');
   if (renteEl) {
     renteEl.innerHTML = rc
       .map(
-        (x) => {
+        (x, i) => {
           // Extract numeric change from value string if possible for trend arrow
-          const numMatch = x[1].match(/^([+-]?\d+\.?\d*)%?$/);
+          const numMatch = x.val.match(/^([+-]?\d+\.?\d*)%?$/);
           const numVal = numMatch ? parseFloat(numMatch[1]) : null;
-          const arrow = numVal !== null && x[0].includes('5d') ? trendArrow(numVal) : '';
-          return `<div class="card"><div class="ct">${x[0]}</div><div class="snum" style="font-size:20px">${x[1]}</div>${arrow ? '<div style="margin-top:4px">' + arrow + '</div>' : ''}<div class="slabel" style="margin-top:4px;color:var(--${x[2]})">${x[2].toUpperCase()}</div></div>`;
+          const arrow = numVal !== null && x.name.includes('5d') ? trendArrow(numVal) : '';
+          return `<div class="card">
+            <div class="ct">${x.name}</div>
+            <div class="snum" style="font-size:20px">${x.val}</div>
+            ${arrow ? '<div style="margin-top:4px">' + arrow + '</div>' : ''}
+            <div class="slabel" style="margin-top:4px;color:var(--${x.col})">${x.col.toUpperCase()}</div>
+            <div class="rate-spark" id="rateSpark${i}" style="width:100%;height:40px;margin-top:8px"></div>
+          </div>`;
         }
       )
       .join('');
+
+    // Render mini sparklines for rate & credit cards
+    rc.forEach((x, i) => {
+      const sparkEl = document.getElementById('rateSpark' + i);
+      if (sparkEl && x.price && x.chg5d != null) {
+        const data = syntheticSparkData(x.price, x.chg5d, 10);
+        const color = x.col === 'bull' ? '#3fb950' : x.col === 'bear' ? '#f85149' : x.col === 'warn' ? '#d29922' : '#7d8590';
+        const inst = createSparkline(sparkEl, data, color);
+        chartInstances.push(inst);
+      }
+    });
+  }
+
+  // ── Conflicts section ──────────────────────────────────────
+  const conflictsEl = document.getElementById('macroConflicts');
+  if (conflictsEl) {
+    const conflicts = m.conflicts || [];
+    if (conflicts.length > 0) {
+      conflictsEl.style.display = 'block';
+      conflictsEl.innerHTML = `
+        <div class="card" style="border-color:var(--warn);background:var(--wbg)">
+          <div class="ct" style="color:var(--warn)">\u26A0 Konflikter (${conflicts.length})</div>
+          <div style="font-size:12px;color:var(--t);line-height:1.8">
+            ${conflicts.map((c) => `<div style="margin-bottom:4px;padding-left:12px;border-left:2px solid var(--warn)">${c}</div>`).join('')}
+          </div>
+        </div>`;
+    } else {
+      conflictsEl.style.display = 'none';
+    }
   }
 }
