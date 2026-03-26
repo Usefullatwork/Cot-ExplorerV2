@@ -9,6 +9,15 @@ import pytest
 from src.db import repository as repo
 
 
+@pytest.fixture(autouse=True)
+def _clear_macro_cache():
+    """Clear the TTL macro cache between tests."""
+    from src.api.middleware.cache import macro_cache
+    macro_cache.clear()
+    yield
+    macro_cache.clear()
+
+
 _SAMPLE_MACRO = {
     "date": "2026-03-25",
     "vix_regime": "low",

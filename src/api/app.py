@@ -8,6 +8,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from src.api.middleware.auth import APIKeyMiddleware
+from src.api.middleware.rate_limit import RateLimitMiddleware
 from src.api.routes import backtests, cot, health, instruments, macro, signals, webhook
 
 CORS_ORIGINS = os.environ.get("CORS_ORIGINS", "http://localhost:3000").split(",")
@@ -29,6 +30,9 @@ def create_app() -> FastAPI:
         allow_methods=["*"],
         allow_headers=["*"],
     )
+
+    # Per-IP rate limiting
+    app.add_middleware(RateLimitMiddleware)
 
     # API key authentication middleware
     app.add_middleware(APIKeyMiddleware)

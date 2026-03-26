@@ -9,11 +9,14 @@ from src.db import repository as repo
 
 @pytest.fixture(autouse=True)
 def _clear_instruments_cache():
-    """Clear the module-level instrument cache between tests."""
+    """Clear the module-level instrument cache and TTL cache between tests."""
+    from src.api.middleware.cache import instruments_cache
     from src.api.routes import instruments as inst_mod
     inst_mod._INSTRUMENTS_CACHE = None
+    instruments_cache.clear()
     yield
     inst_mod._INSTRUMENTS_CACHE = None
+    instruments_cache.clear()
 
 
 async def test_list_instruments(app_client):

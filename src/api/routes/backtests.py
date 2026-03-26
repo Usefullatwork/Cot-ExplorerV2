@@ -10,7 +10,7 @@ from sqlalchemy.orm import Session
 
 from src.db.engine import session_scope
 from src.db.models import BacktestResult
-from src.security.input_validator import validate_instrument_key
+from src.security.input_validator import validate_symbol
 
 router = APIRouter(prefix="/api/v1/backtests", tags=["backtests"])
 
@@ -77,7 +77,7 @@ def backtest_trades(
     """List recent backtest trade results."""
     if instrument:
         try:
-            instrument = validate_instrument_key(instrument)
+            instrument = validate_symbol(instrument)
         except ValueError as exc:
             raise HTTPException(status_code=400, detail=str(exc))
 

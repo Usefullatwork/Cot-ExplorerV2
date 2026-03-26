@@ -9,7 +9,7 @@ from fastapi import APIRouter, HTTPException
 
 from src.api.middleware.cache import instruments_cache
 from src.db import repository as repo
-from src.security.input_validator import validate_instrument_key
+from src.security.input_validator import validate_symbol
 
 router = APIRouter(prefix="/api/v1", tags=["instruments"])
 
@@ -44,7 +44,7 @@ def list_instruments() -> list[dict]:
 def instrument_detail(key: str) -> dict:
     """Single instrument detail with latest price from the database."""
     try:
-        key = validate_instrument_key(key)
+        key = validate_symbol(key)
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc))
 
