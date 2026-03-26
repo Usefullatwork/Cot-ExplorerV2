@@ -1,8 +1,12 @@
 #!/usr/bin/env python3
+import logging
 import urllib.request, json, os
 from datetime import datetime, timezone, timedelta
+from pathlib import Path
 
-BASE = os.path.expanduser("~/cot-explorer/data/calendar")
+log = logging.getLogger(__name__)
+
+BASE = str(Path(__file__).resolve().parent / "data" / "calendar")
 os.makedirs(BASE, exist_ok=True)
 OUT  = os.path.join(BASE, "latest.json")
 

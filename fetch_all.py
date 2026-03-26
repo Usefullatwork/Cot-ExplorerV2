@@ -1,8 +1,10 @@
 #!/usr/bin/env python3
+import logging
 import urllib.request, urllib.parse, json, os, time, re
 from datetime import datetime, timezone
-import sys
-sys.path.insert(0, os.path.expanduser('~/cot-explorer'))
+from pathlib import Path
+
+log = logging.getLogger(__name__)
 try:
     from smc import run_smc
     SMC_OK = True
@@ -10,7 +12,7 @@ except ImportError:
     SMC_OK = False
     print('  SMC ikke tilgjengelig')
 
-BASE = os.path.expanduser("~/cot-explorer/data")
+BASE = Path(__file__).resolve().parent / "data"
 OUT  = os.path.join(BASE, "macro", "latest.json")
 os.makedirs(os.path.join(BASE, "macro"), exist_ok=True)
 

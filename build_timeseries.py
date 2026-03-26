@@ -3,10 +3,14 @@
 Bygger data/timeseries/{symbol}_{report}.json fra data/history/
 Én fil per marked med alle ukentlige datapunkter sortert kronologisk.
 """
+import logging
 import json, os
 from datetime import datetime
+from pathlib import Path
 
-BASE    = os.path.expanduser("~/cot-explorer/data")
+log = logging.getLogger(__name__)
+
+BASE    = Path(__file__).resolve().parent / "data"
 HIST    = os.path.join(BASE, "history")
 TS_DIR  = os.path.join(BASE, "timeseries")
 os.makedirs(TS_DIR, exist_ok=True)

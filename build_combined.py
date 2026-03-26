@@ -5,8 +5,9 @@ Leser fra data/{report}/latest.json — IKKE timeseries (historikk).
 Timeseries brukes kun til COT-historikk-fanen.
 """
 import json, os
+from pathlib import Path
 
-BASE = os.path.expanduser("~/cot-explorer/data")
+BASE = Path(__file__).resolve().parent / "data"
 OUT  = os.path.join(BASE, "combined", "latest.json")
 os.makedirs(os.path.join(BASE, "combined"), exist_ok=True)
 

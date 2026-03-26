@@ -3,7 +3,9 @@
 import urllib.request, json, os
 from datetime import datetime, timezone
 
-BASE = os.path.expanduser("~/cot-explorer/data")
+from pathlib import Path
+
+BASE = Path(__file__).resolve().parent / "data"
 OUT  = os.path.join(BASE, "macro", "latest.json")
 os.makedirs(os.path.join(BASE, "macro"), exist_ok=True)
 

@@ -5,8 +5,9 @@ Kjøres lokalt sammen med fetch_cot.py
 """
 import urllib.request, urllib.parse, json, os
 from datetime import datetime, timezone
+from pathlib import Path
 
-BASE = os.path.expanduser("~/cot-explorer/data/prices")
+BASE = str(Path(__file__).resolve().parent / "data" / "prices")
 os.makedirs(BASE, exist_ok=True)
 
 INSTRUMENTS = [

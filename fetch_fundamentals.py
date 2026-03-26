@@ -17,11 +17,15 @@ Vekting for høy-sannsynlighets-setups:
   - Konsensus-multiplikator: ×1.4 når inflasjon+jobs peker SAMME vei,
     ×0.7 når de peker MOT hverandre → demper mixet signal
 """
+import logging
 import urllib.request, json, os, time
 from datetime import datetime, timezone
+from pathlib import Path
+
+log = logging.getLogger(__name__)
 
 FRED_API_KEY = os.environ.get("FRED_API_KEY", "")
-BASE = os.path.expanduser("~/cot-explorer/data")
+BASE = Path(__file__).resolve().parent / "data"
 OUT  = os.path.join(BASE, "fundamentals", "latest.json")
 os.makedirs(os.path.join(BASE, "fundamentals"), exist_ok=True)
 
