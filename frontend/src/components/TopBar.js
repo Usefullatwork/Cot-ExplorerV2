@@ -40,21 +40,70 @@ const TICKER_ITEMS = [
  */
 export function render(container) {
   const html = `
-    <header class="topbar">
-      <div class="logo">Markeds<em>puls</em></div>
-      <div class="tbar" id="tbar"></div>
+    <a href="#main-content" class="skip-link">Hopp til hovedinnhold</a>
+    <header class="topbar" role="banner">
+      <div class="logo" aria-label="Markedspuls dashboard">Markeds<em>puls</em></div>
+      <div class="tbar" id="tbar" role="marquee" aria-label="Instrumentticker"></div>
       <div class="topbar-r">
-        <span class="vb" id="vbadge">VIX -</span>
-        <span class="upd" id="upd">-</span>
+        <span class="vb" id="vbadge" role="status" aria-live="polite" aria-label="VIX verdi">VIX -</span>
+        <span class="upd" id="upd" role="status" aria-live="polite">-</span>
+        <button class="hamburger" id="hamburgerBtn" aria-label="Apne navigasjonsmeny" aria-expanded="false" aria-controls="main-nav">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6h18v2H3V6zm0 5h18v2H3v-2zm0 5h18v2H3v-2z"/></svg>
+        </button>
       </div>
     </header>
-    <nav class="nav" id="main-nav">
-      ${TABS.map((t) => `<button class="nt" data-tab="${t.key}">${t.label}</button>`).join('')}
+    <nav class="nav" id="main-nav" role="tablist" aria-label="Hovednavigasjon">
+      ${TABS.map((t, i) => `<button class="nt" data-tab="${t.key}" role="tab" aria-selected="${i === 0 ? 'true' : 'false'}" aria-controls="panel-${t.key}" id="tab-${t.key}" tabindex="${i === 0 ? '0' : '-1'}">${t.label}</button>`).join('')}
     </nav>
   `;
 
   // Prepend topbar + nav before any existing children
   container.insertAdjacentHTML('afterbegin', html);
+
+  // Hamburger toggle
+  const hamburger = document.getElementById('hamburgerBtn');
+  const nav = document.getElementById('main-nav');
+  if (hamburger && nav) {
+    hamburger.addEventListener('click', () => {
+      const isOpen = nav.classList.toggle('mobile-open');
+      hamburger.setAttribute('aria-expanded', String(isOpen));
+      hamburger.setAttribute('aria-label', isOpen ? 'Lukk navigasjonsmeny' : 'Apne navigasjonsmeny');
+    });
+
+    // Close mobile nav when a tab is clicked
+    nav.addEventListener('click', (e) => {
+      if (e.target.closest('.nt')) {
+        nav.classList.remove('mobile-open');
+        hamburger.setAttribute('aria-expanded', 'false');
+        hamburger.setAttribute('aria-label', 'Apne navigasjonsmeny');
+      }
+    });
+
+    // Keyboard navigation for tabs (arrow keys)
+    nav.addEventListener('keydown', (e) => {
+      const tabs = Array.from(nav.querySelectorAll('.nt'));
+      const current = tabs.indexOf(e.target);
+      if (current === -1) return;
+
+      let next = -1;
+      if (e.key === 'ArrowRight' || e.key === 'ArrowDown') {
+        next = (current + 1) % tabs.length;
+      } else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') {
+        next = (current - 1 + tabs.length) % tabs.length;
+      } else if (e.key === 'Home') {
+        next = 0;
+      } else if (e.key === 'End') {
+        next = tabs.length - 1;
+      }
+
+      if (next >= 0) {
+        e.preventDefault();
+        tabs[current].setAttribute('tabindex', '-1');
+        tabs[next].setAttribute('tabindex', '0');
+        tabs[next].focus();
+      }
+    });
+  }
 }
 
 /**
@@ -88,8 +137,10 @@ export function updateVix(vixRegime) {
 
   const badge = document.getElementById('vbadge');
   if (badge) {
-    badge.textContent = `VIX ${(vixRegime.value || 0).toFixed(1)}`;
+    const val = (vixRegime.value || 0).toFixed(1);
+    badge.textContent = `VIX ${val}`;
     badge.className = `vb ${vixRegime.regime || 'normal'}`;
+    badge.setAttribute('aria-label', `VIX verdi ${val}, regime ${vixRegime.label || vixRegime.regime || 'normal'}`);
   }
 }
 

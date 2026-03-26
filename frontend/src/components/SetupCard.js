@@ -83,24 +83,24 @@ export function renderCard(lv, idx) {
 
   // Binary risk warning
   const briskHtml = brisk.length
-    ? `<div class="binrisk">Binar risiko: ${brisk.map((r) => r.title).join(', ')}</div>`
+    ? `<div class="binrisk" role="alert" aria-label="Binar risiko advarsel">Binar risiko: ${brisk.map((r) => r.title).join(', ')}</div>`
     : '';
 
   const scoreColor = gc === 'bull' ? 'var(--bull)' : gc === 'warn' ? 'var(--warn)' : 'var(--bear)';
 
   return `
-    <div class="tic">
-      <div class="tic-head" data-idx="${idx}">
-        <span class="tcls">${clsLv}</span>
+    <div class="tic" role="article" aria-label="${lv.name} ${lv.grade} setup">
+      <div class="tic-head" data-idx="${idx}" role="button" tabindex="0" aria-expanded="false" aria-controls="tdet${idx}" aria-label="Vis detaljer for ${lv.name}: ${lv.grade} ${biasText} ${formatPrice(curr)}">
+        <span class="tcls" aria-label="Klasse ${clsLv}">${clsLv}</span>
         <div><div class="tname">${lv.name}</div><div class="tsub">${lv.label || ''}</div></div>
-        <span class="tgrade ${gc}">${lv.grade} ${lv.score}/8</span>
-        <span class="tgrade ${tfCol}">${tf}</span>
-        <span class="tbias ${lv.dir_color || 'neutral'}">${biasText}</span>
-        <span class="tprice">${formatPrice(curr)}</span>
-        <span class="tsess ${sess.active ? 'active' : 'inactive'}">${sess.active ? 'AKTIV SESJON' : sess.label || 'Utenfor sesjon'}</span>
-        ${brisk.length ? '<span class="trisk">BINAR RISIKO</span>' : ''}
+        <span class="tgrade ${gc}" aria-label="Grade ${lv.grade}, score ${lv.score} av 8">${lv.grade} ${lv.score}/8</span>
+        <span class="tgrade ${tfCol}" aria-label="Tidsramme ${tf}">${tf}</span>
+        <span class="tbias ${lv.dir_color || 'neutral'}" aria-label="Retning ${biasText}">${biasText}</span>
+        <span class="tprice" aria-label="Pris ${formatPrice(curr)}">${formatPrice(curr)}</span>
+        <span class="tsess ${sess.active ? 'active' : 'inactive'}" aria-label="${sess.active ? 'Aktiv sesjon' : sess.label || 'Utenfor sesjon'}">${sess.active ? 'AKTIV SESJON' : sess.label || 'Utenfor sesjon'}</span>
+        ${brisk.length ? '<span class="trisk" role="alert">BINAR RISIKO</span>' : ''}
       </div>
-      <div id="tdet${idx}" class="tdet">
+      <div id="tdet${idx}" class="tdet" role="region" aria-label="Detaljer for ${lv.name}">
         ${briskHtml}
         <div class="setup-grid">
           <div class="setup-side">${renderSetupSide(lv.setup_long, 'LONG')}</div>
@@ -150,16 +150,36 @@ export function renderCard(lv, idx) {
  * @param {HTMLElement} container  The parent that holds all .tic elements
  */
 export function attachToggle(container) {
-  container.addEventListener('click', (e) => {
-    const head = e.target.closest('.tic-head');
-    if (!head) return;
+  function toggle(head) {
     const idx = head.dataset.idx;
     const det = document.getElementById('tdet' + idx);
     if (!det) return;
 
     const wasOpen = det.classList.contains('open');
-    // Close all open detail panels
+    // Close all open detail panels and reset ARIA
     container.querySelectorAll('.tdet.open').forEach((el) => el.classList.remove('open'));
-    if (!wasOpen) det.classList.add('open');
+    container.querySelectorAll('.tic-head').forEach((h) => h.setAttribute('aria-expanded', 'false'));
+
+    if (!wasOpen) {
+      det.classList.add('open');
+      head.setAttribute('aria-expanded', 'true');
+    }
+  }
+
+  // Click handler
+  container.addEventListener('click', (e) => {
+    const head = e.target.closest('.tic-head');
+    if (!head) return;
+    toggle(head);
+  });
+
+  // Keyboard: Enter/Space to toggle
+  container.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' || e.key === ' ') {
+      const head = e.target.closest('.tic-head');
+      if (!head) return;
+      e.preventDefault();
+      toggle(head);
+    }
   });
 }

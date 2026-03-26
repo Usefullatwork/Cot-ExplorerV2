@@ -29,18 +29,27 @@ function currentTab() {
 }
 
 /**
- * Activate a tab: toggle .active on nav buttons and panels.
+ * Activate a tab: toggle .active on nav buttons and panels, sync ARIA state.
  * @param {string} tab
  */
 function activateTab(tab) {
-  // Nav buttons
+  // Nav buttons — sync ARIA selected + tabindex
   document.querySelectorAll('.nt').forEach((btn) => {
-    btn.classList.toggle('active', btn.dataset.tab === tab);
+    const isActive = btn.dataset.tab === tab;
+    btn.classList.toggle('active', isActive);
+    btn.setAttribute('aria-selected', String(isActive));
+    btn.setAttribute('tabindex', isActive ? '0' : '-1');
   });
 
-  // Panels
+  // Panels — sync ARIA role + hidden
   document.querySelectorAll('.panel').forEach((p) => {
-    p.classList.toggle('active', p.id === `panel-${tab}`);
+    const isActive = p.id === `panel-${tab}`;
+    p.classList.toggle('active', isActive);
+    p.setAttribute('role', 'tabpanel');
+    p.setAttribute('aria-hidden', String(!isActive));
+    if (isActive) {
+      p.setAttribute('aria-labelledby', `tab-${tab}`);
+    }
   });
 
   setState('activeTab', tab);
