@@ -83,7 +83,7 @@ def build_timeseries(base_dir: str | Path | None = None) -> dict:
             if not fname.endswith(".json"):
                 continue
             try:
-                with open(rdir / fname) as f:
+                with open(rdir / fname, encoding="utf-8") as f:
                     rows = json.load(f)
             except (ValueError, KeyError):
                 continue
@@ -95,7 +95,7 @@ def build_timeseries(base_dir: str | Path | None = None) -> dict:
         if not latest.exists():
             continue
         try:
-            with open(latest) as f:
+            with open(latest, encoding="utf-8") as f:
                 rows = json.load(f)
         except Exception:
             continue
@@ -120,7 +120,7 @@ def build_timeseries(base_dir: str | Path | None = None) -> dict:
             "data": data_sorted,
         }
         fpath = ts_dir / f"{sym.lower()}_{report}.json"
-        with open(fpath, "w") as f:
+        with open(fpath, "w", encoding="utf-8") as f:
             json.dump(out, f, ensure_ascii=False)
         written += 1
 
@@ -143,7 +143,7 @@ def build_timeseries(base_dir: str | Path | None = None) -> dict:
         )
 
     index.sort(key=lambda x: (-x["weeks"], x["navn_no"]))
-    with open(ts_dir / "index.json", "w") as f:
+    with open(ts_dir / "index.json", "w", encoding="utf-8") as f:
         json.dump(index, f, ensure_ascii=False, indent=2)
 
     log.info("Done! %d files written, %d skipped (<%d weeks)", written, skipped, MIN_WEEKS)

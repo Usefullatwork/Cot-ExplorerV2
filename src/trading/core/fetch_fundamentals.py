@@ -188,7 +188,7 @@ def main() -> None:
         "indicators": indicators,
         "instrument_scores": instrument_scores,
     }
-    with open(OUT, "w") as f:
+    with open(OUT, "w", encoding="utf-8") as f:
         json.dump(output, f, ensure_ascii=False, indent=2)
 
     log.info("Saved -> %s", OUT)

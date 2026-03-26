@@ -87,7 +87,7 @@ def cot_latest() -> list[dict]:
     """
     combined_path = _DATA_DIR / "combined" / "latest.json"
     if combined_path.exists():
-        with open(combined_path) as f:
+        with open(combined_path, encoding="utf-8") as f:
             return json.load(f)
     return []
 
@@ -160,7 +160,7 @@ def cot_summary() -> dict:
     if not combined_path.exists():
         return {"top_movers": [], "extremes": []}
 
-    with open(combined_path) as f:
+    with open(combined_path, encoding="utf-8") as f:
         data: list[dict] = json.load(f)
 
     # Top movers — largest absolute change in speculator net

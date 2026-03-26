@@ -151,7 +151,7 @@ def main() -> None:
 
     macro = build_macro(prices)
 
-    with open(OUT, "w") as f:
+    with open(OUT, "w", encoding="utf-8") as f:
         json.dump(macro, f, ensure_ascii=False, indent=2)
     log.info("OK -> %s", OUT)
 

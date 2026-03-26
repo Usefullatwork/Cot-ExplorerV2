@@ -97,7 +97,7 @@ def main() -> None:
         return
 
     events = result["events"]
-    with open(OUT, "w") as f:
+    with open(OUT, "w", encoding="utf-8") as f:
         json.dump(result, f, ensure_ascii=False, indent=2)
 
     high_count = sum(1 for e in events if e["impact"] == "High")

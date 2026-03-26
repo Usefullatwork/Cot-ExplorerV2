@@ -201,24 +201,24 @@ def save_report(results: Dict, output_dir: str, prefix: str = "backtest") -> Dic
 
     # Text report
     txt_path = os.path.join(output_dir, f"{prefix}_report.txt")
-    with open(txt_path, "w") as f:
+    with open(txt_path, "w", encoding="utf-8") as f:
         f.write(text_report(results))
 
     # Trade log CSV
     csv_path = os.path.join(output_dir, f"{prefix}_trades.csv")
-    with open(csv_path, "w") as f:
+    with open(csv_path, "w", encoding="utf-8") as f:
         f.write(trade_log_csv(results))
 
     # Equity curve CSV
     eq_path = os.path.join(output_dir, f"{prefix}_equity.csv")
-    with open(eq_path, "w") as f:
+    with open(eq_path, "w", encoding="utf-8") as f:
         f.write(equity_curve_csv(results))
 
     # Full JSON results (without equity curve for size)
     json_results = dict(results)
     json_results.pop("equity_curve", None)
     json_path = os.path.join(output_dir, f"{prefix}_results.json")
-    with open(json_path, "w") as f:
+    with open(json_path, "w", encoding="utf-8") as f:
         json.dump(json_results, f, indent=2, default=str)
 
     return {

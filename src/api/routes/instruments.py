@@ -54,7 +54,7 @@ def _load_instruments() -> list[dict]:
         return _INSTRUMENTS_CACHE
 
     config_path = Path(__file__).resolve().parents[3] / "config" / "instruments.yaml"
-    with open(config_path) as f:
+    with open(config_path, encoding="utf-8") as f:
         data = yaml.safe_load(f)
     _INSTRUMENTS_CACHE = data.get("instruments", [])
     return _INSTRUMENTS_CACHE

@@ -53,7 +53,7 @@ class DataLoader:
     def _load_cot_map(self) -> Dict[str, str]:
         path = os.path.join(self.prices_dir, "cot_map.json")
         if os.path.exists(path):
-            with open(path, "r") as f:
+            with open(path, "r", encoding="utf-8") as f:
                 return json.load(f)
         return dict(self.DEFAULT_COT_MAP)
 
@@ -71,7 +71,7 @@ class DataLoader:
         path = os.path.join(self.prices_dir, f"{instrument}.json")
         if not os.path.exists(path):
             return []
-        with open(path, "r") as f:
+        with open(path, "r", encoding="utf-8") as f:
             data = json.load(f)
         return data.get("data", [])
 
@@ -89,7 +89,7 @@ class DataLoader:
             for report in self.REPORT_PREF:
                 path = os.path.join(self.timeseries_dir, f"{cot_sym}_{report}.json")
                 if os.path.exists(path):
-                    with open(path, "r") as f:
+                    with open(path, "r", encoding="utf-8") as f:
                         data = json.load(f)
                     return data.get("data", [])
         return []

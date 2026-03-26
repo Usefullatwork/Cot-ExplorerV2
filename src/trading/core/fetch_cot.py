@@ -352,7 +352,7 @@ def parse_file(csv_file: str, report_id: str, keep_all: bool = False) -> list[di
 def save(path: str, data: object) -> None:
     """Save data as JSON to the given path, creating directories as needed."""
     os.makedirs(os.path.dirname(path), exist_ok=True)
-    with open(path, "w") as f:
+    with open(path, "w", encoding="utf-8") as f:
         json.dump(data, f, indent=2, ensure_ascii=False)
 
 

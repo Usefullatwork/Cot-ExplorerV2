@@ -54,7 +54,7 @@ if __name__ == "__main__":
         # Fallback: try to read existing file
         fallback = _DEFAULT_OUTPUT_DIR / "latest.json"
         if fallback.exists():
-            with open(fallback) as f:
+            with open(fallback, encoding="utf-8") as f:
                 data = json.load(f)
         else:
             logger.error("No macro data available in DB or on disk.")

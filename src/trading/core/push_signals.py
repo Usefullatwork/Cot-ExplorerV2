@@ -52,7 +52,7 @@ def load_data() -> dict:
     if not os.path.exists(DATA_FILE):
         log.error("ERROR: %s not found - run fetch_all.py first", DATA_FILE)
         sys.exit(1)
-    with open(DATA_FILE) as f:
+    with open(DATA_FILE, encoding="utf-8") as f:
         return json.load(f)
 
 

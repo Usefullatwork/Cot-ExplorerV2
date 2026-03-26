@@ -43,7 +43,7 @@ def build_combined(base_dir: str | Path | None = None) -> list[dict]:
             log.warning("  Missing: %s", fpath)
             continue
 
-        with open(fpath) as f:
+        with open(fpath, encoding="utf-8") as f:
             rows = json.load(f)
 
         log.info("  %s: %d markets, date=%s", rep, len(rows), rows[0].get("date", "?") if rows else "?")
@@ -78,7 +78,7 @@ def build_combined(base_dir: str | Path | None = None) -> list[dict]:
         reverse=True,
     )
 
-    with open(out_path, "w") as f:
+    with open(out_path, "w", encoding="utf-8") as f:
         json.dump(result, f, ensure_ascii=False, indent=2)
 
     dato = result[0]["date"] if result else "?"

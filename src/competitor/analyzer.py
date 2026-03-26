@@ -20,7 +20,7 @@ def _load_log() -> list[dict[str, Any]]:
     if not _LOG_FILE.exists():
         return []
     try:
-        with open(_LOG_FILE) as f:
+        with open(_LOG_FILE, encoding="utf-8") as f:
             return json.load(f)
     except (json.JSONDecodeError, OSError):
         return []
@@ -29,7 +29,7 @@ def _load_log() -> list[dict[str, Any]]:
 def _save_log(entries: list[dict[str, Any]]) -> None:
     """Persist the signal log to disk."""
     _LOG_DIR.mkdir(parents=True, exist_ok=True)
-    with open(_LOG_FILE, "w") as f:
+    with open(_LOG_FILE, "w", encoding="utf-8") as f:
         json.dump(entries, f, indent=2, ensure_ascii=False)
 
 

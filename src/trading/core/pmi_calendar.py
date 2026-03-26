@@ -16,7 +16,7 @@ def try_calendar_pmi(data_dir: str) -> dict:
     if not os.path.exists(cal_path):
         return {}
     try:
-        with open(cal_path) as f:
+        with open(cal_path, encoding="utf-8") as f:
             cal = json.load(f)
     except Exception:
         return {}

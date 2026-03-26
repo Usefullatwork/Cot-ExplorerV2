@@ -108,13 +108,13 @@ def build_price_history(base_dir: str | Path | None = None) -> int:
             continue
         out = {"key": inst["key"], "navn": inst["navn"], "yahoo": inst["yahoo"], "data": rows}
         path = base_dir / (inst["key"] + ".json")
-        with open(path, "w") as f:
+        with open(path, "w", encoding="utf-8") as f:
             json.dump(out, f, ensure_ascii=False)
         log.info("  %d weeks -> %s", len(rows), path)
         count += 1
 
     # Save COT -> price mapping
-    with open(base_dir / "cot_map.json", "w") as f:
+    with open(base_dir / "cot_map.json", "w", encoding="utf-8") as f:
         json.dump(COT_TO_PRICE, f, ensure_ascii=False, indent=2)
 
     log.info("Done! Saved %d instruments to %s", count, base_dir)

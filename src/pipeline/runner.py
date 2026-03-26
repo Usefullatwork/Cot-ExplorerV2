@@ -73,7 +73,7 @@ def _stage_output() -> None:
 
     macro_path = Path("data/macro/latest.json")
     if macro_path.exists():
-        with open(macro_path) as f:
+        with open(macro_path, encoding="utf-8") as f:
             data = json.load(f)
         publish_static_json(data)
     else:
