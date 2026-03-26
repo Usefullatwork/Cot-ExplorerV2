@@ -34,6 +34,47 @@ import * as ScoreRadar from './components/ScoreRadar.js';
 import * as PinePanel from './components/PinePanel.js';
 import * as CompetitorPanel from './components/CompetitorPanel.js';
 
+/* ── Error boundary ──────────────────────────────────────── */
+
+/**
+ * Wrap a component function call in a try/catch to prevent one component
+ * error from crashing the entire dashboard.
+ * @param {string} name       Component name for logging
+ * @param {Function} fn       The function to call
+ * @param {HTMLElement} [el]  Optional element to show error in
+ */
+function safeCall(name, fn, el) {
+  try {
+    fn();
+  } catch (err) {
+    console.error(`[${name}] Render error:`, err);
+    if (el) {
+      el.innerHTML = `<div class="error-boundary">
+        <div class="error-boundary-icon">\u26A0</div>
+        <div class="error-boundary-title">Komponent-feil: ${name}</div>
+        <div class="error-boundary-text">${err.message || 'Ukjent feil'}</div>
+        <button class="fc error-boundary-retry" onclick="location.reload()">Last inn pa nytt</button>
+      </div>`;
+    }
+  }
+}
+
+/**
+ * Wrap an async function in error handling.
+ * @param {string} name
+ * @param {Function} fn
+ */
+function safeAsync(name, fn) {
+  try {
+    const result = fn();
+    if (result && typeof result.catch === 'function') {
+      result.catch((err) => console.error(`[${name}] Async error:`, err));
+    }
+  } catch (err) {
+    console.error(`[${name}] Error:`, err);
+  }
+}
+
 /* ── App shell ────────────────────────────────────────────── */
 
 /** Build the static DOM skeleton */
@@ -45,75 +86,79 @@ function buildShell() {
 
   // Main content area with panel placeholders
   app.insertAdjacentHTML('beforeend', `
-    <div class="main">
-      <div class="panel active" id="panel-setups">
-        <div class="loading"><div class="spinner"></div>Laster setups...</div>
+    <main class="main" id="main-content" role="main" aria-label="Dashboard-innhold">
+      <div class="panel active" id="panel-setups" role="tabpanel" aria-labelledby="tab-setups" aria-hidden="false">
+        <div class="loading" role="status"><div class="spinner" aria-hidden="true"></div>Laster setups...</div>
       </div>
-      <div class="panel" id="panel-macro">
-        <div class="loading"><div class="spinner"></div>Laster makro...</div>
+      <div class="panel" id="panel-macro" role="tabpanel" aria-labelledby="tab-macro" aria-hidden="true">
+        <div class="loading" role="status"><div class="spinner" aria-hidden="true"></div>Laster makro...</div>
       </div>
-      <div class="panel" id="panel-cot">
-        <div class="loading"><div class="spinner"></div>Laster COT...</div>
+      <div class="panel" id="panel-cot" role="tabpanel" aria-labelledby="tab-cot" aria-hidden="true">
+        <div class="loading" role="status"><div class="spinner" aria-hidden="true"></div>Laster COT...</div>
       </div>
-      <div class="panel" id="panel-calendar">
-        <div class="loading"><div class="spinner"></div>Laster kalender...</div>
+      <div class="panel" id="panel-calendar" role="tabpanel" aria-labelledby="tab-calendar" aria-hidden="true">
+        <div class="loading" role="status"><div class="spinner" aria-hidden="true"></div>Laster kalender...</div>
       </div>
-      <div class="panel" id="panel-backtest">
-        <div class="loading"><div class="spinner"></div>Laster backtest...</div>
+      <div class="panel" id="panel-backtest" role="tabpanel" aria-labelledby="tab-backtest" aria-hidden="true">
+        <div class="loading" role="status"><div class="spinner" aria-hidden="true"></div>Laster backtest...</div>
       </div>
-      <div class="panel" id="panel-pine">
-        <div class="loading"><div class="spinner"></div>Laster Pine Scripts...</div>
+      <div class="panel" id="panel-pine" role="tabpanel" aria-labelledby="tab-pine" aria-hidden="true">
+        <div class="loading" role="status"><div class="spinner" aria-hidden="true"></div>Laster Pine Scripts...</div>
       </div>
-      <div class="panel" id="panel-competitor">
-        <div class="loading"><div class="spinner"></div>Laster konkurrentanalyse...</div>
+      <div class="panel" id="panel-competitor" role="tabpanel" aria-labelledby="tab-competitor" aria-hidden="true">
+        <div class="loading" role="status"><div class="spinner" aria-hidden="true"></div>Laster konkurrentanalyse...</div>
       </div>
-    </div>
-    <footer>
-      <span>Kilde: <a href="https://cftc.gov" target="_blank">CFTC.gov</a> &middot; Yahoo Finance &middot; ForexFactory</span>
+    </main>
+    <footer role="contentinfo">
+      <span>Kilde: <a href="https://cftc.gov" target="_blank" rel="noopener noreferrer">CFTC.gov</a> &middot; Yahoo Finance &middot; ForexFactory</span>
     </footer>
   `);
 }
 
-/** Initialize all component panels */
+/** Initialize all component panels with error boundaries */
 function initComponents() {
   // Setups panel — SetupGrid + ScoreRadar
   const setupsPanel = document.getElementById('panel-setups');
-  SetupGrid.render(setupsPanel);
+  safeCall('SetupGrid', () => {
+    SetupGrid.render(setupsPanel);
 
-  // Add radar chart below the setup grid
-  const radarWrap = document.createElement('div');
-  radarWrap.id = 'radar-wrap';
-  radarWrap.style.marginTop = '18px';
-  setupsPanel.appendChild(radarWrap);
-  ScoreRadar.render(radarWrap);
+    // Add radar chart below the setup grid
+    const radarWrap = document.createElement('div');
+    radarWrap.id = 'radar-wrap';
+    radarWrap.style.marginTop = '18px';
+    setupsPanel.appendChild(radarWrap);
+    ScoreRadar.render(radarWrap);
+  }, setupsPanel);
 
   // Macro panel
   const macroPanel = document.getElementById('panel-macro');
-  MacroPanel.render(macroPanel);
+  safeCall('MacroPanel', () => MacroPanel.render(macroPanel), macroPanel);
 
   // COT panel
   const cotPanel = document.getElementById('panel-cot');
-  CotTable.render(cotPanel);
+  safeCall('CotTable', () => {
+    CotTable.render(cotPanel);
 
-  // COT Chart modal (appended to body)
-  CotChart.render();
+    // COT Chart modal (appended to body)
+    CotChart.render();
 
-  // Wire CotTable row clicks to CotChart.open
-  CotTable.onOpenChart((symbol, report, name) => {
-    CotChart.open(symbol, report, name);
-  });
+    // Wire CotTable row clicks to CotChart.open
+    CotTable.onOpenChart((symbol, report, name) => {
+      CotChart.open(symbol, report, name);
+    });
+  }, cotPanel);
 
   // Calendar panel
   const calPanel = document.getElementById('panel-calendar');
-  CalendarPanel.render(calPanel);
+  safeCall('CalendarPanel', () => CalendarPanel.render(calPanel), calPanel);
 
   // Pine panel
   const pinePanel = document.getElementById('panel-pine');
-  PinePanel.render(pinePanel);
+  safeCall('PinePanel', () => PinePanel.render(pinePanel), pinePanel);
 
   // Competitor panel
   const compPanel = document.getElementById('panel-competitor');
-  CompetitorPanel.render(compPanel);
+  safeCall('CompetitorPanel', () => CompetitorPanel.render(compPanel), compPanel);
 }
 
 /* ── State subscriptions ──────────────────────────────────── */
@@ -121,35 +166,39 @@ function initComponents() {
 function wireSubscriptions() {
   // TopBar tickers
   subscribe('instruments', (data) => {
-    TopBar.updateTickers(data);
+    safeCall('TopBar.updateTickers', () => TopBar.updateTickers(data));
   });
 
   // Macro updates -> TopBar VIX + timestamp, MacroPanel, CalendarPanel
   subscribe('macro', (data) => {
-    if (data?.vix_regime) TopBar.updateVix(data.vix_regime);
-    if (data?.date) TopBar.updateTimestamp(data.date);
-    MacroPanel.update(data);
-    CalendarPanel.update(data);
+    safeCall('TopBar.updateVix', () => {
+      if (data?.vix_regime) TopBar.updateVix(data.vix_regime);
+      if (data?.date) TopBar.updateTimestamp(data.date);
+    });
+    safeCall('MacroPanel.update', () => MacroPanel.update(data), document.getElementById('panel-macro'));
+    safeCall('CalendarPanel.update', () => CalendarPanel.update(data), document.getElementById('panel-calendar'));
   });
 
   // Signals -> SetupGrid
   subscribe('signals', (data) => {
-    SetupGrid.update(data);
+    safeCall('SetupGrid.update', () => SetupGrid.update(data), document.getElementById('panel-setups'));
   });
 
   // COT data -> CotTable
   subscribe('cot', (data) => {
-    CotTable.update(data);
+    safeCall('CotTable.update', () => CotTable.update(data), document.getElementById('panel-cot'));
   });
 
   // Health -> timestamp
   subscribe('health', (data) => {
-    if (data?.timestamp) TopBar.updateTimestamp(data.timestamp);
+    safeCall('TopBar.updateTimestamp', () => {
+      if (data?.timestamp) TopBar.updateTimestamp(data.timestamp);
+    });
   });
 
   // Selected instrument -> ScoreRadar
   subscribe('selectedInstrument', (data) => {
-    ScoreRadar.update(data);
+    safeCall('ScoreRadar.update', () => ScoreRadar.update(data));
   });
 }
 

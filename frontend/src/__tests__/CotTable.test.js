@@ -85,12 +85,12 @@ describe('CotTable', () => {
     expect(labels).toContain('ravarer');
   });
 
-  it('shows "Ingen resultater" when data is empty', () => {
+  it('shows empty state when data is empty', () => {
     render(container);
     update([]);
 
     const grid = document.getElementById('cotGrid');
-    expect(grid.textContent).toContain('Ingen resultater');
+    expect(grid.textContent).toContain('Ingen COT-data');
   });
 
   it('handles non-array input gracefully', () => {

@@ -2,6 +2,7 @@
  * Mini sparkline factory using lightweight-charts.
  *
  * Creates a tiny inline area chart for embedding in cards / table cells.
+ * Hover shows the value at cursor position in a minimal tooltip.
  */
 
 import { createChart, ColorType } from 'lightweight-charts';
@@ -40,7 +41,10 @@ export function createSparkline(container, data, color = '#3fb950') {
     topColor: color.replace(')', ',0.18)').replace('rgb', 'rgba'),
     bottomColor: 'transparent',
     lineWidth: 1,
-    crosshairMarkerVisible: false,
+    crosshairMarkerVisible: true,
+    crosshairMarkerRadius: 3,
+    crosshairMarkerBorderColor: color,
+    crosshairMarkerBackgroundColor: '#161b22',
     priceLineVisible: false,
     lastValueVisible: false,
   });
@@ -49,6 +53,29 @@ export function createSparkline(container, data, color = '#3fb950') {
     series.setData(data);
     chart.timeScale().fitContent();
   }
+
+  // Minimal hover tooltip for sparkline
+  const tip = document.createElement('div');
+  tip.style.cssText =
+    'position:absolute;top:-18px;right:0;z-index:5;pointer-events:none;' +
+    'font-family:"DM Mono",monospace;font-size:9px;color:#e6edf3;' +
+    'background:#1c2128;border:1px solid #30363d;border-radius:3px;padding:1px 4px;display:none;';
+  container.style.position = 'relative';
+  container.appendChild(tip);
+
+  chart.subscribeCrosshairMove((param) => {
+    if (!param.time || !param.seriesData?.size) {
+      tip.style.display = 'none';
+      return;
+    }
+    const price = param.seriesData.get(series);
+    if (price == null || price.value == null) {
+      tip.style.display = 'none';
+      return;
+    }
+    tip.textContent = price.value > 100 ? price.value.toFixed(1) : price.value.toFixed(4);
+    tip.style.display = 'block';
+  });
 
   return { chart, series };
 }

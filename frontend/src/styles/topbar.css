@@ -10,6 +10,7 @@
   position: sticky;
   top: 0;
   z-index: 100;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.2);
 }
 
 .logo {
@@ -130,7 +131,92 @@
   color: var(--t);
 }
 
+.nt:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: -2px;
+}
+
 .nt.active {
   color: var(--blue);
   border-bottom-color: var(--blue);
+}
+
+/* ── Hamburger menu button (hidden on desktop) ────────────── */
+.hamburger {
+  display: none;
+  background: none;
+  border: 1px solid var(--b);
+  border-radius: 4px;
+  padding: 6px 8px;
+  cursor: pointer;
+  flex-shrink: 0;
+  color: var(--t);
+  line-height: 1;
+}
+.hamburger svg {
+  width: 20px;
+  height: 20px;
+  fill: currentColor;
+}
+.hamburger:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+
+/* Mobile nav overlay */
+.nav.mobile-open {
+  display: flex;
+}
+
+@media (max-width: 768px) {
+  .topbar {
+    padding: 0 12px;
+    gap: 8px;
+  }
+
+  .tbar {
+    display: none;
+  }
+
+  .hamburger {
+    display: flex;
+    align-items: center;
+  }
+
+  .nav {
+    display: none;
+    position: fixed;
+    top: 50px;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: var(--s);
+    border-top: 1px solid var(--b);
+    flex-direction: column;
+    padding: 8px 0;
+    z-index: 99;
+    overflow-y: auto;
+  }
+
+  .nav.mobile-open {
+    display: flex;
+  }
+
+  .nt {
+    padding: 14px 20px;
+    text-align: left;
+    border-bottom: none;
+    border-left: 3px solid transparent;
+    font-size: 15px;
+  }
+
+  .nt.active {
+    border-bottom: none;
+    border-left-color: var(--blue);
+    background: var(--s2);
+  }
+
+  .topbar-r .upd {
+    display: none;
+  }
 }

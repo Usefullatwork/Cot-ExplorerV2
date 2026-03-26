@@ -78,7 +78,7 @@ function renderTable() {
       .filter(([k]) => k === 'alle' || counts[k])
       .map(
         ([k, v]) =>
-          `<button class="fc${k === activeFilter ? ' on' : ''}" data-cat="${k}">${v} <span style="opacity:.6">${counts[k] || 0}</span></button>`
+          `<button class="fc${k === activeFilter ? ' on' : ''}" data-cat="${k}" aria-pressed="${k === activeFilter ? 'true' : 'false'}" aria-label="Filter: ${v} (${counts[k] || 0} markeder)">${v} <span style="opacity:.6" aria-hidden="true">${counts[k] || 0}</span></button>`
       )
       .join('');
   }
@@ -87,7 +87,12 @@ function renderTable() {
   if (!gridEl) return;
 
   if (!data.length) {
-    gridEl.innerHTML = '<div class="loading">Ingen resultater</div>';
+    const isSearch = searchQuery || activeFilter !== 'alle';
+    gridEl.innerHTML = `<div class="empty-state">
+      <div class="empty-state-icon">${isSearch ? '\uD83D\uDD0D' : '\uD83D\uDCCA'}</div>
+      <div class="empty-state-title">${isSearch ? 'Ingen resultater' : 'Ingen COT-data'}</div>
+      <div class="empty-state-text">${isSearch ? 'Prov a endre sok eller filter.' : 'Kjor fetch_all.py for a laste inn data.'}</div>
+    </div>`;
     return;
   }
 
@@ -96,9 +101,9 @@ function renderTable() {
       const sp = d.spekulanter || {};
       const s2 = sig(sp.net || 0, d.open_interest || 1);
       const si = SI[s2];
-      return `<tr data-sym="${d.symbol}" data-report="${d.report}" data-name="${encodeURIComponent(d.navn_no || d.market)}">
+      return `<tr data-sym="${d.symbol}" data-report="${d.report}" data-name="${encodeURIComponent(d.navn_no || d.market)}" tabindex="0" role="row" aria-label="${d.navn_no || d.market}: ${si.t}, netto ${formatNumber(sp.net || 0)}">
         <td style="cursor:pointer" class="cot-row-click"><div class="tdname">${d.navn_no || d.market}</div><div class="tdsub">${d.forklaring || ''}</div></td>
-        <td><span class="sp2 ${s2}">${si.i} ${si.t}</span></td>
+        <td><span class="sp2 ${s2}" role="status">${si.i} ${si.t}</span></td>
         <td class="${sp.net >= 0 ? 'tdbull' : 'tdbear'}">${sp.net > 0 ? '+' : ''}${formatNumber(sp.net || 0)}</td>
         <td class="${d.change_spec_net >= 0 ? 'tdbull' : 'tdbear'}">${d.change_spec_net > 0 ? '+' : ''}${formatNumber(d.change_spec_net || 0)}</td>
         <td class="tdr">${formatNumber(d.open_interest || 0)}</td>
@@ -107,10 +112,10 @@ function renderTable() {
     })
     .join('');
 
-  gridEl.innerHTML = `<div class="cotw"><table class="cott"><thead><tr>
-    <th>Marked</th><th>Signal</th><th style="text-align:right">Spec. Netto</th>
-    <th style="text-align:right">Uke</th><th style="text-align:right">OI</th>
-    <th style="text-align:right">Kilde</th></tr></thead><tbody>${rows}</tbody></table></div>`;
+  gridEl.innerHTML = `<div class="cotw"><table class="cott" aria-label="COT posisjoner tabell"><thead><tr>
+    <th scope="col">Marked</th><th scope="col">Signal</th><th scope="col" style="text-align:right">Spec. Netto</th>
+    <th scope="col" style="text-align:right">Uke</th><th scope="col" style="text-align:right">OI</th>
+    <th scope="col" style="text-align:right">Kilde</th></tr></thead><tbody>${rows}</tbody></table></div>`;
 }
 
 // ── Public API ──────────────────────────────────────────────
@@ -121,12 +126,13 @@ function renderTable() {
  */
 export function render(container) {
   container.innerHTML = `
-    <div class="sh"><div class="sh-t">COT-posisjoner</div><div class="sh-b" id="cotCnt">-</div></div>
-    <div class="sbar2">
-      <input type="text" id="cotS" placeholder="Sok marked...">
-      <div id="fchips"></div>
+    <div class="sh"><h2 class="sh-t">COT-posisjoner</h2><div class="sh-b" id="cotCnt" aria-live="polite">-</div></div>
+    <div class="sbar2" role="search" aria-label="Sok og filtrer COT-markeder">
+      <label for="cotS" class="sr-only">Sok i COT-markeder</label>
+      <input type="search" id="cotS" placeholder="Sok marked..." autocomplete="off" aria-label="Sok marked">
+      <div id="fchips" role="group" aria-label="Kategorifilter"></div>
     </div>
-    <div id="cotGrid"></div>`;
+    <div id="cotGrid" role="region" aria-label="COT tabell" aria-live="polite"></div>`;
 
   // Wire search input
   const searchInput = document.getElementById('cotS');
@@ -149,6 +155,17 @@ export function render(container) {
     const row = e.target.closest('tr[data-sym]');
     if (row && onRowClick) {
       onRowClick(row.dataset.sym, row.dataset.report, decodeURIComponent(row.dataset.name));
+    }
+  });
+
+  // Keyboard: Enter/Space on table rows to open chart
+  container.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' || e.key === ' ') {
+      const row = e.target.closest('tr[data-sym]');
+      if (row && onRowClick) {
+        e.preventDefault();
+        onRowClick(row.dataset.sym, row.dataset.report, decodeURIComponent(row.dataset.name));
+      }
     }
   });
 }

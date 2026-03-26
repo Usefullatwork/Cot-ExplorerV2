@@ -14,12 +14,23 @@ import { renderCard, attachToggle } from './SetupCard.js';
 export function render(container) {
   container.innerHTML = `
     <div class="sh">
-      <div class="sh-t">Trading Setups</div>
-      <div class="sh-b" id="ideDate">-</div>
-      <div class="sh-b" id="vixSize" style="margin-left:4px">-</div>
+      <h2 class="sh-t">Trading Setups</h2>
+      <div class="sh-b" id="ideDate" aria-live="polite">-</div>
+      <div class="sh-b" id="vixSize" style="margin-left:4px" role="status" aria-live="polite">-</div>
     </div>
-    <div class="g4" id="ideStats"></div>
-    <div id="ideGrid"><div class="loading"><div class="spinner"></div>Laster...</div></div>`;
+    <div class="g4" id="ideStats">
+      <div class="card skeleton-card"><div class="skeleton-row" style="height:12px;width:60%"></div><div class="skeleton-row" style="height:26px;width:40%;margin-top:8px"></div><div class="skeleton-row" style="height:10px;width:80%;margin-top:8px"></div></div>
+      <div class="card skeleton-card"><div class="skeleton-row" style="height:12px;width:60%"></div><div class="skeleton-row" style="height:26px;width:40%;margin-top:8px"></div><div class="skeleton-row" style="height:10px;width:80%;margin-top:8px"></div></div>
+      <div class="card skeleton-card"><div class="skeleton-row" style="height:12px;width:60%"></div><div class="skeleton-row" style="height:26px;width:40%;margin-top:8px"></div><div class="skeleton-row" style="height:10px;width:80%;margin-top:8px"></div></div>
+      <div class="card skeleton-card"><div class="skeleton-row" style="height:12px;width:60%"></div><div class="skeleton-row" style="height:26px;width:40%;margin-top:8px"></div><div class="skeleton-row" style="height:10px;width:80%;margin-top:8px"></div></div>
+    </div>
+    <div id="ideGrid">
+      <div class="skeleton-card-list">
+        <div class="skeleton-card-item"><div class="skeleton-row" style="height:48px"></div></div>
+        <div class="skeleton-card-item"><div class="skeleton-row" style="height:48px"></div></div>
+        <div class="skeleton-card-item"><div class="skeleton-row" style="height:48px"></div></div>
+      </div>
+    </div>`;
 }
 
 /**
@@ -53,10 +64,10 @@ export function update(data) {
   const statsEl = document.getElementById('ideStats');
   if (statsEl) {
     statsEl.innerHTML =
-      '<div class="card"><div class="ct">A+ Setups</div><div class="snum bull">' + aplus + '</div><div class="slabel">Score 7-8/8</div></div>' +
-      '<div class="card"><div class="ct">B Setups</div><div class="snum warn">' + bgrade + '</div><div class="slabel">Score 4-5/8</div></div>' +
-      '<div class="card"><div class="ct">MAKRO Setups</div><div class="snum bull">' + makro + '</div><div class="slabel">COT + HTF struktur</div></div>' +
-      '<div class="card"><div class="ct">Binar risiko</div><div class="snum bear">' + risk + '</div><div class="slabel">High impact neste 4t</div></div>';
+      '<div class="card" role="status" aria-label="A+ setups: ' + aplus + '"><div class="ct">A+ Setups</div><div class="snum bull">' + aplus + '</div><div class="slabel">Score 7-8/8</div></div>' +
+      '<div class="card" role="status" aria-label="B setups: ' + bgrade + '"><div class="ct">B Setups</div><div class="snum warn">' + bgrade + '</div><div class="slabel">Score 4-5/8</div></div>' +
+      '<div class="card" role="status" aria-label="MAKRO setups: ' + makro + '"><div class="ct">MAKRO Setups</div><div class="snum bull">' + makro + '</div><div class="slabel">COT + HTF struktur</div></div>' +
+      '<div class="card" role="status" aria-label="Binar risiko: ' + risk + '"><div class="ct">Binar risiko</div><div class="snum bear">' + risk + '</div><div class="slabel">High impact neste 4t</div></div>';
   }
 
   // Grid of SetupCards
@@ -64,7 +75,11 @@ export function update(data) {
   if (!gridEl) return;
 
   if (!arr.length) {
-    gridEl.innerHTML = '<div class="loading">Ingen data - kjor fetch_all.py</div>';
+    gridEl.innerHTML = `<div class="empty-state">
+      <div class="empty-state-icon">\uD83D\uDCCA</div>
+      <div class="empty-state-title">Ingen trading setups</div>
+      <div class="empty-state-text">Kjor <code>fetch_all.py</code> for a hente ferske data fra CFTC og beregne setups.</div>
+    </div>`;
     return;
   }
 

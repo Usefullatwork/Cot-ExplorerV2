@@ -18,8 +18,10 @@
   width: 220px;
   outline: none;
 }
-#cotS:focus {
+#cotS:focus,
+#cotS:focus-visible {
   border-color: var(--blue);
+  box-shadow: 0 0 0 2px var(--blbg);
 }
 #cotS::placeholder {
   color: var(--m);
@@ -43,6 +45,9 @@
   border-color: var(--blue);
   color: var(--blue);
 }
+.fc:focus-visible {
+  box-shadow: var(--focus-ring);
+}
 
 /* Table wrapper */
 .cotw {
@@ -50,6 +55,7 @@
   border: 1px solid var(--b);
   border-radius: 8px;
   overflow: hidden;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
 }
 
 .cott {
@@ -75,7 +81,20 @@
 .cott tr:last-child td {
   border-bottom: none;
 }
+.cott tr {
+  transition: background 0.1s;
+}
 .cott tr:hover td {
+  background: var(--s2);
+}
+.cott tr[data-sym] {
+  cursor: pointer;
+}
+.cott tr[data-sym]:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: -2px;
+}
+.cott tr[data-sym]:focus-visible td {
   background: var(--s2);
 }
 
