@@ -3,15 +3,46 @@
 from __future__ import annotations
 
 from pathlib import Path
+from typing import Optional
 
 import yaml
 from fastapi import APIRouter, HTTPException
+
+from pydantic import BaseModel, Field
 
 from src.api.middleware.cache import instruments_cache
 from src.db import repository as repo
 from src.security.input_validator import validate_symbol
 
 router = APIRouter(prefix="/api/v1", tags=["instruments"])
+
+
+# ── Response models ──────────────────────────────────────────────────────────
+
+class CurrentPrice(BaseModel):
+    """Latest price snapshot for an instrument."""
+
+    date: str = Field(..., description="Date of the price bar (YYYY-MM-DD)", examples=["2026-03-25"])
+    high: float = Field(..., description="Daily high", examples=[1.0920])
+    low: float = Field(..., description="Daily low", examples=[1.0810])
+    close: float = Field(..., description="Daily close", examples=[1.0880])
+    source: Optional[str] = Field(None, description="Data provider name", examples=["yahoo"])
+
+
+class InstrumentResponse(BaseModel):
+    """Trading instrument definition with optional current price."""
+
+    key: str = Field(..., description="Unique instrument key", examples=["EURUSD"])
+    name: str = Field(..., description="Full instrument name", examples=["EUR/USD"])
+    symbol: str = Field(..., description="Market symbol", examples=["EURUSD=X"])
+    label: str = Field(..., description="Short display label", examples=["EUR/USD"])
+    category: str = Field(..., description="Asset category", examples=["valuta"])
+    current_price: Optional[CurrentPrice] = Field(None, description="Latest price from the database")
+
+    model_config = {"extra": "allow"}
+
+
+# ── Internal helpers ─────────────────────────────────────────────────────────
 
 _INSTRUMENTS_CACHE: list[dict] | None = None
 
@@ -29,7 +60,12 @@ def _load_instruments() -> list[dict]:
     return _INSTRUMENTS_CACHE
 
 
-@router.get("/instruments")
+@router.get(
+    "/instruments",
+    response_model=list[InstrumentResponse],
+    summary="List all instruments",
+    description="Returns all tracked instruments with their configuration from instruments.yaml.",
+)
 def list_instruments() -> list[dict]:
     """List all 12 tracked instruments."""
     cached = instruments_cache.get("all_instruments")
@@ -40,7 +76,12 @@ def list_instruments() -> list[dict]:
     return result
 
 
-@router.get("/instruments/{key}")
+@router.get(
+    "/instruments/{key}",
+    response_model=InstrumentResponse,
+    summary="Instrument detail",
+    description="Returns a single instrument definition with the latest price from the database.",
+)
 def instrument_detail(key: str) -> dict:
     """Single instrument detail with latest price from the database."""
     try:

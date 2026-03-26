@@ -4,9 +4,10 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
-from typing import Optional
+from typing import Any, Optional
 
 from fastapi import APIRouter, HTTPException, Query
+from pydantic import BaseModel, Field
 
 from src.db import repository as repo
 from src.security.input_validator import sanitize_string, validate_symbol
@@ -16,7 +17,66 @@ router = APIRouter(prefix="/api/v1", tags=["cot"])
 _DATA_DIR = Path(__file__).resolve().parents[3] / "data"
 
 
-@router.get("/cot")
+# ── Response models ──────────────────────────────────────────────────────────
+
+class CotPositionResponse(BaseModel):
+    """A single COT position record with speculator, commercial, and non-reportable breakdowns."""
+
+    date: str = Field(..., description="Report date (YYYY-MM-DD)", examples=["2026-03-21"])
+    symbol: str = Field(..., description="CFTC contract code", examples=["099741"])
+    market: str = Field(..., description="Market name", examples=["Euro Fx"])
+    report_type: str = Field(..., description="Report type", examples=["tff"])
+    open_interest: int = Field(0, description="Total open interest")
+    change_oi: int = Field(0, description="Change in open interest")
+    spec_long: int = Field(0, description="Speculator long positions")
+    spec_short: int = Field(0, description="Speculator short positions")
+    spec_net: int = Field(0, description="Speculator net (long - short)")
+    comm_long: int = Field(0, description="Commercial long positions")
+    comm_short: int = Field(0, description="Commercial short positions")
+    comm_net: int = Field(0, description="Commercial net (long - short)")
+    nonrept_long: int = Field(0, description="Non-reportable long positions")
+    nonrept_short: int = Field(0, description="Non-reportable short positions")
+    nonrept_net: int = Field(0, description="Non-reportable net (long - short)")
+    change_spec_net: int = Field(0, description="Weekly change in speculator net")
+    category: Optional[str] = Field(None, description="Asset category", examples=["valuta"])
+
+    model_config = {"extra": "allow"}
+
+
+class CotMoverItem(BaseModel):
+    """A top mover in COT positioning."""
+
+    market: str = Field(..., description="Market name")
+    symbol: str = Field(..., description="CFTC contract code")
+    change_spec_net: int = Field(0, description="Change in speculator net positioning")
+    report: str = Field("", description="Report type")
+
+
+class CotExtremeItem(BaseModel):
+    """A market with extreme speculator positioning."""
+
+    market: str = Field(..., description="Market name")
+    symbol: str = Field(..., description="CFTC contract code")
+    long_pct: float = Field(..., description="Speculator long percentage")
+    short_pct: float = Field(..., description="Speculator short percentage")
+    report: str = Field("", description="Report type")
+
+
+class CotSummaryResponse(BaseModel):
+    """COT summary with top movers and positioning extremes."""
+
+    top_movers: list[CotMoverItem] = Field(default_factory=list, description="Top 10 largest weekly changes")
+    extremes: list[CotExtremeItem] = Field(default_factory=list, description="Top 10 most lopsided positions")
+
+
+# ── Endpoints ────────────────────────────────────────────────────────────────
+
+@router.get(
+    "/cot",
+    response_model=list[CotPositionResponse],
+    summary="Latest COT positions",
+    description="Returns all latest COT positions from the combined data file or database.",
+)
 def cot_latest() -> list[dict]:
     """All latest COT positions (from combined/latest.json or DB).
 
@@ -30,12 +90,17 @@ def cot_latest() -> list[dict]:
     return []
 
 
-@router.get("/cot/{symbol}/history")
+@router.get(
+    "/cot/{symbol}/history",
+    response_model=list[CotPositionResponse],
+    summary="COT history for a symbol",
+    description="Returns a time series of COT positions for a given CFTC contract symbol.",
+)
 def cot_history(
     symbol: str,
-    start: Optional[str] = Query(None, description="Start date YYYY-MM-DD"),
-    end: Optional[str] = Query(None, description="End date YYYY-MM-DD"),
-    report_type: Optional[str] = Query(None, description="tff, legacy, disaggregated, supplemental"),
+    start: Optional[str] = Query(None, description="Start date (YYYY-MM-DD)"),
+    end: Optional[str] = Query(None, description="End date (YYYY-MM-DD)"),
+    report_type: Optional[str] = Query(None, description="Report type: tff, legacy, disaggregated, or supplemental"),
 ) -> list[dict]:
     """Time series of COT positions for a given symbol."""
     try:
@@ -81,7 +146,12 @@ def cot_history(
     ]
 
 
-@router.get("/cot/summary")
+@router.get(
+    "/cot/summary",
+    response_model=CotSummaryResponse,
+    summary="COT summary",
+    description="Returns the top 10 movers (largest weekly change) and top 10 positioning extremes.",
+)
 def cot_summary() -> dict:
     """Top movers and positioning extremes from latest combined data."""
     combined_path = _DATA_DIR / "combined" / "latest.json"

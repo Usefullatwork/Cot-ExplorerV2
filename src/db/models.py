@@ -28,6 +28,12 @@ class Base(DeclarativeBase):
 # 1. Instrument
 # ---------------------------------------------------------------------------
 class Instrument(Base):
+    """Trading instrument definition (e.g. EURUSD, Gold, SPX).
+
+    The primary key ``key`` is a short slug used across signals, prices,
+    and COT data to link records to a single tradable asset.
+    """
+
     __tablename__ = "instruments"
 
     key = Column(String(32), primary_key=True)
@@ -49,6 +55,12 @@ class Instrument(Base):
 # 2. PriceDaily
 # ---------------------------------------------------------------------------
 class PriceDaily(Base):
+    """Daily OHLCV price bar for an instrument.
+
+    Unique on (instrument, date).  Sources include Yahoo Finance,
+    Stooq, Twelvedata, and Finnhub real-time quotes.
+    """
+
     __tablename__ = "prices_daily"
 
     id = Column(Integer, primary_key=True, autoincrement=True)
@@ -74,6 +86,11 @@ class PriceDaily(Base):
 # 3. PriceIntraday
 # ---------------------------------------------------------------------------
 class PriceIntraday(Base):
+    """Intraday price bar (15m, 1h, 4h) for an instrument.
+
+    Unique on (instrument, timestamp, timeframe).
+    """
+
     __tablename__ = "prices_intraday"
 
     id = Column(Integer, primary_key=True, autoincrement=True)
@@ -98,6 +115,13 @@ class PriceIntraday(Base):
 # 4. CotPosition
 # ---------------------------------------------------------------------------
 class CotPosition(Base):
+    """CFTC Commitment of Traders position record.
+
+    Stores speculator, commercial, and non-reportable long/short/net
+    positions from four CFTC report types: TFF, legacy, disaggregated,
+    and supplemental.  Unique on (symbol, report_type, date).
+    """
+
     __tablename__ = "cot_positions"
 
     id = Column(Integer, primary_key=True, autoincrement=True)
@@ -131,6 +155,13 @@ class CotPosition(Base):
 # 5. Signal
 # ---------------------------------------------------------------------------
 class Signal(Base):
+    """Generated trading signal with confluence score, direction, and trade levels.
+
+    Each signal links to an instrument and includes entry/SL/target prices,
+    risk-reward ratios, VIX regime context, and a JSON ``score_details``
+    breakdown of the individual confluence criteria.
+    """
+
     __tablename__ = "signals"
 
     id = Column(Integer, primary_key=True, autoincrement=True)
@@ -171,6 +202,12 @@ class Signal(Base):
 # 6. BacktestResult
 # ---------------------------------------------------------------------------
 class BacktestResult(Base):
+    """Result of backtesting a signal against subsequent price data.
+
+    Records entry/exit prices, exit reason (t1_hit, t2_hit, stopped_out,
+    expired), PnL in pips and risk-reward multiples, and trade duration.
+    """
+
     __tablename__ = "backtest_results"
 
     id = Column(Integer, primary_key=True, autoincrement=True)
@@ -200,6 +237,13 @@ class BacktestResult(Base):
 # 7. Fundamental
 # ---------------------------------------------------------------------------
 class Fundamental(Base):
+    """Macro-economic fundamental indicator snapshot.
+
+    Tracks current and previous values for indicators like GDP, CPI,
+    employment, and central bank rates, with a numeric score and
+    directional trend label.
+    """
+
     __tablename__ = "fundamentals"
 
     id = Column(Integer, primary_key=True, autoincrement=True)
@@ -222,6 +266,14 @@ class Fundamental(Base):
 # 8. MacroSnapshot
 # ---------------------------------------------------------------------------
 class MacroSnapshot(Base):
+    """Point-in-time snapshot of the macro environment.
+
+    Captures VIX price and regime, Dollar Smile state, USD bias,
+    Fear & Greed index, news sentiment, yield curve slope, and
+    geopolitical conflict indicators.  The ``full_json`` column
+    stores the complete macro panel used by the frontend.
+    """
+
     __tablename__ = "macro_snapshots"
 
     id = Column(Integer, primary_key=True, autoincrement=True)
@@ -245,6 +297,13 @@ class MacroSnapshot(Base):
 # 9. CalendarEvent
 # ---------------------------------------------------------------------------
 class CalendarEvent(Base):
+    """Economic calendar event (e.g. FOMC, NFP, CPI release).
+
+    Stores the event date, title, country, impact level, consensus
+    forecast, previous and actual values, hours until the event,
+    and a JSON list of affected instrument keys.
+    """
+
     __tablename__ = "calendar_events"
 
     id = Column(Integer, primary_key=True, autoincrement=True)
@@ -268,6 +327,12 @@ class CalendarEvent(Base):
 # 10. AuditLog
 # ---------------------------------------------------------------------------
 class AuditLog(Base):
+    """Immutable audit log entry for tracking system events.
+
+    Records webhook receipts, pipeline runs, data fetches, and
+    other significant operations with a JSON ``details`` payload.
+    """
+
     __tablename__ = "audit_log"
 
     id = Column(Integer, primary_key=True, autoincrement=True)

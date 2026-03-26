@@ -3,9 +3,10 @@
 from __future__ import annotations
 
 import json
-from typing import Optional
+from typing import Any, Optional
 
 from fastapi import APIRouter, HTTPException, Query
+from pydantic import BaseModel, Field
 
 from src.db import repository as repo
 from src.security.input_validator import sanitize_string, validate_symbol
@@ -13,15 +14,50 @@ from src.security.input_validator import sanitize_string, validate_symbol
 router = APIRouter(prefix="/api/v1", tags=["signals"])
 
 
-@router.get("/signals")
+# ── Response models ──────────────────────────────────────────────────────────
+
+class SignalResponse(BaseModel):
+    """A single trading signal with trade levels and scoring details."""
+
+    id: int = Field(..., description="Unique signal ID")
+    instrument: str = Field(..., description="Instrument key", examples=["EURUSD"])
+    generated_at: Optional[str] = Field(None, description="ISO timestamp of signal generation")
+    direction: str = Field(..., description="Trade direction", examples=["bull"])
+    grade: str = Field(..., description="Confluence grade", examples=["A+"])
+    score: int = Field(..., description="Confluence score (0-12)", examples=[10])
+    timeframe_bias: str = Field(..., description="Timeframe classification", examples=["SWING"])
+    entry_price: Optional[float] = Field(None, description="Suggested entry price")
+    stop_loss: Optional[float] = Field(None, description="Stop loss price")
+    target_1: Optional[float] = Field(None, description="First take-profit target")
+    target_2: Optional[float] = Field(None, description="Second take-profit target")
+    rr_t1: Optional[float] = Field(None, description="Risk-reward ratio to T1")
+    rr_t2: Optional[float] = Field(None, description="Risk-reward ratio to T2")
+    entry_weight: Optional[int] = Field(None, description="Entry level weight")
+    t1_weight: Optional[int] = Field(None, description="T1 level weight")
+    sl_type: Optional[str] = Field(None, description="Stop loss type", examples=["structure"])
+    at_level_now: Optional[bool] = Field(None, description="Whether price is currently at entry level")
+    vix_regime: Optional[str] = Field(None, description="VIX volatility regime", examples=["normal"])
+    pos_size: Optional[str] = Field(None, description="Position size recommendation", examples=["full"])
+    score_details: Optional[Any] = Field(None, description="Breakdown of individual scoring criteria")
+    metadata: Optional[Any] = Field(None, description="Additional signal metadata")
+
+
+# ── Endpoints ────────────────────────────────────────────────────────────────
+
+@router.get(
+    "/signals",
+    response_model=list[SignalResponse],
+    summary="List trading signals",
+    description="Returns trading signals with optional filters for grade, direction, timeframe, score, and instrument.",
+)
 def list_signals(
     grade: Optional[str] = Query(None, description="Filter by grade (A+, A, B, C)"),
     timeframe: Optional[str] = Query(None, description="Filter by timeframe bias"),
-    min_score: Optional[int] = Query(None, ge=0, le=12, description="Minimum score"),
-    direction: Optional[str] = Query(None, description="bull or bear"),
-    active_only: bool = Query(False, description="Only signals at level now"),
-    instrument: Optional[str] = Query(None, description="Filter by instrument key"),
-    limit: int = Query(100, ge=1, le=500),
+    min_score: Optional[int] = Query(None, ge=0, le=12, description="Minimum confluence score (0-12)"),
+    direction: Optional[str] = Query(None, description="Trade direction: bull or bear"),
+    active_only: bool = Query(False, description="Only return signals where price is at entry level now"),
+    instrument: Optional[str] = Query(None, description="Filter by instrument key (e.g. EURUSD)"),
+    limit: int = Query(100, ge=1, le=500, description="Maximum number of signals to return"),
 ) -> list[dict]:
     """List signals with optional filters."""
     try:
@@ -57,7 +93,12 @@ def list_signals(
     return results
 
 
-@router.get("/signals/{key}")
+@router.get(
+    "/signals/{key}",
+    response_model=SignalResponse,
+    summary="Signal detail by instrument",
+    description="Returns the latest trading signal for a given instrument key.",
+)
 def signal_detail(key: str) -> dict:
     """Full signal detail by instrument key (returns latest signal for that key)."""
     try:

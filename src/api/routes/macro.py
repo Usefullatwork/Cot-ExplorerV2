@@ -15,7 +15,11 @@ router = APIRouter(prefix="/api/v1", tags=["macro"])
 _DATA_DIR = Path(__file__).resolve().parents[3] / "data"
 
 
-@router.get("/macro")
+@router.get(
+    "/macro",
+    summary="Full macro panel",
+    description="Returns the complete macro environment: Dollar Smile, VIX regime, conflicts, prices, calendar. Prefers DB snapshot; falls back to data/macro/latest.json.",
+)
 def macro_panel() -> dict:
     """Full macro panel: Dollar Smile, VIX regime, conflicts, prices.
 
@@ -41,7 +45,11 @@ def macro_panel() -> dict:
     return {"error": "No macro data available. Run the pipeline first."}
 
 
-@router.get("/macro/indicators")
+@router.get(
+    "/macro/indicators",
+    summary="Macro indicators subset",
+    description="Returns price data for key macro indicators: HYG, TIP, TNX, IRX, Copper, EEM.",
+)
 def macro_indicators() -> dict:
     """Subset of macro indicators: HYG, TIP, TNX, IRX, Copper, EEM.
 

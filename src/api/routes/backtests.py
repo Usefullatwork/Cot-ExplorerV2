@@ -2,9 +2,10 @@
 
 from __future__ import annotations
 
-from typing import Optional
+from typing import Any, Optional
 
 from fastapi import APIRouter, HTTPException, Query
+from pydantic import BaseModel, Field
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
@@ -15,7 +16,46 @@ from src.security.input_validator import validate_symbol
 router = APIRouter(prefix="/api/v1/backtests", tags=["backtests"])
 
 
-@router.get("/summary")
+# ── Response models ──────────────────────────────────────────────────────────
+
+class BacktestSummaryResponse(BaseModel):
+    """Aggregate backtest performance statistics."""
+
+    total_trades: int = Field(..., description="Total number of backtested trades", examples=[50])
+    wins: Optional[int] = Field(None, description="Number of winning trades (T1 or T2 hit)")
+    losses: Optional[int] = Field(None, description="Number of losing trades (stopped out or expired)")
+    win_rate: Optional[float] = Field(None, description="Win rate percentage", examples=[64.0])
+    avg_pnl_rr: Optional[float] = Field(None, description="Average PnL in risk-reward multiples", examples=[1.35])
+    avg_duration_hours: Optional[float] = Field(None, description="Average trade duration in hours", examples=[48.5])
+    message: Optional[str] = Field(None, description="Status message when no data is available")
+
+
+class BacktestTradeResponse(BaseModel):
+    """A single backtest trade result."""
+
+    id: int = Field(..., description="Unique trade ID")
+    instrument: str = Field(..., description="Instrument key", examples=["EURUSD"])
+    direction: str = Field(..., description="Trade direction", examples=["bull"])
+    grade: str = Field(..., description="Signal grade at entry", examples=["A"])
+    score: int = Field(..., description="Confluence score at entry", examples=[9])
+    entry_date: Any = Field(..., description="Entry datetime")
+    entry_price: float = Field(..., description="Entry price", examples=[1.0850])
+    exit_date: Optional[Any] = Field(None, description="Exit datetime")
+    exit_price: Optional[float] = Field(None, description="Exit price")
+    exit_reason: Optional[str] = Field(None, description="Exit reason: t1_hit, t2_hit, stopped_out, or expired")
+    pnl_pips: Optional[float] = Field(None, description="Profit/loss in pips")
+    pnl_rr: Optional[float] = Field(None, description="Profit/loss in risk-reward multiples")
+    duration_hours: Optional[float] = Field(None, description="Trade duration in hours")
+
+
+# ── Endpoints ────────────────────────────────────────────────────────────────
+
+@router.get(
+    "/summary",
+    response_model=BacktestSummaryResponse,
+    summary="Backtest summary",
+    description="Returns aggregate backtest statistics including win rate, average PnL, and average duration.",
+)
 def backtest_summary() -> dict:
     """Aggregate backtest statistics."""
     gen = session_scope()
@@ -69,10 +109,15 @@ def backtest_summary() -> dict:
         raise
 
 
-@router.get("/trades")
+@router.get(
+    "/trades",
+    response_model=list[BacktestTradeResponse],
+    summary="List backtest trades",
+    description="Returns individual backtest trade results, ordered by entry date descending.",
+)
 def backtest_trades(
-    instrument: Optional[str] = Query(None),
-    limit: int = Query(50, ge=1, le=500),
+    instrument: Optional[str] = Query(None, description="Filter by instrument key (e.g. EURUSD)"),
+    limit: int = Query(50, ge=1, le=500, description="Maximum number of trades to return"),
 ) -> list[dict]:
     """List recent backtest trade results."""
     if instrument:
