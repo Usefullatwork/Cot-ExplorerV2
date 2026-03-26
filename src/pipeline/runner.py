@@ -133,7 +133,7 @@ def run_full_pipeline() -> dict[str, str]:
 if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
     results = run_full_pipeline()
-    print("\n=== Pipeline Results ===")
+    logger.info("=== Pipeline Results ===")
     for stage, outcome in results.items():
         status = "OK" if outcome == "ok" else "FAIL"
-        print(f"  [{status}] {stage}: {outcome}")
+        logger.info("[%s] %s: %s", status, stage, outcome)

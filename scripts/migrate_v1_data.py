@@ -11,9 +11,12 @@ Idempotent: skips existing records via unique constraints.
 from __future__ import annotations
 
 import json
+import logging
 import sys
 from datetime import datetime
 from pathlib import Path
+
+log = logging.getLogger(__name__)
 
 from sqlalchemy.exc import IntegrityError
 
@@ -29,7 +32,7 @@ def migrate_cot_data(session, data_root: Path) -> int:
     """Import COT JSON files from data/history/{report_type}/{year}.json."""
     history_dir = data_root / "history"
     if not history_dir.exists():
-        print(f"  COT history directory not found: {history_dir}")
+        log.warning("COT history directory not found: %s", history_dir)
         return 0
 
     imported = 0
@@ -44,7 +47,7 @@ def migrate_cot_data(session, data_root: Path) -> int:
             try:
                 records = json.loads(year_file.read_text(encoding="utf-8"))
             except (json.JSONDecodeError, UnicodeDecodeError) as e:
-                print(f"  SKIP {year_file.name}: {e}")
+                log.warning("SKIP %s: %s", year_file.name, e)
                 continue
 
             if not isinstance(records, list):
@@ -93,9 +96,9 @@ def migrate_cot_data(session, data_root: Path) -> int:
                 except IntegrityError:
                     session.rollback()
 
-        print(f"  {report_type}: {imported} imported so far")
+        log.info("%s: %d imported so far", report_type, imported)
 
-    print(f"  COT total: {imported} imported, {skipped} skipped")
+    log.info("COT total: %d imported, %d skipped", imported, skipped)
     return imported
 
 
@@ -103,7 +106,7 @@ def migrate_price_data(session, data_root: Path) -> int:
     """Import daily price snapshots from data/prices/."""
     prices_dir = data_root / "prices"
     if not prices_dir.exists():
-        print(f"  Prices directory not found: {prices_dir}")
+        log.warning("Prices directory not found: %s", prices_dir)
         return 0
 
     imported = 0
@@ -142,18 +145,18 @@ def migrate_price_data(session, data_root: Path) -> int:
         except IntegrityError:
             session.rollback()
 
-    print(f"  Prices: {imported} imported, {skipped} skipped")
+    log.info("Prices: %d imported, %d skipped", imported, skipped)
     return imported
 
 
 def main():
     data_root = PROJECT_ROOT / "data"
     if not data_root.exists():
-        print(f"Data directory not found: {data_root}")
-        print("This script expects v1 data in data/history/ and data/prices/")
+        log.error("Data directory not found: %s", data_root)
+        log.error("This script expects v1 data in data/history/ and data/prices/")
         sys.exit(1)
 
-    print("Initializing v2 database...")
+    log.info("Initializing v2 database...")
     init_db()
 
     from sqlalchemy.orm import Session
@@ -161,19 +164,20 @@ def main():
     session = Session(bind=engine, expire_on_commit=False)
 
     try:
-        print("\n--- Migrating COT data ---")
+        log.info("--- Migrating COT data ---")
         cot_count = migrate_cot_data(session, data_root)
 
-        print("\n--- Migrating price data ---")
+        log.info("--- Migrating price data ---")
         price_count = migrate_price_data(session, data_root)
 
-        print(f"\n=== Migration complete ===")
-        print(f"  COT positions: {cot_count}")
-        print(f"  Daily prices:  {price_count}")
+        log.info("=== Migration complete ===")
+        log.info("COT positions: %d", cot_count)
+        log.info("Daily prices:  %d", price_count)
 
     finally:
         session.close()
 
 
 if __name__ == "__main__":
+    logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
     main()

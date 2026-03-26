@@ -11,10 +11,13 @@ Generates src/pine/VALIDATION.md with per-file results.
 
 from __future__ import annotations
 
+import logging
 import os
 import re
 import sys
 from pathlib import Path
+
+log = logging.getLogger(__name__)
 
 
 def find_pine_files(root: Path) -> list[Path]:
@@ -119,34 +122,35 @@ def main():
     pine_root = project_root / "src" / "pine"
 
     if not pine_root.exists():
-        print(f"ERROR: {pine_root} not found")
+        log.error("Pine root not found: %s", pine_root)
         sys.exit(1)
 
     pine_files = find_pine_files(pine_root)
     if not pine_files:
-        print("No .pine files found")
+        log.error("No .pine files found")
         sys.exit(1)
 
-    print(f"Validating {len(pine_files)} Pine Script files...\n")
+    log.info("Validating %d Pine Script files...", len(pine_files))
 
     results = [validate_file(f) for f in pine_files]
 
-    # Print summary
+    # Log summary
     for r in results:
         status = "PASS" if r["passed"] else "FAIL"
-        print(f"  [{status}] {r['name']} ({r['checks_passed']}/{r['total_checks']})")
+        log.info("[%s] %s (%d/%d)", status, r["name"], r["checks_passed"], r["total_checks"])
         for issue in r["issues"]:
-            print(f"         - {issue}")
+            log.warning("  - %s", issue)
 
     output_path = pine_root / "VALIDATION.md"
     generate_report(results, output_path)
 
     total = len(results)
     passed = sum(1 for r in results if r["passed"])
-    print(f"\n{passed}/{total} files passed. Report: {output_path}")
+    log.info("%d/%d files passed. Report: %s", passed, total, output_path)
 
     sys.exit(0 if passed == total else 1)
 
 
 if __name__ == "__main__":
+    logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
     main()
