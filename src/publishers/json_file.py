@@ -58,8 +58,8 @@ if __name__ == "__main__":
             with open(fallback) as f:
                 data = json.load(f)
         else:
-            print("No macro data available in DB or on disk.")
+            logger.error("No macro data available in DB or on disk.")
             raise SystemExit(1)
 
     publish_static_json(data)
-    print(f"OK: {_DEFAULT_OUTPUT_DIR / 'latest.json'}")
+    logger.info(f"OK: {_DEFAULT_OUTPUT_DIR / 'latest.json'}")

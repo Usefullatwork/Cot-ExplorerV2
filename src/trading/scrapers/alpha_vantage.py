@@ -9,11 +9,14 @@ Requires ALPHA_VANTAGE_API_KEY environment variable.
 Zero external dependencies - stdlib only.
 """
 
+import logging
 import urllib.request
 import urllib.parse
 import json
 import os
 import time
+
+log = logging.getLogger(__name__)
 
 API_KEY = os.environ.get("ALPHA_VANTAGE_API_KEY", "")
 
@@ -54,7 +57,7 @@ def fetch_daily(symbol, outputsize="compact"):
         time.sleep(12)  # Rate limit: 5 req/min
         return rows
     except Exception as e:
-        print(f"  Alpha Vantage ERROR {symbol}: {e}")
+        log.error(f"Alpha Vantage ERROR {symbol}: {e}")
         return []
 
 
@@ -79,13 +82,13 @@ def fetch_forex(from_currency, to_currency):
         rate = d.get("Realtime Currency Exchange Rate", {}).get("5. Exchange Rate")
         return float(rate) if rate else None
     except Exception as e:
-        print(f"  Alpha Vantage FX ERROR {from_currency}/{to_currency}: {e}")
+        log.error(f"Alpha Vantage FX ERROR {from_currency}/{to_currency}: {e}")
         return None
 
 
 if __name__ == "__main__":
     if not API_KEY:
-        print("Set ALPHA_VANTAGE_API_KEY to test")
+        log.warning("Set ALPHA_VANTAGE_API_KEY to test")
     else:
         rows = fetch_daily("SPY", "compact")
-        print(f"SPY: {len(rows)} daily bars")
+        log.info(f"SPY: {len(rows)} daily bars")

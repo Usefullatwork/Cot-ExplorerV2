@@ -8,8 +8,11 @@ No API key required. Near-realtime during market hours.
 Zero external dependencies - stdlib only.
 """
 
+import logging
 import urllib.request
 from datetime import datetime, timezone, timedelta
+
+log = logging.getLogger(__name__)
 
 # Symbol mapping: Yahoo -> Stooq
 SYMBOL_MAP = {
@@ -68,7 +71,7 @@ def fetch_ohlc(symbol, range_="1y"):
                 continue
         return rows
     except Exception as e:
-        print(f"  Stooq ERROR {stooq_sym}: {e}")
+        log.error(f"Stooq ERROR {stooq_sym}: {e}")
         return []
 
 
@@ -76,4 +79,4 @@ if __name__ == "__main__":
     for sym, name in [("EURUSD=X", "EUR/USD"), ("GC=F", "Gold")]:
         rows = fetch_ohlc(sym, "30d")
         if rows:
-            print(f"{name}: {len(rows)} bars, last close: {rows[-1][2]}")
+            log.info(f"{name}: {len(rows)} bars, last close: {rows[-1][2]}")

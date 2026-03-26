@@ -7,10 +7,13 @@ Note: these functions DO make HTTP calls — they are data fetchers, not pure an
 from __future__ import annotations
 
 import json
+import logging
 import re
 import urllib.parse
 import urllib.request
 from typing import Optional
+
+log = logging.getLogger(__name__)
 
 from src.core.models import FearGreed, NewsSentiment
 
@@ -35,7 +38,7 @@ def fetch_fear_greed() -> FearGreed | None:
             rating=d["fear_and_greed"]["rating"],
         )
     except Exception as e:
-        print(f"  Fear&Greed FEIL: {e}")
+        log.error(f"Fear&Greed FEIL: {e}")
         return None
 
 
@@ -73,7 +76,7 @@ def fetch_news_sentiment() -> NewsSentiment | None:
                 titles = re.findall(r"<title>(.*?)</title>", txt)
             headlines.extend(titles[1:16])
         except Exception as e:
-            print(f"  Nyheter FEIL ({url[:45]}): {e}")
+            log.error(f"Nyheter FEIL ({url[:45]}): {e}")
     if not headlines:
         return None
 
@@ -133,7 +136,7 @@ def _fetch_fred(series_id: str) -> float | None:
                 return float(parts[1])
         return None
     except Exception as e:
-        print(f"  FRED {series_id} FEIL: {e}")
+        log.error(f"FRED {series_id} FEIL: {e}")
         return None
 
 
@@ -158,7 +161,7 @@ def _fetch_yahoo(symbol: str, interval: str = "1d", range_: str = "30d") -> list
         ]
         return rows
     except Exception as e:
-        print(f"  FEIL {symbol} ({interval}): {e}")
+        log.error(f"FEIL {symbol} ({interval}): {e}")
         return []
 
 

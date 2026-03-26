@@ -9,10 +9,13 @@ Requires FINNHUB_API_KEY environment variable.
 Zero external dependencies - stdlib only.
 """
 
+import logging
 import urllib.request
 import urllib.parse
 import json
 import os
+
+log = logging.getLogger(__name__)
 
 API_KEY = os.environ.get("FINNHUB_API_KEY", "")
 
@@ -54,15 +57,15 @@ def fetch_quote(symbol):
             return (h, l, c)
         return None
     except Exception as e:
-        print(f"  Finnhub ERROR {fh_sym}: {e}")
+        log.error(f"Finnhub ERROR {fh_sym}: {e}")
         return None
 
 
 if __name__ == "__main__":
     if not API_KEY:
-        print("Set FINNHUB_API_KEY to test")
+        log.warning("Set FINNHUB_API_KEY to test")
     else:
         for sym, name in [("^GSPC", "S&P 500"), ("^VIX", "VIX")]:
             q = fetch_quote(sym)
             if q:
-                print(f"{name}: H={q[0]} L={q[1]} C={q[2]}")
+                log.info(f"{name}: H={q[0]} L={q[1]} C={q[2]}")

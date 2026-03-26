@@ -9,11 +9,14 @@ Requires TWELVEDATA_API_KEY environment variable.
 Zero external dependencies - stdlib only.
 """
 
+import logging
 import urllib.request
 import urllib.parse
 import json
 import os
 import time
+
+log = logging.getLogger(__name__)
 
 API_KEY = os.environ.get("TWELVEDATA_API_KEY", "")
 
@@ -61,7 +64,7 @@ def fetch_ohlc(symbol, interval="1d", outputsize=365):
         with urllib.request.urlopen(req, timeout=12) as r:
             d = json.loads(r.read())
         if d.get("status") == "error":
-            print(f"  Twelvedata {td_sym}: {d.get('message', 'unknown error')}")
+            log.warning(f"Twelvedata {td_sym}: {d.get('message', 'unknown error')}")
             return []
         rows = []
         for v in reversed(d.get("values", [])):
@@ -72,13 +75,13 @@ def fetch_ohlc(symbol, interval="1d", outputsize=365):
         time.sleep(8)  # Rate limit: max 8 req/min on free plan
         return rows
     except Exception as e:
-        print(f"  Twelvedata ERROR {td_sym} ({interval}): {e}")
+        log.error(f"Twelvedata ERROR {td_sym} ({interval}): {e}")
         return []
 
 
 if __name__ == "__main__":
     if not API_KEY:
-        print("Set TWELVEDATA_API_KEY to test")
+        log.warning("Set TWELVEDATA_API_KEY to test")
     else:
         rows = fetch_ohlc("EURUSD=X", "1d", 30)
-        print(f"EUR/USD: {len(rows)} bars")
+        log.info(f"EUR/USD: {len(rows)} bars")

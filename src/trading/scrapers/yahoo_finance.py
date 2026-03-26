@@ -9,9 +9,12 @@ Free tier, no API key required. Personal use only.
 Zero external dependencies - stdlib only.
 """
 
+import logging
 import urllib.request
 import urllib.parse
 import json
+
+log = logging.getLogger(__name__)
 
 
 def fetch_ohlc(symbol, interval="1d", range_="1y"):
@@ -48,7 +51,7 @@ def fetch_ohlc(symbol, interval="1d", range_="1y"):
         ]
         return rows
     except Exception as e:
-        print(f"  Yahoo ERROR {symbol} ({interval}): {e}")
+        log.error(f"Yahoo ERROR {symbol} ({interval}): {e}")
         return []
 
 
@@ -84,13 +87,13 @@ def fetch_price_changes(symbol):
             "chg20d": round((now / day20 - 1) * 100, 2),
         }
     except Exception as e:
-        print(f"  Yahoo ERROR {symbol}: {e}")
+        log.error(f"Yahoo ERROR {symbol}: {e}")
         return None
 
 
 if __name__ == "__main__":
     for sym, name in [("EURUSD=X", "EUR/USD"), ("GC=F", "Gold"), ("^GSPC", "S&P 500")]:
-        print(f"\n{name}:")
+        log.info(f"{name}:")
         data = fetch_price_changes(sym)
         if data:
-            print(f"  Price: {data['price']}  1d: {data['chg1d']:+.2f}%  5d: {data['chg5d']:+.2f}%")
+            log.info(f"  Price: {data['price']}  1d: {data['chg1d']:+.2f}%  5d: {data['chg5d']:+.2f}%")

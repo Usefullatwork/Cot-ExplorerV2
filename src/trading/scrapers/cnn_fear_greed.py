@@ -9,8 +9,11 @@ No API key required.
 Zero external dependencies - stdlib only.
 """
 
+import logging
 import urllib.request
 import json
+
+log = logging.getLogger(__name__)
 
 
 def fetch():
@@ -36,7 +39,7 @@ def fetch():
             "rating": fg["rating"],
         }
     except Exception as e:
-        print(f"  Fear&Greed ERROR: {e}")
+        log.error(f"Fear&Greed ERROR: {e}")
         return None
 
 
@@ -63,5 +66,5 @@ if __name__ == "__main__":
     result = fetch()
     if result:
         regime = classify(result["score"])
-        print(f"Fear & Greed: {result['score']} ({result['rating']})")
-        print(f"  Regime: {regime['label']} -> {regime['guidance']}")
+        log.info(f"Fear & Greed: {result['score']} ({result['rating']})")
+        log.info(f"  Regime: {regime['label']} -> {regime['guidance']}")

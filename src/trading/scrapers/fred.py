@@ -9,9 +9,12 @@ Public domain data. No API key required for CSV endpoint.
 Zero external dependencies - stdlib only.
 """
 
+import logging
 import urllib.request
 import json
 import os
+
+log = logging.getLogger(__name__)
 
 API_KEY = os.environ.get("FRED_API_KEY", "")
 
@@ -37,7 +40,7 @@ def fetch_csv(series_id):
                 return float(parts[1])
         return None
     except Exception as e:
-        print(f"  FRED CSV {series_id} ERROR: {e}")
+        log.error(f"FRED CSV {series_id} ERROR: {e}")
         return None
 
 
@@ -70,7 +73,7 @@ def fetch_api(series_id, limit=16):
                     pass
         return list(reversed(obs))
     except Exception as e:
-        print(f"  FRED API {series_id} ERROR: {e}")
+        log.error(f"FRED API {series_id} ERROR: {e}")
         return []
 
 
@@ -78,4 +81,4 @@ if __name__ == "__main__":
     for series, name in [("DGS10", "10Y Yield"), ("DTB3", "3M T-Bill")]:
         val = fetch_csv(series)
         if val:
-            print(f"{name}: {val:.3f}%")
+            log.info(f"{name}: {val:.3f}%")
