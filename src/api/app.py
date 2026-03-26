@@ -2,11 +2,15 @@
 
 from __future__ import annotations
 
+import os
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from src.api.middleware.auth import APIKeyMiddleware
 from src.api.routes import backtests, cot, health, instruments, macro, signals, webhook
+
+CORS_ORIGINS = os.environ.get("CORS_ORIGINS", "http://localhost:3000").split(",")
 
 
 def create_app() -> FastAPI:
@@ -17,10 +21,10 @@ def create_app() -> FastAPI:
         description="Trading signal platform: COT + SMC + 12-point confluence scoring",
     )
 
-    # CORS — allow all origins for development
+    # CORS — restricted to configured origins
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=["*"],
+        allow_origins=CORS_ORIGINS,
         allow_credentials=True,
         allow_methods=["*"],
         allow_headers=["*"],

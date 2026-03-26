@@ -20,7 +20,7 @@ Vekting for høy-sannsynlighets-setups:
 import urllib.request, json, os, time
 from datetime import datetime, timezone
 
-FRED_API_KEY = os.environ.get("FRED_API_KEY", "ab5d635becd9ba4c89e67959d9dc07ab")
+FRED_API_KEY = os.environ.get("FRED_API_KEY", "")
 BASE = os.path.expanduser("~/cot-explorer/data")
 OUT  = os.path.join(BASE, "fundamentals", "latest.json")
 os.makedirs(os.path.join(BASE, "fundamentals"), exist_ok=True)
