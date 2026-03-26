@@ -9,6 +9,7 @@ from typing import Optional
 from fastapi import APIRouter, HTTPException, Query
 
 from src.db import repository as repo
+from src.security.input_validator import sanitize_string, validate_symbol
 
 router = APIRouter(prefix="/api/v1", tags=["cot"])
 
@@ -37,6 +38,17 @@ def cot_history(
     report_type: Optional[str] = Query(None, description="tff, legacy, disaggregated, supplemental"),
 ) -> list[dict]:
     """Time series of COT positions for a given symbol."""
+    try:
+        symbol = validate_symbol(symbol)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+    if start:
+        start = sanitize_string(start, max_length=10)
+    if end:
+        end = sanitize_string(end, max_length=10)
+    if report_type:
+        report_type = sanitize_string(report_type, max_length=50)
+
     rows = repo.get_cot_history(
         symbol=symbol,
         start=start,

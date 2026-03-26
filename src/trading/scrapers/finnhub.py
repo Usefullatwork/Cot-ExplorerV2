@@ -31,7 +31,7 @@ QUOTE_MAP = {
 }
 
 
-def fetch_quote(symbol):
+def fetch_quote(symbol: str) -> tuple[float, float, float] | None:
     """
     Fetch realtime (h, l, c) quote from Finnhub.
 

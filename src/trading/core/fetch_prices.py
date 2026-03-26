@@ -51,7 +51,7 @@ SYMBOLS = {
 }
 
 
-def fetch_yahoo(symbol):
+def fetch_yahoo(symbol: str) -> dict | None:
     """Fetch 1-month daily data from Yahoo Finance and calculate changes."""
     url = (f"https://query1.finance.yahoo.com/v8/finance/chart/"
            f"{urllib.parse.quote(symbol)}?interval=1d&range=1mo")
@@ -82,7 +82,7 @@ def fetch_yahoo(symbol):
         return None
 
 
-def build_macro(prices):
+def build_macro(prices: dict) -> dict:
     """Build macro overview with VIX regime and dollar smile model."""
     vix = (prices.get("VIX") or {}).get("price", 20)
     dxy_5d = (prices.get("DXY") or {}).get("chg5d", 0)
@@ -136,7 +136,7 @@ def build_macro(prices):
     }
 
 
-def main():
+def main() -> None:
     """Fetch all prices and build macro overview."""
     prices = {}
     for key, sym in SYMBOLS.items():

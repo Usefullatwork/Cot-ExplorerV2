@@ -19,7 +19,7 @@ log = logging.getLogger(__name__)
 API_KEY = os.environ.get("FRED_API_KEY", "")
 
 
-def fetch_csv(series_id):
+def fetch_csv(series_id: str) -> float | None:
     """
     Fetch the latest value from FRED CSV endpoint (no API key).
 
@@ -44,7 +44,7 @@ def fetch_csv(series_id):
         return None
 
 
-def fetch_api(series_id, limit=16):
+def fetch_api(series_id: str, limit: int = 16) -> list[tuple[str, float]]:
     """
     Fetch observations from FRED JSON API (requires API key).
 

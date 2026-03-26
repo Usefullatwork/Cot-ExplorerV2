@@ -48,7 +48,7 @@ FLASK_URL = os.environ.get("FLASK_URL", "http://localhost:5000")
 SCALP_API_KEY = os.environ.get("SCALP_API_KEY", "")
 
 
-def load_data():
+def load_data() -> dict:
     """Load macro data from disk."""
     if not os.path.exists(DATA_FILE):
         log.error("ERROR: %s not found - run fetch_all.py first", DATA_FILE)
@@ -57,14 +57,14 @@ def load_data():
         return json.load(f)
 
 
-def score_key(item):
+def score_key(item: tuple[str, dict]) -> tuple[int, int]:
     """Sort key for signal prioritization: MAKRO > SWING > SCALP, then score."""
     _, d = item
     tf_rank = {"MAKRO": 3, "SWING": 2, "SCALP": 1, "WATCHLIST": 0}
     return (tf_rank.get(d.get("timeframe_bias", "WATCHLIST"), 0), d.get("score", 0))
 
 
-def get_top_signals(macro):
+def get_top_signals(macro: dict) -> list[tuple[str, dict]]:
     """Filter and sort signals by score threshold."""
     levels = macro.get("trading_levels", {})
     candidates = [
@@ -75,7 +75,7 @@ def get_top_signals(macro):
     return candidates[:MAX_SIGNALS]
 
 
-def fmt_signal(key, d, vix_price):
+def fmt_signal(key: str, d: dict, vix_price: float) -> str:
     """Format a single signal as a text card."""
     direction = "LONG  ^" if d.get("dir_color") == "bull" else "SHORT v"
     tf = d.get("timeframe_bias", "SWING")
@@ -123,7 +123,7 @@ def fmt_signal(key, d, vix_price):
     return "\n".join(lines)
 
 
-def build_message(top_signals, macro):
+def build_message(top_signals: list[tuple[str, dict]], macro: dict) -> str:
     """Build the full notification message."""
     generated = macro.get("date", "unknown")
     vix_price = (macro.get("prices") or {}).get("VIX", {}).get("price", 20)
@@ -135,7 +135,7 @@ def build_message(top_signals, macro):
     return "\n".join(lines).strip()
 
 
-def push_telegram(text):
+def push_telegram(text: str) -> None:
     """Push message to Telegram bot."""
     if not TG_TOKEN or not TG_CHAT_ID:
         return
@@ -154,7 +154,7 @@ def push_telegram(text):
         log.error("Telegram: %s", e)
 
 
-def push_discord(text):
+def push_discord(text: str) -> None:
     """Push message to Discord webhook."""
     if not DC_WEBHOOK:
         return
@@ -168,7 +168,7 @@ def push_discord(text):
         log.error("Discord: %s", e)
 
 
-def push_flask(signals, generated):
+def push_flask(signals: list[dict], generated: str) -> None:
     """Push signals to Flask signal server."""
     if not SCALP_API_KEY:
         return
@@ -185,7 +185,7 @@ def push_flask(signals, generated):
         log.error("Flask: %s", e)
 
 
-def main():
+def main() -> None:
     """Main entry point - load data, filter signals, push notifications."""
     macro = load_data()
     top = get_top_signals(macro)

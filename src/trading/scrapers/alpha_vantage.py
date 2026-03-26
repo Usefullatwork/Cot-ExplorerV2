@@ -21,7 +21,7 @@ log = logging.getLogger(__name__)
 API_KEY = os.environ.get("ALPHA_VANTAGE_API_KEY", "")
 
 
-def fetch_daily(symbol, outputsize="compact"):
+def fetch_daily(symbol: str, outputsize: str = "compact") -> list[tuple[float, float, float]]:
     """
     Fetch daily OHLC from Alpha Vantage.
 
@@ -61,7 +61,7 @@ def fetch_daily(symbol, outputsize="compact"):
         return []
 
 
-def fetch_forex(from_currency, to_currency):
+def fetch_forex(from_currency: str, to_currency: str) -> float | None:
     """
     Fetch forex exchange rate.
 

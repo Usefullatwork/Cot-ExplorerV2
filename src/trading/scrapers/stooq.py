@@ -37,7 +37,7 @@ SYMBOL_MAP = {
 RANGE_DAYS = {"1y": 400, "30d": 35, "5d": 7}
 
 
-def fetch_ohlc(symbol, range_="1y"):
+def fetch_ohlc(symbol: str, range_: str = "1y") -> list[tuple[float, float, float]]:
     """
     Fetch daily OHLC from Stooq.
 

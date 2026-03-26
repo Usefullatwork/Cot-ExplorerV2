@@ -4,18 +4,19 @@ from __future__ import annotations
 
 from typing import Optional
 
-from fastapi import APIRouter, Query
+from fastapi import APIRouter, HTTPException, Query
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from src.db.engine import session_scope
 from src.db.models import BacktestResult
+from src.security.input_validator import validate_instrument_key
 
 router = APIRouter(prefix="/api/v1/backtests", tags=["backtests"])
 
 
 @router.get("/summary")
-def backtest_summary():
+def backtest_summary() -> dict:
     """Aggregate backtest statistics."""
     gen = session_scope()
     session = next(gen)
@@ -72,8 +73,14 @@ def backtest_summary():
 def backtest_trades(
     instrument: Optional[str] = Query(None),
     limit: int = Query(50, ge=1, le=500),
-):
+) -> list[dict]:
     """List recent backtest trade results."""
+    if instrument:
+        try:
+            instrument = validate_instrument_key(instrument)
+        except ValueError as exc:
+            raise HTTPException(status_code=400, detail=str(exc))
+
     gen = session_scope()
     session = next(gen)
     try:

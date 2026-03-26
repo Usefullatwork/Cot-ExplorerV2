@@ -16,7 +16,7 @@ import json
 log = logging.getLogger(__name__)
 
 
-def fetch():
+def fetch() -> dict | None:
     """
     Fetch current Fear & Greed Index.
 
@@ -43,7 +43,7 @@ def fetch():
         return None
 
 
-def classify(score):
+def classify(score: float) -> dict:
     """
     Classify a Fear & Greed score into a regime.
 

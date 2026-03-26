@@ -145,7 +145,7 @@ MARKET_NO = {
 }
 
 
-def safe_int(val):
+def safe_int(val: object) -> int:
     """Safely convert a value to int, handling commas and decimals."""
     try:
         return int(str(val).strip().replace(",", "").split(".")[0])
@@ -153,7 +153,7 @@ def safe_int(val):
         return 0
 
 
-def get_category(name):
+def get_category(name: str) -> str:
     """Classify a market name into a category based on keywords."""
     nl = name.lower()
     for cat, keywords in CATEGORIES.items():
@@ -163,7 +163,7 @@ def get_category(name):
     return "annet"
 
 
-def download_and_extract(url, tmp_dir):
+def download_and_extract(url: str, tmp_dir: str) -> str | None:
     """Download a ZIP file and extract the CSV within it."""
     zip_path = os.path.join(tmp_dir, "cot.zip")
     try:
@@ -178,7 +178,7 @@ def download_and_extract(url, tmp_dir):
     return None
 
 
-def parse_file(csv_file, report_id, keep_all=False):
+def parse_file(csv_file: str, report_id: str, keep_all: bool = False) -> list[dict]:
     """Parse a CFTC CSV file into structured market data."""
     results = {}
     try:
@@ -292,14 +292,14 @@ def parse_file(csv_file, report_id, keep_all=False):
     return list(results.values())
 
 
-def save(path, data):
+def save(path: str, data: object) -> None:
     """Save data as JSON to the given path, creating directories as needed."""
     os.makedirs(os.path.dirname(path), exist_ok=True)
     with open(path, "w") as f:
         json.dump(data, f, indent=2, ensure_ascii=False)
 
 
-def process_report(report, year=None, keep_all=False):
+def process_report(report: dict, year: int | None = None, keep_all: bool = False) -> list[dict]:
     """Download, extract, and parse a single COT report."""
     url = report["url"] if year is None else report["hist_pat"].replace("YYYY", str(year))
     rid = report["id"]
@@ -316,7 +316,7 @@ def process_report(report, year=None, keep_all=False):
     return data
 
 
-def main():
+def main() -> None:
     """Main entry point - fetch and save COT data."""
     do_history = "--history" in sys.argv
     today = datetime.now().strftime("%Y-%m-%d")

@@ -85,7 +85,7 @@ INSTRUMENT_USD_DIR = {
 EQ_INSTRUMENTS = {"SPX", "NAS100", "Brent", "WTI"}
 
 
-def fetch_fred_api(series_id, limit=16):
+def fetch_fred_api(series_id: str, limit: int = 16) -> list[tuple[str, float]]:
     """Fetch observations from FRED API."""
     if not FRED_API_KEY:
         log.warning("FRED API key not set - skipping %s", series_id)
@@ -110,7 +110,7 @@ def fetch_fred_api(series_id, limit=16):
         return []
 
 
-def score_indicator(key, current, previous):
+def score_indicator(key: str, current: float | None, previous: float | None) -> int:
     """Score an indicator -2..+2 for USD bullish/bearish bias."""
     if current is None:
         return 0
@@ -229,7 +229,7 @@ def score_indicator(key, current, previous):
     return 0
 
 
-def compute_indicator(key, cfg, obs):
+def compute_indicator(key: str, cfg: dict, obs: list[tuple[str, float]]) -> dict | None:
     """Compute current/previous values and score for an indicator."""
     if not obs:
         return None
@@ -277,7 +277,7 @@ def compute_indicator(key, cfg, obs):
     }
 
 
-def try_calendar_pmi(data_dir):
+def try_calendar_pmi(data_dir: str) -> dict:
     """Try to load PMI data from ForexFactory calendar."""
     cal_path = os.path.join(data_dir, "prices", "calendar_latest.json")
     if not os.path.exists(cal_path):
@@ -330,7 +330,7 @@ def try_calendar_pmi(data_dir):
     return pmi_map
 
 
-def weighted_cat_avg(cat_keys, indicators):
+def weighted_cat_avg(cat_keys: list[str], indicators: dict) -> float:
     """Weighted average of indicator scores within a category."""
     total_score = 0.0
     total_w = 0.0
@@ -342,7 +342,7 @@ def weighted_cat_avg(cat_keys, indicators):
     return round(total_score / total_w, 3) if total_w > 0 else 0.0
 
 
-def consensus_multiplier(cat_scores):
+def consensus_multiplier(cat_scores: dict) -> float:
     """Calculate multiplier based on category agreement/disagreement."""
     THRESHOLD = 0.35
     infl_dir = 1 if cat_scores.get("inflation", 0) > THRESHOLD else \
@@ -364,7 +364,7 @@ def consensus_multiplier(cat_scores):
         return 0.5
 
 
-def main():
+def main() -> None:
     """Fetch fundamentals, score them, and save output."""
     log.info("=== fetch_fundamentals.py ===")
     log.info("FRED API key: %s", "***" + FRED_API_KEY[-4:] if FRED_API_KEY else "NOT SET")

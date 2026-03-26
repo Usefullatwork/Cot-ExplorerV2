@@ -166,7 +166,7 @@ def equity_curve_csv(results: Dict) -> str:
     return "\n".join(lines)
 
 
-def save_report(results: Dict, output_dir: str, prefix: str = "backtest"):
+def save_report(results: Dict, output_dir: str, prefix: str = "backtest") -> Dict[str, str]:
     """Save all report files to disk.
 
     Args:

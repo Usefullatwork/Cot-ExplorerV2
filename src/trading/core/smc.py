@@ -18,7 +18,7 @@ import logging
 log = logging.getLogger(__name__)
 
 
-def calc_atr(rows, n=50):
+def calc_atr(rows: list[tuple[float, float, float]], n: int = 50) -> float | None:
     """Calculate Average True Range over n periods."""
     if len(rows) < n + 1:
         return None
@@ -33,7 +33,7 @@ def calc_atr(rows, n=50):
     return sum(trs[-n:]) / n
 
 
-def find_pivot_highs(rows, length=10):
+def find_pivot_highs(rows: list[tuple[float, float, float]], length: int = 10) -> list[tuple[int, float]]:
     """
     Find pivot highs: high[i] is the highest of all highs in window [i-length : i+length].
     Returns list of (index, value).
@@ -46,7 +46,7 @@ def find_pivot_highs(rows, length=10):
     return pivots
 
 
-def find_pivot_lows(rows, length=10):
+def find_pivot_lows(rows: list[tuple[float, float, float]], length: int = 10) -> list[tuple[int, float]]:
     """
     Find pivot lows: low[i] is the lowest of all lows in window [i-length : i+length].
     Returns list of (index, value).
@@ -59,7 +59,7 @@ def find_pivot_lows(rows, length=10):
     return pivots
 
 
-def classify_swings(pivots, swing_type):
+def classify_swings(pivots: list[tuple[int, float]], swing_type: str) -> list[tuple[int, float, str]]:
     """
     Classify swing points as HH/LH (for highs) or HL/LL (for lows).
     swing_type: 'high' or 'low'
@@ -79,8 +79,14 @@ def classify_swings(pivots, swing_type):
     return result
 
 
-def build_supply_demand_zones(pivot_highs, pivot_lows, rows, atr,
-                               box_width=2.5, history=20):
+def build_supply_demand_zones(
+    pivot_highs: list[tuple[int, float]],
+    pivot_lows: list[tuple[int, float]],
+    rows: list[tuple[float, float, float]],
+    atr: float,
+    box_width: float = 2.5,
+    history: int = 20,
+) -> tuple[list[dict], list[dict]]:
     """
     Build supply/demand zones from pivot highs/lows.
     Supply: at pivot high - top = high, bottom = high - atr_buffer
@@ -94,7 +100,7 @@ def build_supply_demand_zones(pivot_highs, pivot_lows, rows, atr,
     supply_zones = []
     demand_zones = []
 
-    def overlapping(new_poi, zones):
+    def overlapping(new_poi: float, zones: list[dict]) -> bool:
         for z in zones:
             if abs(new_poi - z["poi"]) <= atr_overlap:
                 return True
@@ -125,7 +131,11 @@ def build_supply_demand_zones(pivot_highs, pivot_lows, rows, atr,
     return supply_zones, demand_zones
 
 
-def detect_bos(supply_zones, demand_zones, rows):
+def detect_bos(
+    supply_zones: list[dict],
+    demand_zones: list[dict],
+    rows: list[tuple[float, float, float]],
+) -> tuple[list[dict], list[dict], list[dict]]:
     """
     Break of Structure: when close breaks through a zone, it becomes a BOS line.
     Supply BOS: close >= top (broken upward)
@@ -157,7 +167,10 @@ def detect_bos(supply_zones, demand_zones, rows):
     return supply_zones, demand_zones, bos_levels
 
 
-def determine_structure(swing_highs_classified, swing_lows_classified):
+def determine_structure(
+    swing_highs_classified: list[tuple[int, float, str]],
+    swing_lows_classified: list[tuple[int, float, str]],
+) -> str:
     """
     Overall structure based on last swing labels:
     - Bullish: HH + HL
@@ -179,7 +192,14 @@ def determine_structure(swing_highs_classified, swing_lows_classified):
         return "MIXED"
 
 
-def filter_relevant_zones(supply_zones, demand_zones, bos_levels, curr, atr, max_dist=8):
+def filter_relevant_zones(
+    supply_zones: list[dict],
+    demand_zones: list[dict],
+    bos_levels: list[dict],
+    curr: float,
+    atr: float,
+    max_dist: int = 8,
+) -> tuple[list[dict], list[dict], list[dict]]:
     """
     Filter to relevant zones:
     - Only intact zones (not broken)
@@ -208,7 +228,7 @@ def filter_relevant_zones(supply_zones, demand_zones, bos_levels, curr, atr, max
     return relevant_supply[:4], relevant_demand[:4], recent_bos
 
 
-def run_smc(rows, swing_length=10, box_width=2.5):
+def run_smc(rows: list[tuple[float, float, float]], swing_length: int = 10, box_width: float = 2.5) -> dict | None:
     """
     Main function - run full SMC analysis on a list of (high, low, close) rows.
     Returns dict with all SMC data, or None if insufficient data.
@@ -260,7 +280,7 @@ if __name__ == "__main__":
     import urllib.parse
     import json
 
-    def fetch(symbol, interval="15m", range_="5d"):
+    def fetch(symbol: str, interval: str = "15m", range_: str = "5d") -> list[tuple[float, float, float]]:
         url = (f"https://query1.finance.yahoo.com/v8/finance/chart/"
                f"{urllib.parse.quote(symbol)}?interval={interval}&range={range_}")
         req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})

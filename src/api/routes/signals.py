@@ -8,6 +8,7 @@ from typing import Optional
 from fastapi import APIRouter, HTTPException, Query
 
 from src.db import repository as repo
+from src.security.input_validator import sanitize_string, validate_instrument_key
 
 router = APIRouter(prefix="/api/v1", tags=["signals"])
 
@@ -23,6 +24,18 @@ def list_signals(
     limit: int = Query(100, ge=1, le=500),
 ) -> list[dict]:
     """List signals with optional filters."""
+    try:
+        if instrument:
+            instrument = validate_instrument_key(instrument)
+        if grade:
+            grade = sanitize_string(grade, max_length=5)
+        if timeframe:
+            timeframe = sanitize_string(timeframe, max_length=20)
+        if direction:
+            direction = sanitize_string(direction, max_length=10)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+
     grades = [grade] if grade else None
     signals = repo.get_signals(
         instrument=instrument,
@@ -47,6 +60,10 @@ def list_signals(
 @router.get("/signals/{key}")
 def signal_detail(key: str) -> dict:
     """Full signal detail by instrument key (returns latest signal for that key)."""
+    try:
+        key = validate_instrument_key(key)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
     signals = repo.get_signals(instrument=key, limit=1)
     if not signals:
         raise HTTPException(status_code=404, detail=f"No signals found for {key}")

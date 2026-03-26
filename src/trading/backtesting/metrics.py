@@ -101,7 +101,7 @@ def max_drawdown(equity_curve: List[float]) -> Tuple[float, int, int]:
     return (max_dd, max_dd_peak_idx, max_dd_trough_idx)
 
 
-def win_rate(trades) -> float:
+def win_rate(trades: list) -> float:
     """Win rate as a percentage (0-100).
 
     Args:
@@ -113,7 +113,7 @@ def win_rate(trades) -> float:
     return (winners / len(trades)) * 100
 
 
-def profit_factor(trades) -> float:
+def profit_factor(trades: list) -> float:
     """Gross profit / gross loss. > 1.0 is profitable.
 
     Args:
@@ -128,7 +128,7 @@ def profit_factor(trades) -> float:
     return gross_profit / gross_loss
 
 
-def expectancy(trades) -> float:
+def expectancy(trades: list) -> float:
     """Expected value per trade.
 
     E = (win_rate * avg_win) - (loss_rate * avg_loss)
@@ -154,7 +154,7 @@ def expectancy(trades) -> float:
     return (wr * avg_win) - (lr * avg_loss)
 
 
-def avg_holding_period(trades) -> float:
+def avg_holding_period(trades: list) -> float:
     """Average number of bars a trade is held.
 
     Args:
@@ -206,7 +206,7 @@ def recovery_factor(net_profit: float, max_dd_absolute: float) -> float:
     return net_profit / max_dd_absolute
 
 
-def consecutive_wins(trades) -> int:
+def consecutive_wins(trades: list) -> int:
     """Maximum consecutive winning trades."""
     if not trades:
         return 0
@@ -221,7 +221,7 @@ def consecutive_wins(trades) -> int:
     return max_streak
 
 
-def consecutive_losses(trades) -> int:
+def consecutive_losses(trades: list) -> int:
     """Maximum consecutive losing trades."""
     if not trades:
         return 0
@@ -236,7 +236,7 @@ def consecutive_losses(trades) -> int:
     return max_streak
 
 
-def risk_reward_ratio(trades) -> float:
+def risk_reward_ratio(trades: list) -> float:
     """Average risk:reward ratio achieved across all trades."""
     if not trades:
         return 0.0

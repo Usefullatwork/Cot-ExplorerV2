@@ -17,7 +17,7 @@ import json
 log = logging.getLogger(__name__)
 
 
-def fetch_ohlc(symbol, interval="1d", range_="1y"):
+def fetch_ohlc(symbol: str, interval: str = "1d", range_: str = "1y") -> list[tuple[float, float, float]]:
     """
     Fetch OHLC data from Yahoo Finance.
 
@@ -55,7 +55,7 @@ def fetch_ohlc(symbol, interval="1d", range_="1y"):
         return []
 
 
-def fetch_price_changes(symbol):
+def fetch_price_changes(symbol: str) -> dict | None:
     """
     Fetch current price with 1d/5d/20d changes.
 

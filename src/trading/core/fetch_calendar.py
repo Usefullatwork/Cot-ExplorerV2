@@ -43,7 +43,7 @@ AFFECTED_INSTRUMENTS = {
 }
 
 
-def fetch_calendar():
+def fetch_calendar() -> dict | None:
     """Fetch and parse ForexFactory calendar data."""
     url = "https://nfs.faireconomy.media/ff_calendar_thisweek.json"
     req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
@@ -88,7 +88,7 @@ def fetch_calendar():
     return {"updated": now.isoformat(), "events": events}
 
 
-def main():
+def main() -> None:
     """Fetch calendar and save to disk."""
     result = fetch_calendar()
     if result is None:

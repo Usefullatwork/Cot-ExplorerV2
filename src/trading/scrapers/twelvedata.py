@@ -39,7 +39,7 @@ INTERVAL_MAP = {"1d": "1day", "15m": "15min", "60m": "1h"}
 SIZE_MAP = {"1y": 365, "5d": 500, "60d": 500, "30d": 35}
 
 
-def fetch_ohlc(symbol, interval="1d", outputsize=365):
+def fetch_ohlc(symbol: str, interval: str = "1d", outputsize: int = 365) -> list[tuple[float, float, float]]:
     """
     Fetch OHLC from Twelvedata.
 

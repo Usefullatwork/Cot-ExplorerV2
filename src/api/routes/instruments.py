@@ -7,7 +7,9 @@ from pathlib import Path
 import yaml
 from fastapi import APIRouter, HTTPException
 
+from src.api.middleware.cache import instruments_cache
 from src.db import repository as repo
+from src.security.input_validator import validate_instrument_key
 
 router = APIRouter(prefix="/api/v1", tags=["instruments"])
 
@@ -30,12 +32,27 @@ def _load_instruments() -> list[dict]:
 @router.get("/instruments")
 def list_instruments() -> list[dict]:
     """List all 12 tracked instruments."""
-    return _load_instruments()
+    cached = instruments_cache.get("all_instruments")
+    if cached is not None:
+        return cached
+    result = _load_instruments()
+    instruments_cache.set("all_instruments", result)
+    return result
 
 
 @router.get("/instruments/{key}")
 def instrument_detail(key: str) -> dict:
     """Single instrument detail with latest price from the database."""
+    try:
+        key = validate_instrument_key(key)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+
+    cache_key = f"instrument_detail:{key}"
+    cached = instruments_cache.get(cache_key)
+    if cached is not None:
+        return cached
+
     instruments = _load_instruments()
     match = next((i for i in instruments if i["key"] == key), None)
     if not match:
@@ -58,4 +75,5 @@ def instrument_detail(key: str) -> dict:
     else:
         match = {**match, "current_price": None}
 
+    instruments_cache.set(cache_key, match)
     return match
