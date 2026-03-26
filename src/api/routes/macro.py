@@ -40,7 +40,7 @@ def macro_panel() -> dict:
 
     macro_path = _DATA_DIR / "macro" / "latest.json"
     if macro_path.exists():
-        with open(macro_path) as f:
+        with open(macro_path, encoding="utf-8") as f:
             result = json.load(f)
         macro_cache.set("macro_panel", result)
         return result
@@ -69,7 +69,7 @@ def macro_indicators() -> dict:
     else:
         macro_path = _DATA_DIR / "macro" / "latest.json"
         if macro_path.exists():
-            with open(macro_path) as f:
+            with open(macro_path, encoding="utf-8") as f:
                 prices = json.load(f).get("prices", {})
         else:
             return {}

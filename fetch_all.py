@@ -467,7 +467,7 @@ def main():
         "calendar": calendar_events,
     }
 
-    with open(OUT,"w") as f:
+    with open(OUT, "w", encoding="utf-8") as f:
         json.dump(macro, f, ensure_ascii=False, indent=2)
     log.info(f"\nOK -> {OUT}  ({len(levels)} instruments)")
     if conflicts:
