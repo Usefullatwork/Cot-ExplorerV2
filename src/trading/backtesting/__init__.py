@@ -31,11 +31,12 @@ Usage:
     results = engine.run()
 """
 
-from . import metrics, reports
+from . import metrics, monte_carlo, reports
 from .data_loader import DataLoader
 from .engine import BacktestEngine, Strategy
 from .indicators import Indicators
 from .models import Bar, Portfolio, Trade
+from .monte_carlo import MonteCarloResult, run_monte_carlo
 from .strategies import (
     COTMomentumStrategy,
     MacroRegimeStrategy,
@@ -52,7 +53,10 @@ __all__ = [
     "Indicators",
     "Strategy",
     "metrics",
+    "monte_carlo",
     "reports",
+    "MonteCarloResult",
+    "run_monte_carlo",
     "COTMomentumStrategy",
     "SMCConfluenceStrategy",
     "MacroRegimeStrategy",

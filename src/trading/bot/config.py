@@ -90,3 +90,46 @@ LOT_PARAMS: dict[str, LotParams] = {
     "SPX": LotParams(0.01, 0.01, 0.1, 1.0, "index"),
     "NAS100": LotParams(0.01, 0.01, 0.1, 1.0, "index"),
 }
+
+
+# ---------------------------------------------------------------------------
+# Trading sessions (CET hours)
+# ---------------------------------------------------------------------------
+SESSIONS: dict[str, tuple[int, int]] = {
+    "london": (7, 12),        # 07:00-12:00 CET
+    "ny_overlap": (13, 17),   # 13:00-17:00 CET
+    "ny": (14, 21),           # 14:00-21:00 CET
+    "asian": (23, 7),         # 23:00-07:00 CET (wraps midnight)
+}
+
+# Which sessions are allowed for each instrument class
+SESSION_RULES: dict[str, list[str]] = {
+    "A": ["london", "ny_overlap"],     # Forex: London + NY Overlap only
+    "B": ["london", "ny"],             # Commodities: London + NY
+    "C": ["ny"],                       # Indices: NY session only
+}
+
+
+# ---------------------------------------------------------------------------
+# Correlated pairs (don't hold both simultaneously)
+# ---------------------------------------------------------------------------
+CORRELATED_PAIRS: dict[str, list[str]] = {
+    "EURUSD": ["GBPUSD"],
+    "GBPUSD": ["EURUSD"],
+    "Gold": ["Silver"],
+    "Silver": ["Gold"],
+    "Brent": ["WTI"],
+    "WTI": ["Brent"],
+    "SPX": ["NAS100"],
+    "NAS100": ["SPX"],
+}
+
+
+# ---------------------------------------------------------------------------
+# Default spread in pips per instrument
+# ---------------------------------------------------------------------------
+DEFAULT_SPREADS: dict[str, float] = {
+    "EURUSD": 1.2, "USDJPY": 1.4, "GBPUSD": 1.8, "AUDUSD": 1.6,
+    "Gold": 3.0, "Silver": 3.5, "Brent": 4.0, "WTI": 4.0,
+    "SPX": 5.0, "NAS100": 8.0, "DXY": 3.0, "VIX": 5.0,
+}

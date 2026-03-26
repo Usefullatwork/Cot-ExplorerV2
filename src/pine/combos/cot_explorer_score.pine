@@ -69,6 +69,9 @@ in_cot_strong      = input.bool(false, "COT sterk (>10%)",        group=grp_scor
 in_no_event_risk   = input.bool(true,  "Ingen event-risiko",      group=grp_score)
 in_news_confirms   = input.bool(false, "Nyheter bekrefter",       group=grp_score)
 in_fund_confirms   = input.bool(false, "Fundamental bekrefter",   group=grp_score)
+in_ob_confirms     = input.bool(false, "Ordre-blokk bekrefter",   group=grp_score)
+in_fvg_near        = input.bool(false, "FVG naerhet",             group=grp_score)
+in_corr_clear      = input.bool(false, "Korrelasjon klar",        group=grp_score)
 
 // Auto-beregnede kriterier
 atr14 = ta.atr(14)
@@ -117,32 +120,38 @@ lh = not na(c_sh1) and not na(p_sh1) and c_sh1 < p_sh1
 ll = not na(c_sl1) and not na(p_sl1) and c_sl1 < p_sl1
 c12 = is_long ? (hh and hl) : (lh and ll)
 
-// Total score
+// Riktig sesjon (auto-deteksjon basert pa time i CET)
+sess_hour = hour(time, "Europe/Berlin")
+c15 = (sess_hour >= 7 and sess_hour < 12) or (sess_hour >= 13 and sess_hour < 17)
+
+// Total score (16 kriterier)
 score = (c1 ? 1 : 0) + (c2 ? 1 : 0) +
         (in_cot_confirms ? 1 : 0) + (in_cot_strong ? 1 : 0) +
         (c5 ? 1 : 0) + (c6 ? 1 : 0) + (c7 ? 1 : 0) +
         (in_no_event_risk ? 1 : 0) + (in_news_confirms ? 1 : 0) + (in_fund_confirms ? 1 : 0) +
-        (c11 ? 1 : 0) + (c12 ? 1 : 0)
+        (c11 ? 1 : 0) + (c12 ? 1 : 0) +
+        (in_ob_confirms ? 1 : 0) + (in_fvg_near ? 1 : 0) +
+        (c15 ? 1 : 0) + (in_corr_clear ? 1 : 0)
 
-grade = score >= 11 ? "A+" : score >= 9 ? "A" : score >= 6 ? "B" : "C"
-grade_col = score >= 11 ? C_GREEN : score >= 9 ? C_YELLOW : score >= 6 ? C_BLUE : C_RED
+grade = score >= 14 ? "A+" : score >= 12 ? "A" : score >= 8 ? "B" : "C"
+grade_col = score >= 14 ? C_GREEN : score >= 12 ? C_YELLOW : score >= 8 ? C_BLUE : C_RED
 
 // ══════════════════════════════════════════════════════════════════════════════
 // PLOTTING
 // ══════════════════════════════════════════════════════════════════════════════
 
-// Vi bruker to y-akser logisk: score 0-12 og COT netto (skalert)
+// Vi bruker to y-akser logisk: score 0-16 og COT netto (skalert)
 // Score-histogram (primaer)
 plot(score, "Score", color=grade_col, style=plot.style_histogram, linewidth=4)
 
 // Terskellinjer
-hline(11, "A+",  color=color.new(C_GREEN, 60),  linestyle=hline.style_dotted)
-hline(9,  "A",   color=color.new(C_YELLOW, 60), linestyle=hline.style_dotted)
-hline(6,  "B",   color=color.new(C_BLUE, 60),   linestyle=hline.style_dotted)
+hline(14, "A+",  color=color.new(C_GREEN, 60),  linestyle=hline.style_dotted)
+hline(12, "A",   color=color.new(C_YELLOW, 60), linestyle=hline.style_dotted)
+hline(8,  "B",   color=color.new(C_BLUE, 60),   linestyle=hline.style_dotted)
 
-// COT netto normalisert til 0-12 skala for visuell sammenligning
+// COT netto normalisert til 0-16 skala for visuell sammenligning
 spec_max = ta.highest(math.abs(spec_net), lookback)
-cot_normalized = spec_max != 0 ? (spec_net / spec_max) * 6 + 6 : 6.0
+cot_normalized = spec_max != 0 ? (spec_net / spec_max) * 8 + 8 : 8.0
 cot_color = spec_net >= 0 ? color.new(C_GREEN, 60) : color.new(C_RED, 60)
 plot(show_cot ? cot_normalized : na, "COT Netto (normalisert)", color=cot_color, linewidth=1, style=plot.style_line)
 
@@ -153,11 +162,11 @@ bgcolor(percentile > 90 ? color.new(C_GREEN, 90) : percentile < 10 ? color.new(C
 // INFOTABELL (ovre hoyre)
 // ══════════════════════════════════════════════════════════════════════════════
 if barstate.islast
-    var table st = table.new(position.top_right, 2, 8, bgcolor=C_BG, border_width=1, border_color=color.new(C_TEXT, 70))
+    var table st = table.new(position.top_right, 2, 12, bgcolor=C_BG, border_width=1, border_color=color.new(C_TEXT, 70))
 
     // Score
     table.cell(st, 0, 0, "Score",    text_color=C_BLUE, text_size=size.small, text_halign=text.align_left)
-    table.cell(st, 1, 0, grade + " (" + str.tostring(score) + "/12)", text_color=grade_col, text_size=size.small)
+    table.cell(st, 1, 0, grade + " (" + str.tostring(score) + "/16)", text_color=grade_col, text_size=size.small)
 
     // Retning
     table.cell(st, 0, 1, "Retning",  text_color=C_TEXT, text_size=size.tiny, text_halign=text.align_left)
@@ -179,13 +188,27 @@ if barstate.islast
     table.cell(st, 1, 5, mom_str, text_color=m_col, text_size=size.tiny)
 
     // Kriterier (kompakt)
-    auto_hits = (c1 ? 1 : 0) + (c2 ? 1 : 0) + (c5 ? 1 : 0) + (c6 ? 1 : 0) + (c7 ? 1 : 0) + (c11 ? 1 : 0) + (c12 ? 1 : 0)
-    manual_hits = (in_cot_confirms ? 1 : 0) + (in_cot_strong ? 1 : 0) + (in_no_event_risk ? 1 : 0) + (in_news_confirms ? 1 : 0) + (in_fund_confirms ? 1 : 0)
+    auto_hits = (c1 ? 1 : 0) + (c2 ? 1 : 0) + (c5 ? 1 : 0) + (c6 ? 1 : 0) + (c7 ? 1 : 0) + (c11 ? 1 : 0) + (c12 ? 1 : 0) + (c15 ? 1 : 0)
+    manual_hits = (in_cot_confirms ? 1 : 0) + (in_cot_strong ? 1 : 0) + (in_no_event_risk ? 1 : 0) + (in_news_confirms ? 1 : 0) + (in_fund_confirms ? 1 : 0) + (in_ob_confirms ? 1 : 0) + (in_fvg_near ? 1 : 0) + (in_corr_clear ? 1 : 0)
     table.cell(st, 0, 6, "Auto",    text_color=C_TEXT, text_size=size.tiny, text_halign=text.align_left)
-    table.cell(st, 1, 6, str.tostring(auto_hits) + "/7", text_color=auto_hits >= 5 ? C_GREEN : auto_hits >= 3 ? C_YELLOW : C_RED, text_size=size.tiny)
+    table.cell(st, 1, 6, str.tostring(auto_hits) + "/8", text_color=auto_hits >= 6 ? C_GREEN : auto_hits >= 4 ? C_YELLOW : C_RED, text_size=size.tiny)
 
     table.cell(st, 0, 7, "Manuell", text_color=C_TEXT, text_size=size.tiny, text_halign=text.align_left)
-    table.cell(st, 1, 7, str.tostring(manual_hits) + "/5", text_color=manual_hits >= 4 ? C_GREEN : manual_hits >= 2 ? C_YELLOW : C_RED, text_size=size.tiny)
+    table.cell(st, 1, 7, str.tostring(manual_hits) + "/8", text_color=manual_hits >= 6 ? C_GREEN : manual_hits >= 3 ? C_YELLOW : C_RED, text_size=size.tiny)
+
+    // Nye kriterier (rad 8-11)
+    table.cell(st, 0, 8,  "Ordre-blokk",     text_color=C_TEXT, text_size=size.tiny, text_halign=text.align_left)
+    table.cell(st, 1, 8,  in_ob_confirms ? "JA" : "NEI", text_color=in_ob_confirms ? C_GREEN : color.gray, text_size=size.tiny)
+
+    table.cell(st, 0, 9,  "FVG naerhet",      text_color=C_TEXT, text_size=size.tiny, text_halign=text.align_left)
+    table.cell(st, 1, 9,  in_fvg_near ? "JA" : "NEI", text_color=in_fvg_near ? C_GREEN : color.gray, text_size=size.tiny)
+
+    sess_str = c15 ? "AKTIV" : "UTENFOR"
+    table.cell(st, 0, 10, "Riktig sesjon",    text_color=C_TEXT, text_size=size.tiny, text_halign=text.align_left)
+    table.cell(st, 1, 10, sess_str, text_color=c15 ? C_GREEN : C_YELLOW, text_size=size.tiny)
+
+    table.cell(st, 0, 11, "Korrelasjon klar", text_color=C_TEXT, text_size=size.tiny, text_halign=text.align_left)
+    table.cell(st, 1, 11, in_corr_clear ? "JA" : "NEI", text_color=in_corr_clear ? C_GREEN : color.gray, text_size=size.tiny)
 
 // ══════════════════════════════════════════════════════════════════════════════
 // ALERTS — Automated trading signals via JSON payload
@@ -204,22 +227,22 @@ float ask = close + atr14 * 0.01
 string dir_str = is_long ? "bull" : "bear"
 
 if enable_alerts
-    // ── Grade A (score crosses UP through 9) — LONG signal ───────────────
-    if ta.crossover(score_f, 9.0) and is_long
+    // ── Grade A (score crosses UP through 12) — LONG signal ──────────────
+    if ta.crossover(score_f, 12.0) and is_long
         alert('{"source":"tradingview","indicator":"ce_score","instrument":"' + syminfo.ticker + '","direction":"bull","score":' + str.tostring(score) + ',"grade":"A","entry":' + str.tostring(close) + ',"timeframe":"' + timeframe.period + '","bid":' + str.tostring(bid, "#0.00000") + ',"ask":' + str.tostring(ask, "#0.00000") + ',"momentum":"' + mom_str + '","cot_percentile":' + str.tostring(percentile, "#0") + ',"spec_net":' + str.tostring(spec_net, "#0") + '}', alert.freq_once_per_bar)
 
-    // ── Grade A (score crosses UP through 9) — SHORT signal ──────────────
-    if ta.crossover(score_f, 9.0) and not is_long
+    // ── Grade A (score crosses UP through 12) — SHORT signal ─────────────
+    if ta.crossover(score_f, 12.0) and not is_long
         alert('{"source":"tradingview","indicator":"ce_score","instrument":"' + syminfo.ticker + '","direction":"bear","score":' + str.tostring(score) + ',"grade":"A","entry":' + str.tostring(close) + ',"timeframe":"' + timeframe.period + '","bid":' + str.tostring(bid, "#0.00000") + ',"ask":' + str.tostring(ask, "#0.00000") + ',"momentum":"' + mom_str + '","cot_percentile":' + str.tostring(percentile, "#0") + ',"spec_net":' + str.tostring(spec_net, "#0") + '}', alert.freq_once_per_bar)
 
-    // ── Grade A+ (score crosses UP through 11) — strong LONG signal ──────
-    if ta.crossover(score_f, 11.0) and is_long
+    // ── Grade A+ (score crosses UP through 14) — strong LONG signal ──────
+    if ta.crossover(score_f, 14.0) and is_long
         alert('{"source":"tradingview","indicator":"ce_score","instrument":"' + syminfo.ticker + '","direction":"bull","score":' + str.tostring(score) + ',"grade":"A+","entry":' + str.tostring(close) + ',"timeframe":"' + timeframe.period + '","bid":' + str.tostring(bid, "#0.00000") + ',"ask":' + str.tostring(ask, "#0.00000") + ',"momentum":"' + mom_str + '","cot_percentile":' + str.tostring(percentile, "#0") + ',"spec_net":' + str.tostring(spec_net, "#0") + ',"strength":"strong"}', alert.freq_once_per_bar)
 
-    // ── Grade A+ (score crosses UP through 11) — strong SHORT signal ─────
-    if ta.crossover(score_f, 11.0) and not is_long
+    // ── Grade A+ (score crosses UP through 14) — strong SHORT signal ─────
+    if ta.crossover(score_f, 14.0) and not is_long
         alert('{"source":"tradingview","indicator":"ce_score","instrument":"' + syminfo.ticker + '","direction":"bear","score":' + str.tostring(score) + ',"grade":"A+","entry":' + str.tostring(close) + ',"timeframe":"' + timeframe.period + '","bid":' + str.tostring(bid, "#0.00000") + ',"ask":' + str.tostring(ask, "#0.00000") + ',"momentum":"' + mom_str + '","cot_percentile":' + str.tostring(percentile, "#0") + ',"spec_net":' + str.tostring(spec_net, "#0") + ',"strength":"strong"}', alert.freq_once_per_bar)
 
-    // ── Score drops below 6 (grade B threshold) — watchlist/exit alert ────
-    if ta.crossunder(score_f, 6.0)
-        alert('{"source":"tradingview","indicator":"ce_score","instrument":"' + syminfo.ticker + '","action":"exit_watchlist","score":' + str.tostring(score) + ',"grade":"' + grade + '","price":' + str.tostring(close) + ',"timeframe":"' + timeframe.period + '","direction":"' + dir_str + '","momentum":"' + mom_str + '","reason":"score_degraded_below_B"}', alert.freq_once_per_bar)
+    // ── Score drops below 8 (grade B threshold) — watchlist/exit alert ────
+    if ta.crossunder(score_f, 8.0)
+        alert('{"source":"tradingview","indicator":"ce_score","instrument":"' + syminfo.ticker + '","action":"exit_watchlist","score":' + str.tostring(score) + ',"grade":"' + grade + '","price":' + str.tostring(close) + ',"timeframe":"' + timeframe.period + '","direction":"' + dir_str + '","momentum":"' + mom_str + '","reason":"score_degraded_below_B_8"}', alert.freq_once_per_bar)

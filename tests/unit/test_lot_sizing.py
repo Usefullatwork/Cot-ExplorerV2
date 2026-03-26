@@ -7,11 +7,13 @@ import pytest
 from src.core.enums import Grade, VixRegime
 from src.trading.bot.lot_sizing import (
     _round_to_step,
+    adjust_for_drawdown,
+    adjust_for_streak,
     calculate_lot_size,
     classify_vix,
+    deduct_spread,
     get_tier_multiplier,
 )
-
 
 # ===== Tier multiplier matrix =================================================
 
@@ -195,3 +197,155 @@ class TestRoundToStep:
 
     def test_negative_step_returns_value(self):
         assert _round_to_step(0.127, -0.01) == pytest.approx(0.127)
+
+
+# ===== adjust_for_drawdown ===================================================
+
+
+class TestAdjustForDrawdown:
+    """Drawdown-based risk reduction."""
+
+    def test_no_drawdown(self) -> None:
+        assert adjust_for_drawdown(0.01, 0.0) == 0.01
+
+    def test_small_drawdown(self) -> None:
+        assert adjust_for_drawdown(0.01, 5.0) == 0.01
+
+    def test_moderate_drawdown(self) -> None:
+        assert adjust_for_drawdown(0.01, 15.0) == pytest.approx(0.005)
+
+    def test_boundary_10(self) -> None:
+        assert adjust_for_drawdown(0.01, 10.0) == pytest.approx(0.005)
+
+    def test_severe_drawdown(self) -> None:
+        assert adjust_for_drawdown(0.01, 25.0) == pytest.approx(0.0025)
+
+    def test_boundary_20(self) -> None:
+        assert adjust_for_drawdown(0.01, 20.0) == pytest.approx(0.0025)
+
+
+# ===== adjust_for_streak =====================================================
+
+
+class TestAdjustForStreak:
+    """Anti-martingale streak multiplier."""
+
+    def test_no_streak(self) -> None:
+        assert adjust_for_streak(1.0, 0, 0) == 1.0
+
+    def test_one_win(self) -> None:
+        assert adjust_for_streak(1.0, 1, 0) == 1.0
+
+    def test_two_wins_boost(self) -> None:
+        assert adjust_for_streak(1.0, 2, 0) == pytest.approx(1.1)
+
+    def test_many_wins_capped(self) -> None:
+        assert adjust_for_streak(1.0, 10, 0) == pytest.approx(1.1)
+
+    def test_cap_at_1_2(self) -> None:
+        assert adjust_for_streak(1.15, 3, 0) == 1.2
+
+    def test_one_loss(self) -> None:
+        assert adjust_for_streak(1.0, 0, 1) == 0.75
+
+    def test_two_losses(self) -> None:
+        assert adjust_for_streak(1.0, 0, 2) == 0.5
+
+    def test_many_losses(self) -> None:
+        assert adjust_for_streak(1.0, 0, 5) == 0.5
+
+    def test_losses_override_wins(self) -> None:
+        assert adjust_for_streak(1.0, 3, 2) == 0.5
+
+
+# ===== deduct_spread ==========================================================
+
+
+class TestDeductSpread:
+    """Spread cost deduction from risk budget."""
+
+    def test_normal_deduction(self) -> None:
+        assert deduct_spread(100.0, 2.0, 10.0) == 80.0
+
+    def test_zero_spread(self) -> None:
+        assert deduct_spread(100.0, 0.0, 10.0) == 100.0
+
+    def test_spread_exceeds_risk(self) -> None:
+        assert deduct_spread(10.0, 5.0, 10.0) == 0.0
+
+    def test_exact_match(self) -> None:
+        assert deduct_spread(50.0, 5.0, 10.0) == 0.0
+
+
+# ===== calculate_lot_size with new params =====================================
+
+
+class TestCalculateLotSizeEnhanced:
+    """Lot sizing with drawdown, streak, and spread adjustments."""
+
+    def test_drawdown_reduces_size(self) -> None:
+        lots_normal = calculate_lot_size(10_000, 0.01, 1.1050, 1.1000, 15.0, "A+", "EURUSD")
+        lots_dd = calculate_lot_size(
+            10_000, 0.01, 1.1050, 1.1000, 15.0, "A+", "EURUSD", drawdown_pct=15.0,
+        )
+        assert lots_dd < lots_normal
+
+    def test_severe_drawdown_reduces_more(self) -> None:
+        lots_10 = calculate_lot_size(
+            10_000, 0.01, 1.1050, 1.1000, 15.0, "A+", "EURUSD", drawdown_pct=12.0,
+        )
+        lots_25 = calculate_lot_size(
+            10_000, 0.01, 1.1050, 1.1000, 15.0, "A+", "EURUSD", drawdown_pct=25.0,
+        )
+        assert lots_25 <= lots_10
+
+    def test_loss_streak_reduces_size(self) -> None:
+        lots_normal = calculate_lot_size(10_000, 0.01, 1.1050, 1.1000, 15.0, "A+", "EURUSD")
+        lots_loss = calculate_lot_size(
+            10_000, 0.01, 1.1050, 1.1000, 15.0, "A+", "EURUSD", consecutive_losses=2,
+        )
+        assert lots_loss < lots_normal
+
+    def test_win_streak_increases_size(self) -> None:
+        lots_normal = calculate_lot_size(
+            50_000, 0.01, 1.1050, 1.1000, 15.0, "A+", "EURUSD",
+        )
+        lots_win = calculate_lot_size(
+            50_000, 0.01, 1.1050, 1.1000, 15.0, "A+", "EURUSD", consecutive_wins=3,
+        )
+        assert lots_win >= lots_normal
+
+    def test_spread_reduces_size(self) -> None:
+        lots_normal = calculate_lot_size(10_000, 0.01, 1.1050, 1.1000, 15.0, "A+", "EURUSD")
+        lots_spread = calculate_lot_size(
+            10_000, 0.01, 1.1050, 1.1000, 15.0, "A+", "EURUSD", spread_pips=2.0,
+        )
+        assert lots_spread < lots_normal
+
+    def test_huge_spread_returns_zero(self) -> None:
+        lots = calculate_lot_size(
+            1_000, 0.001, 1.1050, 1.1000, 15.0, "B", "EURUSD", spread_pips=100.0,
+        )
+        assert lots == 0.0
+
+    def test_all_adjustments_combined(self) -> None:
+        lots_base = calculate_lot_size(10_000, 0.01, 1.1050, 1.1000, 15.0, "A+", "EURUSD")
+        lots_all = calculate_lot_size(
+            10_000, 0.01, 1.1050, 1.1000, 15.0, "A+", "EURUSD",
+            drawdown_pct=12.0,
+            consecutive_losses=1,
+            spread_pips=1.0,
+        )
+        assert lots_all < lots_base
+
+    def test_defaults_match_original(self) -> None:
+        """With all new params at defaults, result matches original formula."""
+        lots = calculate_lot_size(10_000, 0.01, 1.1050, 1.1000, 15.0, "A+", "EURUSD")
+        lots_explicit = calculate_lot_size(
+            10_000, 0.01, 1.1050, 1.1000, 15.0, "A+", "EURUSD",
+            drawdown_pct=0.0,
+            consecutive_wins=0,
+            consecutive_losses=0,
+            spread_pips=0.0,
+        )
+        assert lots == lots_explicit

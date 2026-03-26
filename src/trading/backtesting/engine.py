@@ -59,6 +59,18 @@ class Strategy:
 # ---------------------------------------------------------------------------
 
 
+# Default pip sizes per instrument (override via pip_size param)
+DEFAULT_PIP_SIZES: Dict[str, float] = {
+    "eurusd": 0.0001, "gbpusd": 0.0001, "audusd": 0.0001,
+    "nzdusd": 0.0001, "usdcad": 0.0001, "usdchf": 0.0001,
+    "eurgbp": 0.0001, "eurjpy": 0.01, "gbpjpy": 0.01,
+    "usdjpy": 0.01, "audjpy": 0.01, "nzdjpy": 0.01,
+    "gold": 0.1, "silver": 0.01, "spx": 0.1, "sp500": 0.1,
+    "nasdaq": 0.1, "dax": 0.1, "oil": 0.01, "copper": 0.01,
+    "natgas": 0.001, "btcusd": 1.0, "ethusd": 0.01,
+}
+
+
 class BacktestEngine:
     """Main backtesting engine. Orchestrates data loading, bar iteration,
     strategy execution, and report generation."""
@@ -72,6 +84,10 @@ class BacktestEngine:
         end_date: Optional[str] = None,
         initial_capital: float = 100000.0,
         risk_per_trade: float = 0.01,
+        slippage_pips: float = 0.0,
+        commission_pips: float = 0.0,
+        spread_pips: float = 0.0,
+        pip_size: Optional[Dict[str, float]] = None,
     ):
         self.strategy = strategy
         self.data_dir = data_dir
@@ -81,6 +97,12 @@ class BacktestEngine:
         self.initial_capital = initial_capital
         self.risk_per_trade = risk_per_trade
 
+        # Trading cost parameters (in pips)
+        self.slippage_pips = slippage_pips
+        self.commission_pips = commission_pips
+        self.spread_pips = spread_pips
+        self._pip_sizes: Dict[str, float] = {**DEFAULT_PIP_SIZES, **(pip_size or {})}
+
         self.loader = DataLoader(data_dir)
         self.portfolio = Portfolio(initial_capital)
         self.indicators = Indicators()
@@ -89,6 +111,25 @@ class BacktestEngine:
         self._all_bars: Dict[str, List[Bar]] = {}
         self._all_dates: List[str] = []
         self._current_prices: Dict[str, float] = {}
+
+    def _get_pip_size(self, instrument: str) -> float:
+        """Return pip size for an instrument. Falls back to 0.0001."""
+        return self._pip_sizes.get(instrument.lower(), 0.0001)
+
+    def _entry_cost(self, instrument: str) -> float:
+        """Total entry cost in price units (spread + slippage)."""
+        ps = self._get_pip_size(instrument)
+        return (self.spread_pips + self.slippage_pips) * ps
+
+    def _exit_cost(self, instrument: str) -> float:
+        """Total exit cost in price units (slippage only -- spread paid at entry)."""
+        ps = self._get_pip_size(instrument)
+        return self.slippage_pips * ps
+
+    def _commission_cost(self, instrument: str, size: float) -> float:
+        """Commission cost in currency for a trade."""
+        ps = self._get_pip_size(instrument)
+        return self.commission_pips * ps * size
 
     def load_data(self):
         """Load all instrument data and build date index."""
@@ -142,15 +183,27 @@ class BacktestEngine:
             # Record equity
             self.portfolio.record_equity(date, self._current_prices)
 
-        # Close remaining positions at last known prices
+        # Close remaining positions at last known prices (with exit costs)
         if self._all_dates:
             last_date = self._all_dates[-1]
-            self.portfolio.close_all(self._current_prices, last_date)
+            for trade_id in list(self.portfolio.open_trades.keys()):
+                trade = self.portfolio.open_trades[trade_id]
+                price = self._current_prices.get(trade.instrument)
+                if price is not None:
+                    exit_slip = self._exit_cost(trade.instrument)
+                    if trade.direction == "long":
+                        price = price - exit_slip
+                    else:
+                        price = price + exit_slip
+                    commission = self._commission_cost(trade.instrument, trade.size)
+                    self.portfolio.close_trade(trade_id, price, last_date, "end_of_backtest")
+                    self.portfolio.cash -= commission
 
         return self.report()
 
     def _process_exits(self, date: str, bars_by_inst: Dict[str, List[Bar]]):
-        """Check stop loss and take profit for all open trades."""
+        """Check stop loss and take profit for all open trades.
+        Applies exit slippage and commission costs."""
         for trade_id in list(self.portfolio.open_trades.keys()):
             trade = self.portfolio.open_trades[trade_id]
             inst_bars = bars_by_inst.get(trade.instrument, [])
@@ -162,17 +215,32 @@ class BacktestEngine:
 
             h = current_bar.high
             lo = current_bar.low
+            exit_slip = self._exit_cost(trade.instrument)
 
             # Stop loss hit first (conservative: assume worst case)
             if trade.check_stop_loss(h, lo):
-                exit_price = trade.stop_loss
+                # Slippage worsens exit: long fills lower, short fills higher
+                if trade.direction == "long":
+                    exit_price = trade.stop_loss - exit_slip
+                else:
+                    exit_price = trade.stop_loss + exit_slip
+                commission = self._commission_cost(trade.instrument, trade.size)
                 self.portfolio.close_trade(trade_id, exit_price, date, "stop_loss")
+                self.portfolio.cash -= commission
             elif trade.check_take_profit(h, lo):
-                exit_price = trade.take_profit
+                # Slippage worsens exit: long fills lower, short fills higher
+                if trade.direction == "long":
+                    exit_price = trade.take_profit - exit_slip
+                else:
+                    exit_price = trade.take_profit + exit_slip
+                commission = self._commission_cost(trade.instrument, trade.size)
                 self.portfolio.close_trade(trade_id, exit_price, date, "take_profit")
+                self.portfolio.cash -= commission
 
     def _process_actions(self, date: str, actions: List[Dict]):
-        """Execute trade actions from the strategy."""
+        """Execute trade actions from the strategy.
+        Applies spread + slippage on entry, slippage on manual close,
+        and commission on both entry and exit."""
         for action in actions:
             act_type = action.get("action")
 
@@ -183,6 +251,13 @@ class BacktestEngine:
                 instrument = action["instrument"]
                 direction = action["direction"]
                 reason = action.get("reason", "")
+
+                # Apply spread + slippage to entry price (unfavorable direction)
+                entry_adj = self._entry_cost(instrument)
+                if direction == "long":
+                    entry_price = entry_price + entry_adj
+                else:
+                    entry_price = entry_price - entry_adj
 
                 # Calculate size from risk if stop_loss provided
                 size = action.get("size", 1.0)
@@ -202,14 +277,24 @@ class BacktestEngine:
                     reason=reason,
                 )
                 self.portfolio.open_trade(trade)
+                # Deduct entry commission from cash
+                self.portfolio.cash -= self._commission_cost(instrument, size)
 
             elif act_type == "close":
                 trade_id = action["trade_id"]
-                price = self._current_prices.get(
-                    self.portfolio.open_trades.get(trade_id, Trade("", "", 0, "")).instrument,
-                    0,
-                )
+                trade_obj = self.portfolio.open_trades.get(trade_id)
+                if trade_obj is None:
+                    continue
+                price = self._current_prices.get(trade_obj.instrument, 0)
+                exit_slip = self._exit_cost(trade_obj.instrument)
+                # Slippage worsens exit
+                if trade_obj.direction == "long":
+                    price = price - exit_slip
+                else:
+                    price = price + exit_slip
+                commission = self._commission_cost(trade_obj.instrument, trade_obj.size)
                 self.portfolio.close_trade(trade_id, price, date, action.get("reason", "manual_close"))
+                self.portfolio.cash -= commission
 
     def report(self) -> Dict:
         """Generate full performance report."""
@@ -268,6 +353,11 @@ class BacktestEngine:
                 )
                 if eq_values and max_dd
                 else 0,
+            },
+            "costs": {
+                "slippage_pips": self.slippage_pips,
+                "commission_pips": self.commission_pips,
+                "spread_pips": self.spread_pips,
             },
             "equity_curve": equity,
             "trade_log": trades_list,

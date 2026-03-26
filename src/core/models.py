@@ -57,8 +57,14 @@ class ScoreDetail(BaseModel):
 
 
 class ScoringInput(BaseModel):
-    """All boolean inputs for confluence scoring."""
+    """All inputs for 16-point confluence scoring.
 
+    The first 12 boolean fields are the original criteria.
+    Fields 13-16 use richer types and are resolved by helper functions
+    in ``src.analysis.scoring``.
+    """
+
+    # --- Original 12 boolean criteria ---
     above_sma200: bool
     momentum_confirms: bool
     cot_confirms: bool
@@ -71,6 +77,17 @@ class ScoringInput(BaseModel):
     fund_confirms: bool
     bos_confirms: bool
     smc_struct_confirms: bool
+
+    # --- New institutional-grade factors (13-16) ---
+    direction: str = "bull"
+    current_price: float = 0.0
+    atr: float = 0.0
+    order_blocks: list[dict] = Field(default_factory=list)
+    fvgs: list[dict] = Field(default_factory=list)
+    current_hour_cet: int = 12
+    instrument_class: str = "A"
+    instrument: str = ""
+    open_signals: list[dict] = Field(default_factory=list)
 
 
 class ScoringResult(BaseModel):

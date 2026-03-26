@@ -1,0 +1,161 @@
+// =============================================================================
+// FVG Detector — Fair Value Gap-identifikasjon med mitigering
+// Finner bullish/bearish FVG-er, markerer mitigerte gaps, alert pa nye
+// =============================================================================
+//@version=6
+indicator("COT Explorer: FVG Detector", shorttitle="FVG", overlay=true, max_boxes_count=50, max_labels_count=20)
+
+// ── Fargepalett (mork tema) ─────────────────────────────────────────────────
+var color C_GREEN  = #3fb950
+var color C_RED    = #f85149
+var color C_YELLOW = #d29922
+var color C_BLUE   = #58a6ff
+var color C_BG     = #161b22
+var color C_TEXT   = #c9d1d9
+
+var color C_BULL_FVG     = color.new(C_BLUE, 80)
+var color C_BULL_FVG_BRD = color.new(C_BLUE, 50)
+var color C_BEAR_FVG     = color.new(#d29922, 80)
+var color C_BEAR_FVG_BRD = color.new(#d29922, 50)
+var color C_MITIGATED    = color.new(color.gray, 90)
+var color C_MITIGATED_BRD = color.new(color.gray, 70)
+
+// ── Inputs ──────────────────────────────────────────────────────────────────
+grp_fvg = "FVG"
+show_bullish  = input.bool(true,  "Vis Bullish FVG",       group=grp_fvg)
+show_bearish  = input.bool(true,  "Vis Bearish FVG",       group=grp_fvg)
+fvg_min_size  = input.float(0.5,  "Min FVG storrelse (ATR)", group=grp_fvg, minval=0.1, maxval=3.0, step=0.1)
+max_fvgs      = input.int(10,     "Maks FVG vist",          group=grp_fvg, minval=1, maxval=25)
+show_labels   = input.bool(true,  "Vis labels",             group=grp_fvg)
+show_mitigated = input.bool(true, "Vis mitigerte FVG",      group=grp_fvg)
+
+grp_alerts = "Alerts"
+enable_alerts = input.bool(true, "Aktiver alerts", group=grp_alerts)
+
+// ── ATR for minimumsstorrelse ───────────────────────────────────────────────
+atr_val = ta.atr(14)
+
+// ── FVG-arrays ──────────────────────────────────────────────────────────────
+var box[]   bull_boxes = array.new_box()
+var float[] bull_tops  = array.new_float()
+var float[] bull_bots  = array.new_float()
+var bool[]  bull_mit   = array.new_bool()
+
+var box[]   bear_boxes = array.new_box()
+var float[] bear_tops  = array.new_float()
+var float[] bear_bots  = array.new_float()
+var bool[]  bear_mit   = array.new_bool()
+
+// ── Bullish FVG-deteksjon ───────────────────────────────────────────────────
+// Bullish FVG: navaerende lav > 2-bar-tilbake hoy (gap opp)
+bull_fvg_top = low
+bull_fvg_bot = high[2]
+bull_fvg_exists = bull_fvg_bot < bull_fvg_top
+bull_fvg_size = bull_fvg_exists ? (bull_fvg_top - bull_fvg_bot) : 0.0
+bull_fvg_valid = bull_fvg_exists and bull_fvg_size >= atr_val * fvg_min_size
+
+if show_bullish and bull_fvg_valid
+    // Begrens antall
+    if array.size(bull_boxes) >= max_fvgs
+        box.delete(array.get(bull_boxes, 0))
+        array.remove(bull_boxes, 0)
+        array.remove(bull_tops, 0)
+        array.remove(bull_bots, 0)
+        array.remove(bull_mit, 0)
+
+    b = box.new(bar_index - 2, bull_fvg_top, bar_index + 50, bull_fvg_bot, bgcolor=C_BULL_FVG, border_color=C_BULL_FVG_BRD, border_width=1)
+    array.push(bull_boxes, b)
+    array.push(bull_tops, bull_fvg_top)
+    array.push(bull_bots, bull_fvg_bot)
+    array.push(bull_mit, false)
+
+    if show_labels
+        label.new(bar_index - 1, bull_fvg_bot, "FVG", color=color.new(C_BLUE, 70), textcolor=C_TEXT, style=label.style_label_up, size=size.tiny)
+
+    if enable_alerts
+        alert('{"source":"tradingview","indicator":"ce_fvg","instrument":"' + syminfo.ticker + '","signal":"bullish_fvg","top":' + str.tostring(bull_fvg_top) + ',"bot":' + str.tostring(bull_fvg_bot) + ',"size_atr":' + str.tostring(bull_fvg_size / atr_val, "#0.00") + ',"timeframe":"' + timeframe.period + '"}', alert.freq_once_per_bar)
+
+// ── Bearish FVG-deteksjon ───────────────────────────────────────────────────
+// Bearish FVG: navaerende hoy < 2-bar-tilbake lav (gap ned)
+bear_fvg_top = low[2]
+bear_fvg_bot = high
+bear_fvg_exists = bear_fvg_bot < bear_fvg_top
+bear_fvg_size = bear_fvg_exists ? (bear_fvg_top - bear_fvg_bot) : 0.0
+bear_fvg_valid = bear_fvg_exists and bear_fvg_size >= atr_val * fvg_min_size
+
+if show_bearish and bear_fvg_valid
+    if array.size(bear_boxes) >= max_fvgs
+        box.delete(array.get(bear_boxes, 0))
+        array.remove(bear_boxes, 0)
+        array.remove(bear_tops, 0)
+        array.remove(bear_bots, 0)
+        array.remove(bear_mit, 0)
+
+    b = box.new(bar_index - 2, bear_fvg_top, bar_index + 50, bear_fvg_bot, bgcolor=C_BEAR_FVG, border_color=C_BEAR_FVG_BRD, border_width=1)
+    array.push(bear_boxes, b)
+    array.push(bear_tops, bear_fvg_top)
+    array.push(bear_bots, bear_fvg_bot)
+    array.push(bear_mit, false)
+
+    if show_labels
+        label.new(bar_index - 1, bear_fvg_top, "FVG", color=color.new(C_YELLOW, 70), textcolor=C_TEXT, style=label.style_label_down, size=size.tiny)
+
+    if enable_alerts
+        alert('{"source":"tradingview","indicator":"ce_fvg","instrument":"' + syminfo.ticker + '","signal":"bearish_fvg","top":' + str.tostring(bear_fvg_top) + ',"bot":' + str.tostring(bear_fvg_bot) + ',"size_atr":' + str.tostring(bear_fvg_size / atr_val, "#0.00") + ',"timeframe":"' + timeframe.period + '"}', alert.freq_once_per_bar)
+
+// ── Mitigering: pris fyller gap ─────────────────────────────────────────────
+// Bullish FVG mitigert nar close synker under FVG-bunnlinje
+if array.size(bull_boxes) > 0
+    for i = array.size(bull_boxes) - 1 to 0
+        if not array.get(bull_mit, i)
+            if close < array.get(bull_bots, i)
+                array.set(bull_mit, i, true)
+                if show_mitigated
+                    box.set_bgcolor(array.get(bull_boxes, i), C_MITIGATED)
+                    box.set_border_color(array.get(bull_boxes, i), C_MITIGATED_BRD)
+                else
+                    box.delete(array.get(bull_boxes, i))
+
+// Bearish FVG mitigert nar close stiger over FVG-topplinje
+if array.size(bear_boxes) > 0
+    for i = array.size(bear_boxes) - 1 to 0
+        if not array.get(bear_mit, i)
+            if close > array.get(bear_tops, i)
+                array.set(bear_mit, i, true)
+                if show_mitigated
+                    box.set_bgcolor(array.get(bear_boxes, i), C_MITIGATED)
+                    box.set_border_color(array.get(bear_boxes, i), C_MITIGATED_BRD)
+                else
+                    box.delete(array.get(bear_boxes, i))
+
+// ── Forleng aktive bokser ───────────────────────────────────────────────────
+if array.size(bull_boxes) > 0
+    for i = 0 to array.size(bull_boxes) - 1
+        if not array.get(bull_mit, i)
+            box.set_right(array.get(bull_boxes, i), bar_index + 20)
+
+if array.size(bear_boxes) > 0
+    for i = 0 to array.size(bear_boxes) - 1
+        if not array.get(bear_mit, i)
+            box.set_right(array.get(bear_boxes, i), bar_index + 20)
+
+// ── Infotabell ──────────────────────────────────────────────────────────────
+if barstate.islast
+    active_bull = 0
+    active_bear = 0
+    if array.size(bull_mit) > 0
+        for i = 0 to array.size(bull_mit) - 1
+            if not array.get(bull_mit, i)
+                active_bull += 1
+    if array.size(bear_mit) > 0
+        for i = 0 to array.size(bear_mit) - 1
+            if not array.get(bear_mit, i)
+                active_bear += 1
+
+    var table ft = table.new(position.bottom_left, 2, 3, bgcolor=C_BG, border_width=1, border_color=color.new(C_TEXT, 70))
+    table.cell(ft, 0, 0, "FVG",       text_color=C_BLUE, text_size=size.tiny, text_halign=text.align_left)
+    table.cell(ft, 1, 0, "Aktive",    text_color=C_TEXT,  text_size=size.tiny)
+    table.cell(ft, 0, 1, "Bullish",   text_color=C_TEXT,  text_size=size.tiny, text_halign=text.align_left)
+    table.cell(ft, 1, 1, str.tostring(active_bull), text_color=active_bull > 0 ? C_BLUE : color.gray, text_size=size.tiny)
+    table.cell(ft, 0, 2, "Bearish",   text_color=C_TEXT,  text_size=size.tiny, text_halign=text.align_left)
+    table.cell(ft, 1, 2, str.tostring(active_bear), text_color=active_bear > 0 ? C_YELLOW : color.gray, text_size=size.tiny)

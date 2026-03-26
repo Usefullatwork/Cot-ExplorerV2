@@ -1,0 +1,118 @@
+// =============================================================================
+// Session Zones — Markerer London, NY Overlap og Asian handelssesjoner
+// Bakgrunnsfarge + sesjon-apning/lukking nivaer + labels
+// =============================================================================
+//@version=6
+indicator("COT Explorer: Sessions", shorttitle="Sessions", overlay=true, max_lines_count=50, max_labels_count=30)
+
+// ── Fargepalett (mork tema) ─────────────────────────────────────────────────
+var color C_GREEN  = #3fb950
+var color C_RED    = #f85149
+var color C_YELLOW = #d29922
+var color C_BLUE   = #58a6ff
+var color C_BG     = #161b22
+var color C_TEXT   = #c9d1d9
+
+var color C_LONDON_BG = color.new(C_BLUE, 95)
+var color C_NY_BG     = color.new(C_GREEN, 95)
+var color C_ASIAN_BG  = color.new(color.gray, 95)
+
+// ── Inputs ──────────────────────────────────────────────────────────────────
+grp_sess = "Sesjoner"
+show_london   = input.bool(true, "London (07-12 CET)",     group=grp_sess)
+show_ny       = input.bool(true, "NY Overlap (13-17 CET)", group=grp_sess)
+show_asian    = input.bool(true, "Asian (23-07 CET)",      group=grp_sess)
+show_open_lvl = input.bool(true, "Vis apningsnivaer",      group=grp_sess)
+show_sess_lbl = input.bool(true, "Vis sesjons-labels",     group=grp_sess)
+
+grp_times = "Tidssoner"
+tz = input.string("Europe/Berlin", "Tidssone", group=grp_times, options=[
+     "Europe/Berlin", "Europe/London", "America/New_York", "Asia/Tokyo", "UTC"])
+
+// ── Tidsberegning ───────────────────────────────────────────────────────────
+// Alle tider i CET (Europe/Berlin)
+h = hour(time, tz)
+
+// Sesjons-identifikasjon
+in_london = h >= 7 and h < 12
+in_ny     = h >= 13 and h < 17
+in_asian  = h >= 23 or h < 7
+
+// Sesjonsskift (forste bar i sesjonen)
+london_open = in_london and not in_london[1]
+ny_open     = in_ny and not in_ny[1]
+asian_open  = in_asian and not in_asian[1]
+
+london_close = not in_london and in_london[1]
+ny_close     = not in_ny and in_ny[1]
+asian_close  = not in_asian and in_asian[1]
+
+// ── Bakgrunnsfarge ──────────────────────────────────────────────────────────
+london_bg = show_london and in_london ? C_LONDON_BG : na
+ny_bg     = show_ny and in_ny         ? C_NY_BG     : na
+asian_bg  = show_asian and in_asian   ? C_ASIAN_BG  : na
+
+bgcolor(london_bg, title="London sesjon")
+bgcolor(ny_bg,     title="NY Overlap sesjon")
+bgcolor(asian_bg,  title="Asian sesjon")
+
+// ── Sesjon-apningsnivaer ────────────────────────────────────────────────────
+var float london_open_price = na
+var float ny_open_price     = na
+var float asian_open_price  = na
+
+if london_open
+    london_open_price := open
+if ny_open
+    ny_open_price := open
+if asian_open
+    asian_open_price := open
+
+// Tegn apningsnivaer som horisontale linjer under sesjonen
+if show_open_lvl and show_london and in_london and not na(london_open_price)
+    var line lo_ln = na
+    line.delete(lo_ln)
+    lo_ln := line.new(bar_index - 1, london_open_price, bar_index, london_open_price, color=color.new(C_BLUE, 50), style=line.style_dotted, width=1, extend=extend.right)
+    if london_close
+        line.set_extend(lo_ln, extend.none)
+        line.set_x2(lo_ln, bar_index)
+
+if show_open_lvl and show_ny and in_ny and not na(ny_open_price)
+    var line ny_ln = na
+    line.delete(ny_ln)
+    ny_ln := line.new(bar_index - 1, ny_open_price, bar_index, ny_open_price, color=color.new(C_GREEN, 50), style=line.style_dotted, width=1, extend=extend.right)
+    if ny_close
+        line.set_extend(ny_ln, extend.none)
+        line.set_x2(ny_ln, bar_index)
+
+if show_open_lvl and show_asian and in_asian and not na(asian_open_price)
+    var line as_ln = na
+    line.delete(as_ln)
+    as_ln := line.new(bar_index - 1, asian_open_price, bar_index, asian_open_price, color=color.new(color.gray, 50), style=line.style_dotted, width=1, extend=extend.right)
+    if asian_close
+        line.set_extend(as_ln, extend.none)
+        line.set_x2(as_ln, bar_index)
+
+// ── Sesjons-labels ──────────────────────────────────────────────────────────
+if show_sess_lbl
+    if london_open
+        label.new(bar_index, high, "LONDON", color=color.new(C_BLUE, 80), textcolor=C_BLUE, style=label.style_label_down, size=size.tiny)
+    if ny_open
+        label.new(bar_index, high, "NY", color=color.new(C_GREEN, 80), textcolor=C_GREEN, style=label.style_label_down, size=size.tiny)
+    if asian_open
+        label.new(bar_index, low, "ASIAN", color=color.new(color.gray, 80), textcolor=C_TEXT, style=label.style_label_up, size=size.tiny)
+
+// ── Infotabell ──────────────────────────────────────────────────────────────
+if barstate.islast
+    curr_session = in_london ? "LONDON" : in_ny ? "NY OVERLAP" : in_asian ? "ASIAN" : "MELLOM"
+    curr_col     = in_london ? C_BLUE : in_ny ? C_GREEN : in_asian ? C_TEXT : C_YELLOW
+
+    var table st = table.new(position.top_right, 2, 4, bgcolor=C_BG, border_width=1, border_color=color.new(C_TEXT, 70))
+    table.cell(st, 0, 0, "Sesjon",   text_color=C_BLUE, text_size=size.tiny, text_halign=text.align_left)
+    table.cell(st, 1, 0, curr_session, text_color=curr_col, text_size=size.tiny)
+    table.cell(st, 0, 1, "Time (CET)", text_color=C_TEXT, text_size=size.tiny, text_halign=text.align_left)
+    table.cell(st, 1, 1, str.tostring(h) + ":00", text_color=C_TEXT, text_size=size.tiny)
+    table.cell(st, 0, 2, "London",   text_color=C_TEXT, text_size=size.tiny, text_halign=text.align_left)
+    table.cell(st, 1, 2, not na(london_open_price) ? str.tostring(london_open_price, "#0.00000") : "---", text_color=C_BLUE, text_size=size.tiny)
+    table.cell(st, 0, 3, "NY",       text_color=C_TEXT, text_size=size.tiny, text_halign=text.align_left)
+    table.cell(st, 1, 3, not na(ny_open_price) ? str.tostring(ny_open_price, "#0.00000") : "---", text_color=C_GREEN, text_size=size.tiny)

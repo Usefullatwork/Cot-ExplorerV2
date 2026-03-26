@@ -3,6 +3,9 @@
 The tier multiplier matrix scales position size down when VIX is elevated
 or the signal grade is weak, and blocks C-grade trades entirely in
 extreme volatility.
+
+Additional helpers adjust risk for drawdown, win/loss streaks, and
+spread costs.
 """
 
 from __future__ import annotations
@@ -11,7 +14,6 @@ import math
 
 from src.core.enums import Grade, VixRegime
 from src.trading.bot.config import LOT_PARAMS, LotParams
-
 
 # ---------------------------------------------------------------------------
 # VIX x Grade multiplier matrix
@@ -77,6 +79,76 @@ def _round_to_step(value: float, step: float) -> float:
     return math.floor(value / step) * step
 
 
+def adjust_for_drawdown(base_risk_pct: float, current_drawdown_pct: float) -> float:
+    """Reduce *base_risk_pct* based on current drawdown depth.
+
+    - 0-10 % drawdown: full risk
+    - 10-20 % drawdown: half risk
+    - 20 %+ drawdown: quarter risk
+
+    Args:
+        base_risk_pct: Normal risk per trade as a decimal (e.g. 0.01).
+        current_drawdown_pct: Current drawdown as a percentage (e.g. 15.0
+            means the account is 15 % below peak equity).
+
+    Returns:
+        Adjusted risk percentage (always >= 0).
+    """
+    if current_drawdown_pct >= 20.0:
+        return base_risk_pct * 0.25
+    if current_drawdown_pct >= 10.0:
+        return base_risk_pct * 0.5
+    return base_risk_pct
+
+
+def adjust_for_streak(
+    base_multiplier: float,
+    consecutive_wins: int,
+    consecutive_losses: int,
+) -> float:
+    """Anti-martingale streak adjustment.
+
+    - After 1 loss: reduce by 25 %
+    - After 2+ losses: halve
+    - After 2+ wins: increase by 10 % (capped at 1.2x)
+    - No streak: unchanged
+
+    Args:
+        base_multiplier: Starting multiplier (typically 1.0).
+        consecutive_wins: Current win streak length.
+        consecutive_losses: Current loss streak length.
+
+    Returns:
+        Adjusted multiplier (>= 0).
+    """
+    if consecutive_losses >= 2:
+        return base_multiplier * 0.5
+    if consecutive_losses == 1:
+        return base_multiplier * 0.75
+    if consecutive_wins >= 2:
+        return min(base_multiplier * 1.1, 1.2)
+    return base_multiplier
+
+
+def deduct_spread(
+    risk_amount: float,
+    spread_pips: float,
+    pip_value: float,
+) -> float:
+    """Deduct expected spread cost from the risk budget.
+
+    Args:
+        risk_amount: Dollar risk budget for the trade.
+        spread_pips: Expected spread in pips.
+        pip_value: Dollar value of one pip for the intended lot size.
+
+    Returns:
+        Adjusted risk amount after spread deduction (floored at 0).
+    """
+    spread_cost = spread_pips * pip_value
+    return max(risk_amount - spread_cost, 0.0)
+
+
 def calculate_lot_size(
     account_balance: float,
     risk_pct: float,
@@ -85,23 +157,36 @@ def calculate_lot_size(
     vix: float,
     grade: str,
     instrument: str,
+    *,
+    drawdown_pct: float = 0.0,
+    consecutive_wins: int = 0,
+    consecutive_losses: int = 0,
+    spread_pips: float = 0.0,
 ) -> float:
     """Calculate lot size for a trade.
 
     The formula:
-      1. risk_amount = account_balance * risk_pct * tier_multiplier
-      2. sl_distance_pips = abs(entry - stop_loss) / pip_size
-      3. lots = risk_amount / (sl_distance_pips * pip_value_per_lot)
-      4. Round down to nearest lot_step, clamp to min_lot.
+      1. risk_pct is adjusted for drawdown (``adjust_for_drawdown``).
+      2. risk_amount = account_balance * adjusted_risk_pct * tier_multiplier
+      3. An anti-martingale streak multiplier is applied
+         (``adjust_for_streak``).
+      4. Expected spread cost is deducted (``deduct_spread``).
+      5. sl_distance_pips = abs(entry - stop_loss) / pip_size
+      6. lots = adjusted_risk / (sl_distance_pips * pip_value_per_lot)
+      7. Round down to nearest lot_step, clamp to min_lot.
 
     Args:
         account_balance: Account equity in USD.
-        risk_pct: Risk per trade as a decimal (e.g. 0.01 = 1%).
+        risk_pct: Risk per trade as a decimal (e.g. 0.01 = 1 %).
         entry: Planned entry price.
         stop_loss: Stop-loss price.
         vix: Current VIX index value.
         grade: Signal grade (A+, A, B, C).
         instrument: Instrument key (e.g. "EURUSD", "Gold").
+        drawdown_pct: Current drawdown percentage (default 0.0).
+        consecutive_wins: Length of current win streak (default 0).
+        consecutive_losses: Length of current loss streak (default 0).
+        spread_pips: Expected spread in pips (default 0.0).
 
     Returns:
         Lot size rounded to the instrument's lot_step.
@@ -124,7 +209,22 @@ def calculate_lot_size(
     if sl_pips == 0.0:
         return 0.0
 
-    risk_amount = account_balance * risk_pct * multiplier
+    # 1. Adjust risk for drawdown
+    adjusted_risk_pct = adjust_for_drawdown(risk_pct, drawdown_pct)
+
+    # 2. Base risk amount with tier multiplier
+    risk_amount = account_balance * adjusted_risk_pct * multiplier
+
+    # 3. Anti-martingale streak adjustment
+    streak_mult = adjust_for_streak(1.0, consecutive_wins, consecutive_losses)
+    risk_amount *= streak_mult
+
+    # 4. Deduct spread cost
+    risk_amount = deduct_spread(risk_amount, spread_pips, params.pip_value_per_lot)
+
+    if risk_amount <= 0.0:
+        return 0.0
+
     raw_lots = risk_amount / (sl_pips * params.pip_value_per_lot)
 
     lots = _round_to_step(raw_lots, params.lot_step)

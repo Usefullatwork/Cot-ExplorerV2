@@ -189,6 +189,152 @@ if show_smc
             box.set_right(array.get(d_boxes, i), bar_index + 20)
 
 // ══════════════════════════════════════════════════════════════════════════════
+// MODUL 3B: FVG ZONES (forenklet)
+// ══════════════════════════════════════════════════════════════════════════════
+grp_fvg = "FVG Zones"
+show_fvg      = input.bool(true,  "Aktiver FVG soner",    group=grp_fvg)
+fvg_min_atr   = input.float(0.5,  "Min FVG (ATR)",        group=grp_fvg, minval=0.1, step=0.1)
+max_fvg_count = input.int(5,      "Maks FVG vist",        group=grp_fvg, minval=1, maxval=15)
+
+var color C_BULL_FVG     = color.new(C_BLUE, 80)
+var color C_BULL_FVG_BRD = color.new(C_BLUE, 50)
+var color C_BEAR_FVG     = color.new(C_YELLOW, 80)
+var color C_BEAR_FVG_BRD = color.new(C_YELLOW, 50)
+var color C_FVG_MIT      = color.new(color.gray, 90)
+
+var box[]   fvg_bull_bx = array.new_box()
+var float[] fvg_bull_t  = array.new_float()
+var float[] fvg_bull_b  = array.new_float()
+var box[]   fvg_bear_bx = array.new_box()
+var float[] fvg_bear_t  = array.new_float()
+var float[] fvg_bear_b  = array.new_float()
+
+if show_fvg
+    // Bullish FVG: low > high[2]
+    fvg_b_top = low
+    fvg_b_bot = high[2]
+    if fvg_b_bot < fvg_b_top and (fvg_b_top - fvg_b_bot) >= atr_val * fvg_min_atr
+        if array.size(fvg_bull_bx) >= max_fvg_count
+            box.delete(array.get(fvg_bull_bx, 0))
+            array.remove(fvg_bull_bx, 0)
+            array.remove(fvg_bull_t, 0)
+            array.remove(fvg_bull_b, 0)
+        array.push(fvg_bull_bx, box.new(bar_index - 2, fvg_b_top, bar_index + 50, fvg_b_bot, bgcolor=C_BULL_FVG, border_color=C_BULL_FVG_BRD))
+        array.push(fvg_bull_t, fvg_b_top)
+        array.push(fvg_bull_b, fvg_b_bot)
+
+    // Bearish FVG: high < low[2]
+    fvg_s_top = low[2]
+    fvg_s_bot = high
+    if fvg_s_bot < fvg_s_top and (fvg_s_top - fvg_s_bot) >= atr_val * fvg_min_atr
+        if array.size(fvg_bear_bx) >= max_fvg_count
+            box.delete(array.get(fvg_bear_bx, 0))
+            array.remove(fvg_bear_bx, 0)
+            array.remove(fvg_bear_t, 0)
+            array.remove(fvg_bear_b, 0)
+        array.push(fvg_bear_bx, box.new(bar_index - 2, fvg_s_top, bar_index + 50, fvg_s_bot, bgcolor=C_BEAR_FVG, border_color=C_BEAR_FVG_BRD))
+        array.push(fvg_bear_t, fvg_s_top)
+        array.push(fvg_bear_b, fvg_s_bot)
+
+    // Mitigering
+    if array.size(fvg_bull_bx) > 0
+        for i = array.size(fvg_bull_bx) - 1 to 0
+            if close < array.get(fvg_bull_b, i)
+                box.set_bgcolor(array.get(fvg_bull_bx, i), C_FVG_MIT)
+                box.set_border_color(array.get(fvg_bull_bx, i), color.new(color.gray, 70))
+            else
+                box.set_right(array.get(fvg_bull_bx, i), bar_index + 20)
+
+    if array.size(fvg_bear_bx) > 0
+        for i = array.size(fvg_bear_bx) - 1 to 0
+            if close > array.get(fvg_bear_t, i)
+                box.set_bgcolor(array.get(fvg_bear_bx, i), C_FVG_MIT)
+                box.set_border_color(array.get(fvg_bear_bx, i), color.new(color.gray, 70))
+            else
+                box.set_right(array.get(fvg_bear_bx, i), bar_index + 20)
+
+// ══════════════════════════════════════════════════════════════════════════════
+// MODUL 3C: ORDER BLOCKS (forenklet)
+// ══════════════════════════════════════════════════════════════════════════════
+grp_ob = "Order Blocks"
+show_ob       = input.bool(true,  "Aktiver OB soner",     group=grp_ob)
+max_ob_count  = input.int(5,      "Maks OB vist",         group=grp_ob, minval=1, maxval=15)
+
+var color C_BULL_OB     = color.new(C_GREEN, 80)
+var color C_BULL_OB_BRD = color.new(C_GREEN, 45)
+var color C_BEAR_OB     = color.new(C_RED, 80)
+var color C_BEAR_OB_BRD = color.new(C_RED, 45)
+var color C_OB_MIT      = color.new(color.gray, 90)
+
+// BOS basert pa eksisterende pivot-data
+var float ob_last_ph = na
+var float ob_last_pl = na
+if not na(ph)
+    ob_last_ph := ph
+if not na(pl)
+    ob_last_pl := pl
+
+ob_bull_bos = not na(ob_last_ph) and close > ob_last_ph and close[1] <= ob_last_ph
+ob_bear_bos = not na(ob_last_pl) and close < ob_last_pl and close[1] >= ob_last_pl
+
+var box[]   ob_bull_bx = array.new_box()
+var float[] ob_bull_t  = array.new_float()
+var float[] ob_bull_b  = array.new_float()
+var box[]   ob_bear_bx = array.new_box()
+var float[] ob_bear_t  = array.new_float()
+var float[] ob_bear_b  = array.new_float()
+
+if show_ob
+    // Bullish OB: siste rode lys for bullish BOS
+    if ob_bull_bos
+        for i = 1 to 20
+            if close[i] < open[i]
+                ob_t = math.max(open[i], close[i])
+                ob_b = math.min(open[i], close[i])
+                if array.size(ob_bull_bx) >= max_ob_count
+                    box.delete(array.get(ob_bull_bx, 0))
+                    array.remove(ob_bull_bx, 0)
+                    array.remove(ob_bull_t, 0)
+                    array.remove(ob_bull_b, 0)
+                array.push(ob_bull_bx, box.new(bar_index - i, ob_t, bar_index + 50, ob_b, bgcolor=C_BULL_OB, border_color=C_BULL_OB_BRD))
+                array.push(ob_bull_t, ob_t)
+                array.push(ob_bull_b, ob_b)
+                break
+
+    // Bearish OB: siste gronne lys for bearish BOS
+    if ob_bear_bos
+        for i = 1 to 20
+            if close[i] > open[i]
+                ob_t = math.max(open[i], close[i])
+                ob_b = math.min(open[i], close[i])
+                if array.size(ob_bear_bx) >= max_ob_count
+                    box.delete(array.get(ob_bear_bx, 0))
+                    array.remove(ob_bear_bx, 0)
+                    array.remove(ob_bear_t, 0)
+                    array.remove(ob_bear_b, 0)
+                array.push(ob_bear_bx, box.new(bar_index - i, ob_t, bar_index + 50, ob_b, bgcolor=C_BEAR_OB, border_color=C_BEAR_OB_BRD))
+                array.push(ob_bear_t, ob_t)
+                array.push(ob_bear_b, ob_b)
+                break
+
+    // Mitigering + forlengelse
+    if array.size(ob_bull_bx) > 0
+        for i = array.size(ob_bull_bx) - 1 to 0
+            if close < array.get(ob_bull_b, i)
+                box.set_bgcolor(array.get(ob_bull_bx, i), C_OB_MIT)
+                box.set_border_color(array.get(ob_bull_bx, i), color.new(color.gray, 70))
+            else
+                box.set_right(array.get(ob_bull_bx, i), bar_index + 20)
+
+    if array.size(ob_bear_bx) > 0
+        for i = array.size(ob_bear_bx) - 1 to 0
+            if close > array.get(ob_bear_t, i)
+                box.set_bgcolor(array.get(ob_bear_bx, i), C_OB_MIT)
+                box.set_border_color(array.get(ob_bear_bx, i), color.new(color.gray, 70))
+            else
+                box.set_right(array.get(ob_bear_bx, i), bar_index + 20)
+
+// ══════════════════════════════════════════════════════════════════════════════
 // MODUL 4: L2L SETUP-LINJER
 // ══════════════════════════════════════════════════════════════════════════════
 grp_l2l = "L2L Setup"

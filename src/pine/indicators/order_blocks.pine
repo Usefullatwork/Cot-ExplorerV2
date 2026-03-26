@@ -1,0 +1,193 @@
+// =============================================================================
+// Order Blocks — OB-deteksjon med BOS-validering og mitigering
+// Identifiserer siste motsatt-farge lys for BOS, markerer OB-sone
+// =============================================================================
+//@version=6
+indicator("COT Explorer: Order Blocks", shorttitle="OB", overlay=true, max_boxes_count=50, max_labels_count=30)
+
+// ── Fargepalett (mork tema) ─────────────────────────────────────────────────
+var color C_GREEN  = #3fb950
+var color C_RED    = #f85149
+var color C_YELLOW = #d29922
+var color C_BLUE   = #58a6ff
+var color C_BG     = #161b22
+var color C_TEXT   = #c9d1d9
+
+var color C_BULL_OB     = color.new(#3fb950, 80)
+var color C_BULL_OB_BRD = color.new(#3fb950, 45)
+var color C_BEAR_OB     = color.new(#f85149, 80)
+var color C_BEAR_OB_BRD = color.new(#f85149, 45)
+var color C_MITIGATED   = color.new(color.gray, 90)
+var color C_MITIGATED_BRD = color.new(color.gray, 70)
+
+// ── Inputs ──────────────────────────────────────────────────────────────────
+grp_ob = "OB"
+ob_lookback   = input.int(50,    "Lookback barer",       group=grp_ob, minval=10, maxval=200)
+swing_len     = input.int(5,     "Swing-lengde (pivot)",  group=grp_ob, minval=2, maxval=20)
+show_bullish  = input.bool(true, "Vis Bullish OB",        group=grp_ob)
+show_bearish  = input.bool(true, "Vis Bearish OB",        group=grp_ob)
+max_obs       = input.int(10,    "Maks OB vist",          group=grp_ob, minval=1, maxval=25)
+show_labels   = input.bool(true, "Vis OB-labels",         group=grp_ob)
+show_mitigated = input.bool(true, "Vis mitigerte OB",     group=grp_ob)
+
+grp_alerts = "Alerts"
+enable_alerts = input.bool(true, "Aktiver alerts", group=grp_alerts)
+
+// ── Pivot-punkter for BOS ───────────────────────────────────────────────────
+ph = ta.pivothigh(high, swing_len, swing_len)
+pl = ta.pivotlow(low, swing_len, swing_len)
+
+var float last_pivot_high = na
+var float last_pivot_low  = na
+
+if not na(ph)
+    last_pivot_high := ph
+if not na(pl)
+    last_pivot_low := pl
+
+// ── BOS-deteksjon ───────────────────────────────────────────────────────────
+// Bullish BOS: close bryter over forrige pivot high
+bullish_bos = not na(last_pivot_high) and close > last_pivot_high and close[1] <= last_pivot_high
+
+// Bearish BOS: close bryter under forrige pivot low
+bearish_bos = not na(last_pivot_low) and close < last_pivot_low and close[1] >= last_pivot_low
+
+// ── OB-arrays ───────────────────────────────────────────────────────────────
+var box[]   bull_ob_boxes = array.new_box()
+var float[] bull_ob_tops  = array.new_float()
+var float[] bull_ob_bots  = array.new_float()
+var bool[]  bull_ob_mit   = array.new_bool()
+
+var box[]   bear_ob_boxes = array.new_box()
+var float[] bear_ob_tops  = array.new_float()
+var float[] bear_ob_bots  = array.new_float()
+var bool[]  bear_ob_mit   = array.new_bool()
+
+// ── Finn siste motsatte lys (OB-kandidat) ───────────────────────────────────
+find_last_red(max_back) =>
+    int idx = -1
+    float ob_top = na
+    float ob_bot = na
+    for i = 1 to max_back
+        if close[i] < open[i]
+            idx := i
+            ob_top := math.max(open[i], close[i])
+            ob_bot := math.min(open[i], close[i])
+            break
+    [idx, ob_top, ob_bot]
+
+find_last_green(max_back) =>
+    int idx = -1
+    float ob_top = na
+    float ob_bot = na
+    for i = 1 to max_back
+        if close[i] > open[i]
+            idx := i
+            ob_top := math.max(open[i], close[i])
+            ob_bot := math.min(open[i], close[i])
+            break
+    [idx, ob_top, ob_bot]
+
+// ── Bullish OB: siste rode lys for bullish BOS ─────────────────────────────
+if show_bullish and bullish_bos
+    [b_idx, b_top, b_bot] = find_last_red(ob_lookback)
+    if b_idx > 0 and not na(b_top)
+        // Begrens antall
+        if array.size(bull_ob_boxes) >= max_obs
+            box.delete(array.get(bull_ob_boxes, 0))
+            array.remove(bull_ob_boxes, 0)
+            array.remove(bull_ob_tops, 0)
+            array.remove(bull_ob_bots, 0)
+            array.remove(bull_ob_mit, 0)
+
+        b = box.new(bar_index - b_idx, b_top, bar_index + 50, b_bot, bgcolor=C_BULL_OB, border_color=C_BULL_OB_BRD, border_width=1)
+        array.push(bull_ob_boxes, b)
+        array.push(bull_ob_tops, b_top)
+        array.push(bull_ob_bots, b_bot)
+        array.push(bull_ob_mit, false)
+
+        if show_labels
+            label.new(bar_index - b_idx, b_bot, "OB " + str.tostring(b_bot, "#0.00"), color=color.new(C_GREEN, 70), textcolor=C_TEXT, style=label.style_label_up, size=size.tiny)
+
+        if enable_alerts
+            alert('{"source":"tradingview","indicator":"ce_ob","instrument":"' + syminfo.ticker + '","signal":"bullish_ob","top":' + str.tostring(b_top) + ',"bot":' + str.tostring(b_bot) + ',"timeframe":"' + timeframe.period + '"}', alert.freq_once_per_bar)
+
+// ── Bearish OB: siste gronne lys for bearish BOS ───────────────────────────
+if show_bearish and bearish_bos
+    [s_idx, s_top, s_bot] = find_last_green(ob_lookback)
+    if s_idx > 0 and not na(s_top)
+        if array.size(bear_ob_boxes) >= max_obs
+            box.delete(array.get(bear_ob_boxes, 0))
+            array.remove(bear_ob_boxes, 0)
+            array.remove(bear_ob_tops, 0)
+            array.remove(bear_ob_bots, 0)
+            array.remove(bear_ob_mit, 0)
+
+        b = box.new(bar_index - s_idx, s_top, bar_index + 50, s_bot, bgcolor=C_BEAR_OB, border_color=C_BEAR_OB_BRD, border_width=1)
+        array.push(bear_ob_boxes, b)
+        array.push(bear_ob_tops, s_top)
+        array.push(bear_ob_bots, s_bot)
+        array.push(bear_ob_mit, false)
+
+        if show_labels
+            label.new(bar_index - s_idx, s_top, "OB " + str.tostring(s_top, "#0.00"), color=color.new(C_RED, 70), textcolor=C_TEXT, style=label.style_label_down, size=size.tiny)
+
+        if enable_alerts
+            alert('{"source":"tradingview","indicator":"ce_ob","instrument":"' + syminfo.ticker + '","signal":"bearish_ob","top":' + str.tostring(s_top) + ',"bot":' + str.tostring(s_bot) + ',"timeframe":"' + timeframe.period + '"}', alert.freq_once_per_bar)
+
+// ── Mitigering: pris handler gjennom OB-sone ────────────────────────────────
+// Bullish OB mitigert nar close bryter under OB-bunn
+if array.size(bull_ob_boxes) > 0
+    for i = array.size(bull_ob_boxes) - 1 to 0
+        if not array.get(bull_ob_mit, i)
+            if close < array.get(bull_ob_bots, i)
+                array.set(bull_ob_mit, i, true)
+                if show_mitigated
+                    box.set_bgcolor(array.get(bull_ob_boxes, i), C_MITIGATED)
+                    box.set_border_color(array.get(bull_ob_boxes, i), C_MITIGATED_BRD)
+                else
+                    box.delete(array.get(bull_ob_boxes, i))
+
+// Bearish OB mitigert nar close bryter over OB-topp
+if array.size(bear_ob_boxes) > 0
+    for i = array.size(bear_ob_boxes) - 1 to 0
+        if not array.get(bear_ob_mit, i)
+            if close > array.get(bear_ob_tops, i)
+                array.set(bear_ob_mit, i, true)
+                if show_mitigated
+                    box.set_bgcolor(array.get(bear_ob_boxes, i), C_MITIGATED)
+                    box.set_border_color(array.get(bear_ob_boxes, i), C_MITIGATED_BRD)
+                else
+                    box.delete(array.get(bear_ob_boxes, i))
+
+// ── Forleng aktive bokser ───────────────────────────────────────────────────
+if array.size(bull_ob_boxes) > 0
+    for i = 0 to array.size(bull_ob_boxes) - 1
+        if not array.get(bull_ob_mit, i)
+            box.set_right(array.get(bull_ob_boxes, i), bar_index + 20)
+
+if array.size(bear_ob_boxes) > 0
+    for i = 0 to array.size(bear_ob_boxes) - 1
+        if not array.get(bear_ob_mit, i)
+            box.set_right(array.get(bear_ob_boxes, i), bar_index + 20)
+
+// ── Infotabell ──────────────────────────────────────────────────────────────
+if barstate.islast
+    active_bull = 0
+    active_bear = 0
+    if array.size(bull_ob_mit) > 0
+        for i = 0 to array.size(bull_ob_mit) - 1
+            if not array.get(bull_ob_mit, i)
+                active_bull += 1
+    if array.size(bear_ob_mit) > 0
+        for i = 0 to array.size(bear_ob_mit) - 1
+            if not array.get(bear_ob_mit, i)
+                active_bear += 1
+
+    var table ot = table.new(position.bottom_right, 2, 3, bgcolor=C_BG, border_width=1, border_color=color.new(C_TEXT, 70))
+    table.cell(ot, 0, 0, "Order Block", text_color=C_BLUE, text_size=size.tiny, text_halign=text.align_left)
+    table.cell(ot, 1, 0, "Aktive",      text_color=C_TEXT,  text_size=size.tiny)
+    table.cell(ot, 0, 1, "Bullish OB",  text_color=C_TEXT,  text_size=size.tiny, text_halign=text.align_left)
+    table.cell(ot, 1, 1, str.tostring(active_bull), text_color=active_bull > 0 ? C_GREEN : color.gray, text_size=size.tiny)
+    table.cell(ot, 0, 2, "Bearish OB",  text_color=C_TEXT,  text_size=size.tiny, text_halign=text.align_left)
+    table.cell(ot, 1, 2, str.tostring(active_bear), text_color=active_bear > 0 ? C_RED : color.gray, text_size=size.tiny)
