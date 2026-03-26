@@ -41,7 +41,7 @@ Cot-ExplorerV2/
 |   |   |-- cnn_fear_greed.py  # CNN Fear & Greed Index
 |   |
 |   |-- backtesting/       # Strategy backtesting framework
-|   |-- pine_scripts/      # TradingView Pine Script library
+|   (pine_scripts removed — canonical location: src/pine/)
 |   |-- signals/           # Signal generation and filtering
 |
 |-- src/security/
