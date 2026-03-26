@@ -21,7 +21,9 @@ then re-enters based on current regime.
 """
 
 from typing import Dict, List, Optional
-from ..engine import Strategy, Bar, Portfolio, Indicators
+from ..engine import Strategy
+from ..models import Bar, Portfolio
+from ..indicators import Indicators
 
 
 # Asset classification for regime-based allocation

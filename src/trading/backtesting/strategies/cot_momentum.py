@@ -16,7 +16,9 @@ Weekly bars (COT data is weekly).
 """
 
 from typing import Dict, List
-from ..engine import Strategy, Bar, Portfolio, Indicators
+from ..engine import Strategy
+from ..models import Bar, Portfolio
+from ..indicators import Indicators
 
 
 class COTMomentumStrategy(Strategy):

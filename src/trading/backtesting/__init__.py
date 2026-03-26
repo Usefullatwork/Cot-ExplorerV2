@@ -31,7 +31,10 @@ Usage:
     results = engine.run()
 """
 
-from .engine import BacktestEngine, Portfolio, Trade, Bar, DataLoader, Indicators, Strategy
+from .models import Trade, Portfolio, Bar
+from .data_loader import DataLoader
+from .indicators import Indicators
+from .engine import BacktestEngine, Strategy
 from . import metrics
 from . import reports
 from .strategies import (

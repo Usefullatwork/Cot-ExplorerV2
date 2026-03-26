@@ -13,7 +13,9 @@ Position sizing: 1% risk per trade.
 """
 
 from typing import Dict, List
-from ..engine import Strategy, Bar, Portfolio, Indicators
+from ..engine import Strategy
+from ..models import Bar, Portfolio
+from ..indicators import Indicators
 
 
 class MeanReversionStrategy(Strategy):
