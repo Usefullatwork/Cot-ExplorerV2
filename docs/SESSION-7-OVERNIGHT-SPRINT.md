@@ -1,170 +1,276 @@
-# Session 7 — Overnight Sprint: Feature Parity with Original Cot-Explorer
+# Session 7 — Overnight Sprint (9 hours, fully autonomous)
 
 ## Pickup Prompt
 
 ```
 C:\Users\MadsF\Desktop\Cot-ExplorerV2:
 
-## OVERNIGHT AUTONOMOUS SPRINT — Session 7
+## OVERNIGHT AUTONOMOUS SPRINT — Session 7 (9 hours, 12 phases)
 
 You are running a fully autonomous overnight sprint. The user is sleeping.
 Do NOT ask questions. Make decisions and keep moving. Use bypassPermissions on ALL agents.
+Use mode: "auto" or "bypassPermissions" on every agent spawn.
 
 ### Context
-- Branch: feature/session-6-geointel (PR #1 open, DO NOT merge — work on a NEW branch)
-- Create branch: feature/session-7-feature-parity from feature/session-6-geointel
+- Branch: feature/session-6-geointel (PR #1 open, DO NOT merge)
+- Create branch: feature/session-7-overnight from feature/session-6-geointel
 - Python: C:\Users\MadsF\AppData\Local\Programs\Python\Python313\python.exe
 - Git: use -m flag (HEREDOC hangs on Windows), stage files by name (never git add .)
 - Tests: pytest tests/unit/ for backend, cd frontend && npx vitest --run for frontend
 - Backend: 1,002 tests. Frontend: 158 tests. All passing.
 - 19 DB tables, 44 API routes, 19-point scoring, 12 frontend tabs
+- Reference site: https://snkpipefish.github.io/cot-explorer/
+- Read CLAUDE.md before starting. Follow all existing patterns.
 
-### What to build — Feature parity with https://snkpipefish.github.io/cot-explorer/
+### Execution Rules (CRITICAL — read before any code)
 
-The original site has features V2 is missing. Port them in priority order.
-Reference the original's data files: data/macro/latest.json, data/combined/latest.json, data/prices/*.
+1. Work in phases. Complete each phase fully (code + tests + commit + push) before next.
+2. Run ALL tests after each phase. If tests fail, fix before moving on.
+3. Use 5-10 parallel agents per phase (bypassPermissions on ALL).
+4. Frontend: escapeHtml() on ALL API data. DM Mono for numbers. No new npm deps.
+5. Backend: Pure functions in src/analysis/. Pydantic response models. Tests with mocks.
+6. Commit after EACH phase. Push after each phase.
+7. If stuck >15 min on anything, leave a TODO comment and move on.
+8. Don't refactor working code. Don't touch Pepperstone adapter. Don't modify CI.
+9. Stage files by name (never git add . or git add -A — timeouts).
+10. Every new .py file needs a test_*.py. Every new .js component needs a *.test.js.
 
-#### PHASE 1: Enhanced Macro Panel (highest value, builds on existing MacroPanel)
-Agents: 3 parallel (backend data, frontend UI, tests)
+---
 
-1. **Dollar-Smile Model** — 3-segment visualization (Risk-Off USD / Growth USD / Crisis USD)
-   - Backend: Add dollar_smile_state() to src/analysis/ that classifies current regime
-   - Frontend: Visual 3-segment bar showing which segment is active, with labels
-   - Data: Uses DXY, VIX, yield curve already in macro_snapshots table
+## BLOCK A: Feature Parity with Original (~3 hours)
+Port everything the original cot-explorer has that V2 is missing.
 
-2. **VIX Term Structure** — Spot vs forward contracts with contango/backwardation label
-   - Backend: New src/trading/scrapers/vix_futures.py — fetch VIX 9D + 3M from CBOE
-   - Frontend: Display spot, 9D, 3M values with regime label (contango/backwardation)
-   - Add to existing MacroPanel below the VIX card
+### Phase 1: Enhanced Macro Panel
+Agents: 4 parallel (dollar-smile, vix-term, rates-credit, safe-haven+adr)
 
-3. **Interest Rate & Credit Panel** — 8 metric boxes in a grid
-   - 10Y yield, 3M yield, yield curve (10Y-3M), HY spreads, TIPS 5d, Copper 5d, EM momentum, Fed Funds
-   - Backend: Most data already in FRED scraper — wire to new API endpoint
-   - Frontend: Grid of color-coded metric cards (green=positive, red=negative)
+1. **Dollar-Smile Model** — src/analysis/dollar_smile.py
+   - classify_smile_state(dxy_5d, vix, yield_curve, growth_data) -> SmileState enum
+   - 3 states: LEFT_SMILE (crisis, USD bid), BOTTOM (growth, USD weak), RIGHT_SMILE (risk-off, USD bid)
+   - Frontend: 3-segment arc/bar showing active segment, below existing macro cards
+   - Test: 10+ cases covering regime transitions
 
-4. **Safe-Haven Hierarchy** — Text card showing currency positioning guidance
-   - Pure frontend — static content card driven by VIX regime
-   - "Risk-Off: JPY > CHF > USD > Gold" / "Risk-On: AUD > NZD > CAD > GBP"
+2. **VIX Term Structure** — src/trading/scrapers/vix_futures.py
+   - Fetch VIX spot + 9-day + 3-month from CBOE delayed data (public, no key)
+   - Compute contango/backwardation regime
+   - API: GET /api/v1/macro/vix-term
+   - Frontend: 3 values + regime badge in MacroPanel
+   - Test: mock CBOE response, test contango/backwardation logic
 
-5. **Session Ranges** — ADR (Average Daily Range) table per instrument
-   - Backend: Calculate 20-day ADR from prices_daily table
-   - Frontend: Table with instrument, ADR value, ADR as % of price
+3. **Interest Rate & Credit Grid** — 8 metric boxes
+   - Backend: GET /api/v1/macro/rates — aggregate from existing FRED data + macro_snapshots
+   - Cards: 10Y yield, 3M yield, yield curve (10Y-3M), HY spreads, TIPS 5d, Copper 5d, EM momentum, Fed Funds
+   - Color coding: green=improving, red=deteriorating, gray=neutral
+   - Frontend: Grid layout below Dollar-Smile
 
-#### PHASE 2: Enhanced Setups Panel (replaces existing CotTable with rich setup cards)
-Agents: 3 parallel (backend, frontend, tests)
+4. **Safe-Haven Hierarchy + Session Ranges**
+   - Safe-Haven: Pure frontend card, content driven by VIX regime
+   - Session Ranges: GET /api/v1/macro/adr — calculate 20-day ADR from prices_daily
+   - Frontend: ADR table with instrument, ADR value, ADR as % of price
 
-1. **Setup Cards** — Collapsible instrument cards showing:
-   - Grade badge (A+/A/B/C), score bar with fill, timeframe bias label
-   - LONG/SHORT/NEUTRAL bias indicator
-   - Current price, session status, binary risk flag
-   - Expandable detail: entry/SL/T1/T2 levels, R:R ratios, resistance/support with ATR distance
-   - COT mini-sparkline (last 20 weeks net position)
-   - Score breakdown dots (19 criteria, filled/empty)
+### Phase 2: Rich Setup Cards (replace basic CotTable)
+Agents: 3 parallel (backend enrichment, frontend cards, tests)
 
-2. **Setup Statistics Bar** — Top-of-panel count cards: A+ setups, B setups, MAKRO, binary risk warnings
+1. **Setup Statistics Bar** — A+ count, A count, B count, MAKRO count, binary risk warnings
+2. **Collapsible Setup Cards** per instrument:
+   - Header: grade badge, score bar (filled %), instrument, timeframe bias, LONG/SHORT indicator
+   - Body (expandable): entry/SL/T1/T2 levels, R:R ratios, key stats, COT mini-sparkline
+   - Score breakdown: 19 dots (filled=pass, empty=fail) with tooltip labels
+3. **Setup Filters** — filter by grade, timeframe, instrument class
+4. **Sparkline renderer** — renderSparkline(values[], opts) -> inline SVG string. 60x20px. Reusable.
 
-3. **Setup Filters** — Filter by grade, timeframe bias, instrument class
+### Phase 3: Enhanced COT Panel (accordion + sparklines + modal)
+Agents: 3 parallel (accordion UI, modal, tests)
 
-#### PHASE 3: Enhanced COT Panel (accordion with sparklines + modal)
-Agents: 2 parallel (frontend + tests)
+1. **Category Accordion** — 8 groups matching original:
+   - Aksjer, Valuta, Renter, Ravarer, Landbruk, Krypto, Volatilitet, Annet
+   - Header: emoji, name, stacked bull/neutral/bear bar, count badges
+   - Body: grid of market cards with signal badge, net %, sparkline
+2. **COT Detail Modal** — click market card:
+   - Bar chart: speculator net position over time (canvas or SVG)
+   - Stats row: 6 boxes (net now, weekly change, % OI, hist max, hist min, data points)
+   - Price overlay line chart (if price data available)
+3. **COT Search** — text filter across all categories
 
-1. **Category Accordion** — 8 groups (Stocks, Currency, Rates, Commodities, Agriculture, Crypto, Volatility, Other)
-   - Each group header: emoji, name, stacked bull/neutral/bear bar, count badges
-   - Expandable: grid of market cards with signal strength badge, net %, sparkline
+### Phase 4: Prices Panel (new tab #13)
+Agents: 2 parallel (backend + frontend)
 
-2. **COT Detail Modal** — Click a market card to open a modal:
-   - Bar chart: historical speculator net position (color-coded by direction)
-   - Stats row: net now, weekly change, % of OI, historical max/min, data points
-   - Price overlay chart (when price data available)
-   - Interpretation text
+1. **GET /api/v1/prices/live** — latest price + 1d/5d changes for all instruments
+2. **3 card groups**: Indices (SPX, NAS100, VIX), Forex (EUR/USD, USD/JPY, GBP/USD, AUD/USD, USD/CHF, DXY), Commodities (Gold, Silver, Brent, WTI, NATGAS)
+3. **Each card**: name, current price (DM Mono), 1d change (colored), 5d change
+4. **Auto-refresh**: poll every 60s if tab active
 
-#### PHASE 4: Prices Panel (new tab)
-Agents: 2 parallel (frontend + backend endpoint)
+---
 
-1. **Grouped Price Cards** — 3 groups: Indices, Forex, Commodities
-   - Each card: instrument name, current price, 1d change (colored), 5d change
-   - Use existing prices_daily table + live ticker data
+## BLOCK B: Beyond the Original (~3 hours)
+New features the original does NOT have. This is where V2 becomes genuinely better.
 
-2. **Wire to router** — Add Priser tab (#11 in navigation, before Geo-Signaler)
+### Phase 5: Backtesting Visualization Dashboard
+Agents: 3 parallel (equity curve, stats, drawdown)
 
-#### PHASE 5: Polish + Sparkline Library
+1. **New tab: Backtest (#14)** — dedicated backtesting results visualization
+2. **Equity Curve Chart** — canvas-based line chart from backtest_results
+   - X: trade number, Y: cumulative PnL (pips or USD)
+   - Color regions: green for winning streaks, red for drawdowns
+3. **Performance Stats Grid** — 12 metrics:
+   - Total trades, win rate, avg win, avg loss, profit factor, max drawdown
+   - Sharpe ratio, Sortino, avg RR, best trade, worst trade, avg duration
+4. **Per-Instrument Breakdown** — table: instrument, trades, win rate, avg PnL, total PnL
+5. **Grade Analysis** — bar chart: trades per grade, win rate per grade
+6. **Backend**: GET /api/v1/backtests/stats — aggregate from backtest_results table
+
+### Phase 6: Position Sizing Calculator
+Agents: 2 parallel (backend logic + frontend)
+
+1. **src/trading/bot/lot_sizing.py** already exists — expose via API
+2. **GET /api/v1/trading/calculate-size** — account balance, risk %, instrument, SL distance -> lot size
+3. **Frontend panel** (inside Trading tab, not new tab):
+   - Input fields: account balance, risk %, instrument dropdown, SL pips
+   - Output: lot size, pip value, max loss in USD, position value
+   - VIX regime adjusts suggested lot tier (full/half/quarter)
+
+### Phase 7: Historical Regime Timeline
+Agents: 2 parallel (backend + frontend)
+
+1. **Regime History** — store regime changes in macro_snapshots or new lightweight table
+2. **Timeline visualization** in MacroPanel:
+   - Horizontal bar chart, last 30 days
+   - Color segments: green=normal, yellow=risk-off, orange=energy-shock, red=crisis/war
+   - Hover shows date + regime + trigger event
+3. **Backend**: GET /api/v1/macro/regime-history — last N days of regime transitions
+
+### Phase 8: Signal Replay + Advanced Analytics
+Agents: 3 parallel (replay engine, analytics, frontend)
+
+1. **Signal Replay** — play through historical signals on a timeline
+   - Slider: date range selector
+   - Step through: shows each signal's entry, progression, exit
+   - Display: instrument, grade, entry, outcome, PnL
+2. **Performance Analytics** (extend SignalLogPanel):
+   - By instrument: heatmap of hit rates per instrument
+   - By time: hit rate by hour of day, day of week
+   - By regime: hit rate per VIX regime
+   - Streak analysis: longest win/loss streaks
+3. **Backend**: GET /api/v1/signal-log/analytics — aggregated performance breakdowns
+
+---
+
+## BLOCK C: Technical Debt + Quality (~2 hours)
+Fix the adversarial review findings and harden the platform.
+
+### Phase 9: Alembic Migration + DB Hardening
+Agents: 2 parallel (migration + dedup constraints)
+
+1. **Alembic migration** for 5 new tables (Session 6):
+   - seismic_events, comex_inventory, geointel_articles, signal_performance, correlation_snapshots
+   - Command: alembic revision --autogenerate -m "add geo-intel and performance tables"
+   - Verify: alembic upgrade head on fresh DB
+
+2. **Dedup constraints**:
+   - geointel_articles: UniqueConstraint on (url, category)
+   - seismic_events: UniqueConstraint on (event_time, place)
+   - Update _store_* helpers to use INSERT OR IGNORE / merge pattern
+
+3. **FK cascade**: Add ondelete="CASCADE" to SignalPerformance.signal_id
+
+### Phase 10: Live Fetch Hardening
+Agents: 2 parallel (caching + session scope)
+
+1. **Request coalescing for ?live=true**:
+   - Add a TTL cache (60s) for live fetches — if data was fetched <60s ago, return cached
+   - Prevents triple-fetch when frontend calls 3 geo-intel endpoints in parallel
+   - Simple module-level dict with timestamp: src/api/middleware/fetch_cache.py
+
+2. **Session scope refactor** (ONLY for new route files):
+   - Replace manual gen.send()/gen.throw() with context manager in:
+     - src/api/routes/geointel.py
+     - src/api/routes/correlations.py
+     - src/api/routes/signal_log.py
+   - Pattern: with session_scope() as session: ...
+   - DO NOT touch existing working routes (signals.py, cot.py, etc.)
+
+3. **Keyword boundary matching** for chokepoints + region detection:
+   - chokepoints.py: Use word boundary check (f" {kw} " or regex \b)
+   - impact_mapper.py: Same for region detection
+
+### Phase 11: Chart Library + Data Viz Foundation
+Agents: 2 parallel (chart utils + integration)
+
+1. **Lightweight chart rendering utilities** — frontend/src/charts/
+   - barChart(container, data[], opts) — vertical bars (for COT history, grade breakdown)
+   - lineChart(container, data[], opts) — line with fill (for equity curves, price overlay)
+   - heatmapCell(value, min, max) — colored cell for correlation matrix + analytics
+   - sparkline(values[], opts) — inline SVG for COT cards, setup cards
+   - All canvas-based or SVG. Zero dependencies. <200 lines each.
+
+2. **Integrate** into:
+   - COT modal (bar chart)
+   - Backtest dashboard (equity curve, grade bars)
+   - Setup cards (sparklines)
+   - Correlation panel (heatmap cells)
+
+---
+
+## BLOCK D: Documentation + Ship (~1 hour)
+
+### Phase 12: Documentation + Final Ship
 Agent: 1
 
-1. **Sparkline rendering** — Inline SVG sparklines for COT cards and setup cards
-   - Pure JS, no library dependency. 60x20px inline SVGs.
-   - Function: renderSparkline(values[], {width, height, color}) -> SVG string
+1. **Update CLAUDE.md** with all new modules, routes, tests, tabs
+2. **Write docs/SESSION-7-RESULTS.md** with:
+   - What was built per phase
+   - Test counts (before/after)
+   - Files changed
+   - What was skipped and why
+   - Known issues
+3. **Run /gstack-review** on the full diff
+4. **Fix any AUTO-FIX findings**
+5. **Final test run** — all backend + frontend
+6. **Push final state**
+7. **Create PR #2** against feature/session-6-geointel (or main if PR #1 was merged)
 
-2. **Score Breakdown Dots** — 19 dots (filled green / empty gray) showing which criteria passed
-   - Reusable function: renderScoreDots(details[]) -> HTML string
+---
 
-### Execution Rules
+## Target Metrics (end of sprint)
 
-1. Work in phases. Complete Phase 1 fully (code + tests + working) before Phase 2.
-2. Commit after EACH phase with descriptive message.
-3. Run ALL tests after each phase. If tests fail, fix before moving on.
-4. Use 5-8 parallel agents per phase (bypassPermissions on ALL).
-5. Backend data: Use existing scrapers and DB tables where possible. Only create new scrapers for VIX futures.
-6. Frontend: Follow existing patterns — escapeHtml() on ALL API data, DM Mono for numbers, DM Sans for text.
-7. All new API endpoints under /api/v1/ and registered in src/api/app.py.
-8. All new Python files need corresponding test files in tests/unit/.
-9. All new JS components need test files in frontend/src/__tests__/.
-10. DO NOT touch existing passing tests. Only add new ones.
-11. If stuck on a phase for >15 min, skip to next phase and leave a TODO.
-12. Push after each phase: git push origin feature/session-7-feature-parity
+| Metric | Before | Target |
+|--------|--------|--------|
+| Frontend tabs | 12 | 14 (+ Priser, Backtest) |
+| Frontend components | 15 | 25+ |
+| Backend modules (src/analysis) | 13 | 16+ |
+| API endpoints | 44 | 55+ |
+| Backend tests | 1,002 | 1,200+ |
+| Frontend tests | 158 | 250+ |
+| Chart components | 4 | 8+ |
+| DB tables | 19 | 19 (no new tables, just migration + constraints) |
 
-### Target Metrics
-- New frontend components: 5+ (DollarSmile, VixTermStructure, SetupCards, CotAccordion, PricesPanel)
-- New backend modules: 3+ (dollar_smile, vix_futures scraper, adr calculator)
-- New tests: 100+ (maintain >1,100 backend, >200 frontend)
-- New API endpoints: 5+ (macro/rates, macro/dollar-smile, macro/adr, macro/vix-term, prices/live)
+## Decision Matrix (for autonomous choices)
 
-### What NOT to do
-- Don't refactor existing working code
-- Don't change the DB schema (use existing 19 tables)
-- Don't touch Pepperstone adapter
-- Don't modify CI/CD workflows
-- Don't create new npm dependencies (vanilla JS only)
-
-### Final Step
-After all phases, run /gstack-review and commit fixes. Then push and leave a summary in docs/SESSION-7-RESULTS.md.
+| Decision | Default Choice |
+|----------|---------------|
+| Canvas vs SVG for charts | SVG for small (<100 points), Canvas for large |
+| New tab vs extend existing | Extend existing unless >3 new sections |
+| Mock external API vs skip | Always mock, never skip tests |
+| Feature incomplete vs skip | Ship what works, TODO for the rest |
+| Norwegian vs English labels | Norwegian (match existing: Setups, Makro, Priser) |
+| Polling interval | 60s for prices, 300s for macro, 600s for COT |
+| Error handling in scrapers | Return empty + log.error (never crash) |
+| Chart animation | None. Static renders. Performance > flair. |
 ```
 
-## Feature Gap Analysis (V2 vs Original)
+## Phase Timing Estimate
 
-| Feature | Original | V2 Status | Sprint Phase |
-|---------|----------|-----------|--------------|
-| Dollar-Smile Model | 3-segment viz | MISSING | Phase 1 |
-| VIX Term Structure | Spot/9D/3M + regime | MISSING | Phase 1 |
-| Interest Rate & Credit | 8 metric boxes | MISSING | Phase 1 |
-| Safe-Haven Hierarchy | Text card by regime | MISSING | Phase 1 |
-| Session Ranges (ADR) | Table per instrument | MISSING | Phase 1 |
-| Rich Setup Cards | Expandable + sparklines | Basic CotTable | Phase 2 |
-| Setup Statistics Bar | A+/B/MAKRO counts | MISSING | Phase 2 |
-| COT Accordion | 8 category groups | Flat table | Phase 3 |
-| COT Sparklines | Inline mini-charts | MISSING | Phase 3 |
-| COT Detail Modal | Historical chart + stats | MISSING | Phase 3 |
-| Price Panel | Grouped cards | No dedicated tab | Phase 4 |
-| Score Breakdown Dots | 19 filled/empty dots | MISSING | Phase 5 |
-| Ticker Bar | Scrolling prices | DONE (Session 6) | - |
-| Correlation Heatmap | Matrix table | DONE (Session 6) | - |
-| Signal Log | Stats + table | DONE (Session 6) | - |
-| Geo-Intel panels | 4 panels + regime | DONE (Session 6) | - |
-| Calendar | High/Medium events | DONE (Session 4) | - |
-
-## Architecture Notes for the Sprint
-
-### Existing patterns to follow:
-- `frontend/src/components/*.js` — export render(container) + update(data)
-- `frontend/src/api.js` — export async fetch functions using get/post helpers
-- `frontend/src/state.js` — setState(key, value) triggers subscribed panel updates
-- `src/api/routes/*.py` — FastAPI routers with Pydantic response models
-- `src/analysis/*.py` — Pure functions, no side effects, Pydantic I/O
-- `tests/unit/test_*.py` — pytest with unittest.mock for external calls
-- `frontend/src/__tests__/*.test.js` — vitest with jsdom, vi.fn() mocks
-
-### Data already available in DB:
-- prices_daily: OHLCV for all 17 instruments
-- macro_snapshots: VIX, DXY, yield curve, fear_greed, news_sentiment
-- fundamentals: GDP, CPI, employment, rates (via FRED)
-- cot_positions: All CFTC data (4 report types)
-- signals: Generated signals with score_details JSON
+| Phase | Est. Time | Agents | Cumulative |
+|-------|-----------|--------|------------|
+| 1. Enhanced Macro | 45 min | 4 | 0:45 |
+| 2. Rich Setup Cards | 45 min | 3 | 1:30 |
+| 3. Enhanced COT | 40 min | 3 | 2:10 |
+| 4. Prices Panel | 25 min | 2 | 2:35 |
+| 5. Backtest Dashboard | 50 min | 3 | 3:25 |
+| 6. Position Calculator | 20 min | 2 | 3:45 |
+| 7. Regime Timeline | 30 min | 2 | 4:15 |
+| 8. Signal Analytics | 45 min | 3 | 5:00 |
+| 9. DB Hardening | 30 min | 2 | 5:30 |
+| 10. Live Fetch Fix | 30 min | 2 | 6:00 |
+| 11. Chart Library | 40 min | 2 | 6:40 |
+| 12. Docs + Ship | 30 min | 1 | 7:10 |
+| Buffer for retries | ~1:50 | — | **9:00** |
