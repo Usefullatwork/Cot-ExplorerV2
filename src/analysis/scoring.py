@@ -1,7 +1,8 @@
 """Confluence scoring — pure function, no side effects.
 
-16-point system: original 12 criteria + 4 institutional-grade factors
-(Order Block, FVG, Session Alignment, Correlation Clear).
+19-point system: original 12 criteria + 4 institutional-grade factors
+(Order Block, FVG, Session Alignment, Correlation Clear) + 3 macro/
+geopolitical risk factors (COMEX Stress, Seismic Risk, Chokepoint Clear).
 """
 
 from __future__ import annotations
@@ -81,7 +82,15 @@ def _check_session_alignment(instrument_class: str, current_hour_cet: int) -> bo
     windows = _SESSION_WINDOWS.get(instrument_class.upper())
     if windows is None:
         return True
-    return any(start <= current_hour_cet <= end for start, end in windows)
+    for start, end in windows:
+        if start > end:
+            # Wraps midnight (e.g. 23→7)
+            if current_hour_cet >= start or current_hour_cet <= end:
+                return True
+        else:
+            if start <= current_hour_cet <= end:
+                return True
+    return False
 
 
 def _check_correlation_clear(instrument: str, open_signals: list[dict]) -> bool:
@@ -95,16 +104,68 @@ def _check_correlation_clear(instrument: str, open_signals: list[dict]) -> bool:
     return True
 
 
-def calculate_confluence(inp: ScoringInput) -> ScoringResult:
-    """Calculate the 16-criteria confluence score.
+# Instruments classified as metals (COMEX stress + seismic applies).
+_METAL_INSTRUMENTS: set[str] = {"XAUUSD", "XAGUSD", "COPPER", "HG"}
 
-    Grade thresholds: A+ >= 14, A >= 12, B >= 8, C < 8.
+# Instruments classified as oil (chokepoint applies).
+_OIL_INSTRUMENTS: set[str] = {"UKOIL", "USOIL", "BRENT", "WTI"}
+
+
+def _check_comex_stress(instrument: str, direction: str, comex_stress: dict[str, float] | None) -> bool:
+    """True if COMEX stress alignment confirms for metals, or auto-pass for non-metals.
+
+    Logic: high delivery stress (>60) + bullish direction = supply squeeze = bullish metals.
+    If comex_stress is None (data unavailable), auto-pass.
+    """
+    if instrument.upper() not in _METAL_INSTRUMENTS:
+        return True  # auto-pass for non-metals
+    if comex_stress is None:
+        return True  # backward compat: no data = auto-pass
+    stress = comex_stress.get(instrument.upper(), 0.0)
+    is_bull = direction.lower() in _BULL_ALIASES
+    return stress > 60 and is_bull
+
+
+def _check_seismic_clear(instrument: str, seismic_clear: bool | None) -> bool:
+    """True if no recent M6+ earthquake in relevant mining regions, or auto-pass.
+
+    Only applies to metal and copper instruments.  Non-commodity instruments auto-pass.
+    If seismic_clear is None (data unavailable), auto-pass.
+    """
+    if instrument.upper() not in _METAL_INSTRUMENTS:
+        return True  # auto-pass for non-commodity
+    if seismic_clear is None:
+        return True  # backward compat
+    return seismic_clear
+
+
+def _check_chokepoint_clear(instrument: str, chokepoint_clear: bool | None) -> bool:
+    """True if no active maritime chokepoint risk for oil instruments, or auto-pass.
+
+    Chokepoints: Strait of Hormuz, Suez Canal, Bab el-Mandeb.
+    Only applies to oil instruments.  Non-oil instruments auto-pass.
+    If chokepoint_clear is None (data unavailable), auto-pass.
+    """
+    if instrument.upper() not in _OIL_INSTRUMENTS:
+        return True  # auto-pass for non-oil
+    if chokepoint_clear is None:
+        return True  # backward compat
+    return chokepoint_clear
+
+
+def calculate_confluence(inp: ScoringInput) -> ScoringResult:
+    """Calculate the 19-criteria confluence score.
+
+    Grade thresholds: A+ >= 16, A >= 14, B >= 10, C < 10.
     Timeframe bias: MAKRO (>=6+cot+htf), SWING (>=4+htf), SCALP (>=2+at_level), WATCHLIST.
     """
     ob_pass = _check_order_block(inp.direction, inp.current_price, inp.order_blocks, inp.atr)
     fvg_pass = _check_fvg(inp.direction, inp.current_price, inp.fvgs, inp.atr)
     session_pass = _check_session_alignment(inp.instrument_class, inp.current_hour_cet)
     corr_pass = _check_correlation_clear(inp.instrument, inp.open_signals)
+    comex_pass = _check_comex_stress(inp.instrument, inp.direction, inp.comex_stress)
+    seismic_pass = _check_seismic_clear(inp.instrument, inp.seismic_clear)
+    chokepoint_pass = _check_chokepoint_clear(inp.instrument, inp.chokepoint_clear)
 
     details: list[ScoreDetail] = [
         ScoreDetail(label="Over SMA200 (D1 trend)", passes=inp.above_sma200),
@@ -123,21 +184,24 @@ def calculate_confluence(inp: ScoringInput) -> ScoringResult:
         ScoreDetail(label="FVG i nærheten", passes=fvg_pass),
         ScoreDetail(label="Riktig handelssesjon", passes=session_pass),
         ScoreDetail(label="Ingen korrelert konflikt", passes=corr_pass),
+        ScoreDetail(label="COMEX stress bekrefter", passes=comex_pass),
+        ScoreDetail(label="Ingen seismisk risiko", passes=seismic_pass),
+        ScoreDetail(label="Chokepoint klar", passes=chokepoint_pass),
     ]
 
     score = sum(1 for d in details if d.passes)
     max_score = len(details)
 
-    if score >= 14:
+    if score >= 16:
         grade = "A+"
-    elif score >= 12:
+    elif score >= 14:
         grade = "A"
-    elif score >= 8:
+    elif score >= 10:
         grade = "B"
     else:
         grade = "C"
 
-    grade_color = "bull" if score >= 14 else "warn" if score >= 12 else "bear"
+    grade_color = "bull" if score >= 16 else "warn" if score >= 14 else "bear"
 
     if score >= 6 and inp.cot_confirms and inp.htf_level_nearby:
         timeframe_bias = "MAKRO"

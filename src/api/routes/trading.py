@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
+import hmac
 import logging
+import os
 from datetime import datetime, timezone
 from typing import Any, Optional
 
@@ -98,6 +100,7 @@ class TVAlertRequest(BaseModel):
     sl: float
     t1: float
     t2: Optional[float] = None
+    secret: Optional[str] = Field(None, description="Webhook secret for verification")
     timeframe: Optional[str] = None
     bid: Optional[float] = None
     ask: Optional[float] = None
@@ -276,6 +279,10 @@ tv_router = APIRouter(prefix="/api/v1", tags=["webhook"])
 )
 async def tv_alert(body: TVAlertRequest) -> TVAlertResponse:
     """Receive a TradingView webhook alert and persist as a pending BotSignal."""
+    tv_secret = os.environ.get("TV_WEBHOOK_SECRET", "")
+    if tv_secret:
+        if not body.secret or not hmac.compare_digest(body.secret, tv_secret):
+            raise HTTPException(status_code=403, detail="Invalid webhook secret")
     try:
         instrument = validate_symbol(body.instrument)
     except ValueError as exc:

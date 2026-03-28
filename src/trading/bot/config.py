@@ -54,10 +54,16 @@ SYMBOL_MAP: dict[str, str] = {
     "USDJPY": "USDJPY",
     "GBPUSD": "GBPUSD",
     "AUDUSD": "AUDUSD",
+    "USDCHF": "USDCHF",
     "Gold": "XAUUSD",
     "Silver": "XAGUSD",
     "Brent": "UKOUSD",
     "WTI": "USOUSD",
+    "NATGAS": "NATGAS",
+    "WHEAT": "WHEAT",
+    "CORN": "CORN",
+    "XPTUSD": "XPTUSD",
+    "XPDUSD": "XPDUSD",
     "SPX": "US500",
     "NAS100": "USTEC",
     "DXY": "USDX",
@@ -83,10 +89,16 @@ LOT_PARAMS: dict[str, LotParams] = {
     "USDJPY": LotParams(0.01, 0.01, 0.01, 6.7, "forex"),
     "GBPUSD": LotParams(0.01, 0.01, 0.0001, 10.0, "forex"),
     "AUDUSD": LotParams(0.01, 0.01, 0.0001, 10.0, "forex"),
+    "USDCHF": LotParams(0.01, 0.01, 0.0001, 10.0, "forex"),
     "Gold": LotParams(0.01, 0.01, 0.01, 1.0, "commodity"),
     "Silver": LotParams(0.01, 0.01, 0.001, 50.0, "commodity"),
     "Brent": LotParams(0.01, 0.01, 0.01, 10.0, "commodity"),
     "WTI": LotParams(0.01, 0.01, 0.01, 10.0, "commodity"),
+    "NATGAS": LotParams(0.1, 0.1, 0.001, 10.0, "commodity"),
+    "WHEAT": LotParams(0.1, 0.1, 0.25, 12.5, "commodity"),
+    "CORN": LotParams(0.1, 0.1, 0.25, 12.5, "commodity"),
+    "XPTUSD": LotParams(0.01, 0.01, 0.01, 1.0, "commodity"),
+    "XPDUSD": LotParams(0.01, 0.01, 0.01, 1.0, "commodity"),
     "SPX": LotParams(0.01, 0.01, 0.1, 1.0, "index"),
     "NAS100": LotParams(0.01, 0.01, 0.1, 1.0, "index"),
 }
@@ -107,6 +119,7 @@ SESSION_RULES: dict[str, list[str]] = {
     "A": ["london", "ny_overlap"],     # Forex: London + NY Overlap only
     "B": ["london", "ny"],             # Commodities: London + NY
     "C": ["ny"],                       # Indices: NY session only
+    "D": ["ny"],                       # Agriculture: NY session only
 }
 
 
@@ -118,8 +131,13 @@ CORRELATED_PAIRS: dict[str, list[str]] = {
     "GBPUSD": ["EURUSD"],
     "Gold": ["Silver"],
     "Silver": ["Gold"],
-    "Brent": ["WTI"],
-    "WTI": ["Brent"],
+    "Brent": ["WTI", "NATGAS"],
+    "WTI": ["Brent", "NATGAS"],
+    "NATGAS": ["Brent", "WTI"],
+    "WHEAT": ["CORN"],
+    "CORN": ["WHEAT"],
+    "XPTUSD": ["XPDUSD"],
+    "XPDUSD": ["XPTUSD"],
     "SPX": ["NAS100"],
     "NAS100": ["SPX"],
 }
@@ -130,6 +148,60 @@ CORRELATED_PAIRS: dict[str, list[str]] = {
 # ---------------------------------------------------------------------------
 DEFAULT_SPREADS: dict[str, float] = {
     "EURUSD": 1.2, "USDJPY": 1.4, "GBPUSD": 1.8, "AUDUSD": 1.6,
+    "USDCHF": 1.6,
     "Gold": 3.0, "Silver": 3.5, "Brent": 4.0, "WTI": 4.0,
+    "NATGAS": 5.0, "WHEAT": 6.0, "CORN": 5.0,
+    "XPTUSD": 4.0, "XPDUSD": 8.0,
     "SPX": 5.0, "NAS100": 8.0, "DXY": 3.0, "VIX": 5.0,
 }
+
+
+# ---------------------------------------------------------------------------
+# Crisis-sensitive instrument definitions
+# ---------------------------------------------------------------------------
+CRISIS_INSTRUMENTS: dict[str, dict] = {
+    "NATGAS": {
+        "name": "Natural Gas",
+        "category": "energy",
+        "class": "B",
+        "session": "US",
+        "cot_market": "NATURAL GAS",
+    },
+    "WHEAT": {
+        "name": "Wheat Futures",
+        "category": "agriculture",
+        "class": "D",
+        "session": "US",
+        "cot_market": "WHEAT-SRW",
+    },
+    "CORN": {
+        "name": "Corn Futures",
+        "category": "agriculture",
+        "class": "D",
+        "session": "US",
+        "cot_market": "CORN",
+    },
+    "XPTUSD": {
+        "name": "Platinum",
+        "category": "metals",
+        "class": "B",
+        "session": "EU",
+        "cot_market": "PLATINUM",
+    },
+    "XPDUSD": {
+        "name": "Palladium",
+        "category": "metals",
+        "class": "B",
+        "session": "EU",
+        "cot_market": "PALLADIUM",
+    },
+    "USDCHF": {
+        "name": "USD/CHF",
+        "category": "forex",
+        "class": "A",
+        "session": "EU",
+        "cot_market": "SWISS FRANC",
+    },
+}
+
+

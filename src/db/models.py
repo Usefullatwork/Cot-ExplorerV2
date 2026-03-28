@@ -1,4 +1,4 @@
-"""SQLAlchemy ORM models — 14 tables for the trading signal platform."""
+"""SQLAlchemy ORM models — 19 tables for the trading signal platform."""
 
 from __future__ import annotations
 
@@ -484,4 +484,146 @@ class BotTradeLog(Base):
         Index("ix_trade_log_ts", "timestamp"),
         Index("ix_trade_log_event", "event_type"),
         Index("ix_trade_log_position", "position_id"),
+    )
+
+
+# ---------------------------------------------------------------------------
+# 15. SeismicEvent
+# ---------------------------------------------------------------------------
+class SeismicEvent(Base):
+    """USGS earthquake event relevant to mining regions.
+
+    Stores magnitude, location, depth, and the classified mining region
+    for earthquakes that may affect commodity supply chains.
+    """
+
+    __tablename__ = "seismic_events"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    mag = Column(Float, nullable=False)
+    lat = Column(Float, nullable=False)
+    lon = Column(Float, nullable=False)
+    depth_km = Column(Float, nullable=False)
+    place = Column(String(256), nullable=False)
+    event_time = Column(String(32), nullable=False)
+    region = Column(String(64), nullable=True)
+    url = Column(String(512), nullable=False)
+    fetched_at = Column(DateTime, nullable=False, default=lambda: datetime.now(timezone.utc))
+
+    __table_args__ = (
+        Index("ix_seismic_region", "region"),
+        Index("ix_seismic_fetched", "fetched_at"),
+    )
+
+
+# ---------------------------------------------------------------------------
+# 16. ComexInventory
+# ---------------------------------------------------------------------------
+class ComexInventory(Base):
+    """COMEX warehouse inventory snapshot for a single metal.
+
+    Tracks registered/eligible/total ounces (or pounds for copper),
+    coverage percentage, and a stress index (0-100) indicating
+    delivery tightness.
+    """
+
+    __tablename__ = "comex_inventory"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    metal = Column(String(16), nullable=False)  # gold, silver, copper
+    registered = Column(Integer, nullable=False)
+    eligible = Column(Integer, nullable=False)
+    total = Column(Integer, nullable=False)
+    coverage_pct = Column(Float, nullable=False)
+    stress_index = Column(Float, nullable=False)
+    fetched_at = Column(DateTime, nullable=False, default=lambda: datetime.now(timezone.utc))
+
+    __table_args__ = (
+        Index("ix_comex_metal", "metal"),
+        Index("ix_comex_fetched", "fetched_at"),
+    )
+
+
+# ---------------------------------------------------------------------------
+# 17. GeoIntelArticle
+# ---------------------------------------------------------------------------
+class GeoIntelArticle(Base):
+    """News article from geo-intelligence feeds relevant to trading.
+
+    Stores headline, source, publication time, and category (gold,
+    silver, copper, geopolitical) for commodity-related news.
+    """
+
+    __tablename__ = "geointel_articles"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    title = Column(String(512), nullable=False)
+    url = Column(String(1024), nullable=False)
+    source = Column(String(128), nullable=False)
+    published_at = Column(String(64), nullable=False)
+    category = Column(String(32), nullable=False)
+    fetched_at = Column(DateTime, nullable=False, default=lambda: datetime.now(timezone.utc))
+
+    __table_args__ = (
+        Index("ix_geointel_category", "category"),
+        Index("ix_geointel_fetched", "fetched_at"),
+    )
+
+
+# ---------------------------------------------------------------------------
+# 18. SignalPerformance
+# ---------------------------------------------------------------------------
+class SignalPerformance(Base):
+    """Post-hoc performance tracking for a generated signal.
+
+    Links to the original Signal record and tracks whether the trade
+    hit its target (HIT), missed (MISS), is still pending, or was
+    neutral.  Records PnL in pips and close time.
+    """
+
+    __tablename__ = "signal_performance"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    signal_id = Column(Integer, ForeignKey("signals.id"), nullable=False)
+    instrument = Column(String(32), nullable=False)
+    direction = Column(String(8), nullable=False)
+    grade = Column(String(4), nullable=False)
+    score = Column(Integer, nullable=False)
+    entry_price = Column(Float, nullable=False)
+    result = Column(String(16), nullable=False, default="PENDING")  # HIT/MISS/PENDING/NEUTRAL
+    closed_at = Column(DateTime, nullable=True)
+    pnl_pips = Column(Float, nullable=True)
+    created_at = Column(DateTime, nullable=False, default=lambda: datetime.now(timezone.utc))
+
+    signal_rel = relationship("Signal")
+
+    __table_args__ = (
+        Index("ix_sigperf_signal", "signal_id"),
+        Index("ix_sigperf_result", "result"),
+        Index("ix_sigperf_instrument", "instrument"),
+    )
+
+
+# ---------------------------------------------------------------------------
+# 19. CorrelationSnapshot
+# ---------------------------------------------------------------------------
+class CorrelationSnapshot(Base):
+    """Point-in-time correlation between two instruments.
+
+    Stores the rolling Pearson correlation coefficient over a
+    configurable window (default 20 days) for cross-market analysis.
+    """
+
+    __tablename__ = "correlation_snapshots"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    instrument_a = Column(String(32), nullable=False)
+    instrument_b = Column(String(32), nullable=False)
+    correlation = Column(Float, nullable=False)
+    window_days = Column(Integer, nullable=False, default=20)
+    calculated_at = Column(DateTime, nullable=False, default=lambda: datetime.now(timezone.utc))
+
+    __table_args__ = (
+        Index("ix_corr_instruments", "instrument_a", "instrument_b"),
+        Index("ix_corr_calculated", "calculated_at"),
     )

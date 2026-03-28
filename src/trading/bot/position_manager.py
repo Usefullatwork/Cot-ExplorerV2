@@ -8,6 +8,8 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any, Optional
 
+from src.trading.bot.config import LOT_PARAMS
+
 # ---------------------------------------------------------------------------
 # Constants
 # ---------------------------------------------------------------------------
@@ -15,6 +17,14 @@ from typing import Any, Optional
 ATR_TRAIL_MULTIPLIER: float = 1.5
 BREAKEVEN_BUFFER_PIPS: float = 2.0
 PIP_SIZE_DEFAULT: float = 0.0001  # Override per instrument if needed
+
+
+def get_pip_size(instrument: str) -> float:
+    """Look up pip_size from LOT_PARAMS, falling back to PIP_SIZE_DEFAULT."""
+    params = LOT_PARAMS.get(instrument)
+    if params is not None:
+        return params.pip_size
+    return PIP_SIZE_DEFAULT
 
 # Triple TP allocation
 TP_T1_PCT: float = 0.50  # 50% at 1R
@@ -250,7 +260,8 @@ def check_breakeven(
     entry = position.get("entry_price", 0.0)
     t1 = position.get("target_1", 0.0)
     current_sl = position.get("stop_loss", 0.0)
-    pip_size = position.get("pip_size", PIP_SIZE_DEFAULT)
+    instrument = position.get("instrument", "")
+    pip_size = position.get("pip_size", get_pip_size(instrument))
 
     # Already at or past breakeven — do not re-trigger
     if direction == "bull" and current_sl >= entry:

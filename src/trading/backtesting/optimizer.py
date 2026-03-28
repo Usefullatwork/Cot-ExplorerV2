@@ -165,11 +165,13 @@ class WalkForwardOptimizer:
                     all_test.append(wr)
 
         ranking = self._aggregate_ranking(all_test)
+        overfit_warnings = self._detect_overfitting(all_train, all_test)
         return OptimizationResult(
             instrument=instrument, total_windows=len(windows),
             total_combinations=total_combos, runtime_seconds=time.time() - t0,
             train_results=all_train, test_results=all_test,
             best_combo=ranking[0] if ranking else {}, ranking=ranking,
+            overfit_warnings=overfit_warnings,
         )
 
     def run_all_instruments(self, instruments: list[str]) -> dict[str, OptimizationResult]:
@@ -240,6 +242,57 @@ class WalkForwardOptimizer:
             composite_score=score_result(report),
         )
 
+    def _detect_overfitting(
+        self, train_results: list[WindowResult], test_results: list[WindowResult],
+    ) -> list[str]:
+        """Detect potential overfitting by comparing train vs test scores.
+
+        For each strategy+timeframe combo that has both train and test results:
+        - Computes avg_train_score and avg_test_score.
+        - If train/test ratio > 1.5: warns about potential overfitting.
+        - If test score < 0 and train score > 0: warns about curve-fitting.
+
+        Returns:
+            List of warning strings. Empty if no overfitting detected.
+        """
+        # Group scores by (strategy, timeframe)
+        train_scores: dict[tuple[str, str], list[float]] = {}
+        test_scores: dict[tuple[str, str], list[float]] = {}
+
+        for wr in train_results:
+            key = (wr.strategy, wr.timeframe)
+            train_scores.setdefault(key, []).append(wr.composite_score)
+
+        for wr in test_results:
+            key = (wr.strategy, wr.timeframe)
+            test_scores.setdefault(key, []).append(wr.composite_score)
+
+        warnings: list[str] = []
+        for key in train_scores:
+            if key not in test_scores:
+                continue
+            avg_train = sum(train_scores[key]) / len(train_scores[key])
+            avg_test = sum(test_scores[key]) / len(test_scores[key])
+            strategy, timeframe = key
+
+            # Guard against division by zero
+            if avg_test != 0.0:
+                overfit_ratio = avg_train / avg_test
+                if overfit_ratio > 1.5:
+                    warnings.append(
+                        f"Potential overfitting for {strategy}/{timeframe}: "
+                        f"train/test ratio = {overfit_ratio:.2f}"
+                    )
+
+            # Curve-fit detection: positive train but negative test
+            if avg_test < 0.0 and avg_train > 0.0:
+                warnings.append(
+                    f"Curve-fit detected for {strategy}/{timeframe}: "
+                    f"positive train ({avg_train:.4f}) but negative test ({avg_test:.4f})"
+                )
+
+        return warnings
+
     def _aggregate_ranking(self, test_results: list[WindowResult]) -> list[dict[str, Any]]:
         """Group OOS results by combo, average scores, sort descending."""
         combos: dict[str, list[WindowResult]] = {}
@@ -287,6 +340,11 @@ def main() -> None:
     result = opt.run(args.instrument)
     reporter = OptimizationReport()
     print(reporter.generate_summary(result))
+
+    if result.overfit_warnings:
+        print("\n  OVERFITTING WARNINGS:")
+        for w in result.overfit_warnings:
+            print(f"    ! {w}")
 
     stability = reporter.stability_analysis(result)
     if stability.get("warnings"):
