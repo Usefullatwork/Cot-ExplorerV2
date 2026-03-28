@@ -102,8 +102,9 @@ def _detect_mining_region(title: str) -> str | None:
         "philippines": "Philippines",
         "mexico": "Mexico",
     }
+    padded = f" {title_lower} "
     for keyword, region_name in mapping.items():
-        if keyword in title_lower:
+        if f" {keyword} " in padded:
             return region_name
     return None
 

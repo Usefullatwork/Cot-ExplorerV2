@@ -114,7 +114,9 @@ def assess_risk(intel_articles: list[dict]) -> list[dict]:
         entry = {k: v for k, v in cp.items() if k != "keywords"}
         keywords = cp.get("keywords", [])
 
-        mentioned = any(kw in titles_lower for kw in keywords)
+        mentioned = any(
+            f" {kw} " in f" {titles_lower} " for kw in keywords
+        )
         if mentioned:
             old_level = entry["risk_level"]
             entry["risk_level"] = bump_map.get(old_level, old_level)
