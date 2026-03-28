@@ -115,6 +115,12 @@ export function fetchBacktestStats() {
   return get('/api/v1/backtests/stats');
 }
 
+// ── Regime History ─────────────────────────────────────────
+
+export function fetchRegimeHistory(days = 30) {
+  return get('/api/v1/macro/regime-history', { days });
+}
+
 // ── Health / Metrics ────────────────────────────────────────
 
 export function fetchHealth() {

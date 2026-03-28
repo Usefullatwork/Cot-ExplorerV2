@@ -10,7 +10,7 @@
 import { formatPct, escapeHtml, formatPrice } from '../utils.js';
 import { createSparkline } from '../charts/miniSparkline.js';
 import { createPriceChart } from '../charts/priceLineChart.js';
-import { fetchVixTerm, fetchADR } from '../api.js';
+import { fetchVixTerm, fetchADR, fetchRegimeHistory } from '../api.js';
 import {
   Chart,
   LineController,
@@ -120,6 +120,8 @@ export function render(container) {
     <div class="g4" id="macroRente" role="group" aria-label="Rente og kreditt indikatorer"></div>
     <div class="sh" style="margin-top:16px"><h2 class="sh-t">VIX Termstruktur</h2><div class="sh-b">Spot, 9D, 3M — contango/backwardation</div></div>
     <div id="vixTermGrid" class="g4" role="group" aria-label="VIX termstruktur"></div>
+    <div class="sh" style="margin-top:16px"><h2 class="sh-t">Regime-tidslinje</h2><div class="sh-b">Siste 30 dager</div></div>
+    <div id="regimeTimeline" role="img" aria-label="Regime tidslinje" style="padding:8px 0"></div>
     <div class="sh" style="margin-top:16px"><h2 class="sh-t">Sesjonsrekkevidde (ADR)</h2><div class="sh-b">20-dagers gjennomsnittlig daglig rekkevidde</div></div>
     <div id="adrTable" role="region" aria-label="ADR tabell"></div>
     <div id="macroConflicts" style="display:none;margin-top:16px" role="alert" aria-label="Konflikter"></div>
@@ -469,6 +471,27 @@ export function update(m) {
       ]
         .map((x) => `<div class="card"><div class="ct">${escapeHtml(x.name)}</div><div class="snum" style="font-size:20px;font-family:'DM Mono',monospace">${x.val}</div><div class="slabel" style="margin-top:4px;color:var(--${x.col})">${x.col.toUpperCase()}</div></div>`)
         .join('');
+    })
+    .catch(() => {});
+
+  // ── Regime Timeline (async fetch) ───────────────────────
+  fetchRegimeHistory()
+    .then((data) => {
+      const tlEl = document.getElementById('regimeTimeline');
+      if (!tlEl || !data || !data.days || !data.days.length) return;
+      const colorMap = { green: 'var(--bull)', yellow: 'var(--warn)', orange: '#e87c2f', red: 'var(--bear)' };
+      const labelMap = { normal: 'Normal', risk_off: 'Risk-off', crisis: 'Krise', war_footing: 'Krig', energy_shock: 'Energi', sanctions: 'Sanksjoner' };
+      const dayWidth = Math.max(4, Math.floor(600 / data.days.length));
+      const bars = data.days
+        .map((d) => `<div title="${escapeHtml(d.date)}: ${escapeHtml(labelMap[d.regime] || d.regime)}" style="width:${dayWidth}px;height:24px;background:${colorMap[d.color] || 'var(--bull)'};border-radius:2px;cursor:help"></div>`)
+        .join('');
+      const legend = Object.entries(labelMap)
+        .map(([k, v]) => {
+          const col = colorMap[({ normal: 'green', risk_off: 'yellow', crisis: 'red', war_footing: 'red', energy_shock: 'orange', sanctions: 'orange' })[k] || 'green'];
+          return `<span style="display:inline-flex;align-items:center;gap:3px;font-size:10px;color:var(--m)"><span style="width:8px;height:8px;border-radius:2px;background:${col};display:inline-block"></span>${v}</span>`;
+        })
+        .join(' ');
+      tlEl.innerHTML = `<div style="display:flex;gap:1px;align-items:end">${bars}</div><div style="display:flex;gap:8px;margin-top:6px;flex-wrap:wrap">${legend}</div>`;
     })
     .catch(() => {});
 

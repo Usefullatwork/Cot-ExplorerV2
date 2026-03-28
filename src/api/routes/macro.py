@@ -18,6 +18,8 @@ from src.trading.scrapers.vix_futures import (
     to_dict as vix_to_dict,
 )
 
+from src.analysis.regime_detector import MarketRegime
+
 log = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/v1", tags=["macro"])
@@ -186,3 +188,92 @@ def average_daily_range() -> dict:
     result = {"items": items}
     macro_cache.set("adr_data", result, ttl=300)
     return result
+
+
+# ---------------------------------------------------------------------------
+# Regime History Timeline
+# ---------------------------------------------------------------------------
+
+_REGIME_COLORS = {
+    "normal": "green",
+    "risk_off": "yellow",
+    "crisis": "red",
+    "war_footing": "red",
+    "energy_shock": "orange",
+    "sanctions": "orange",
+}
+
+
+class RegimeDay(BaseModel):
+    """Single day regime entry."""
+
+    date: str
+    regime: str
+    color: str
+
+
+class RegimeHistoryResponse(BaseModel):
+    """Response for regime history timeline."""
+
+    days: list[RegimeDay]
+
+
+@router.get(
+    "/macro/regime-history",
+    summary="Regime history timeline",
+    description="Returns the last N days of regime transitions from macro snapshots.",
+    response_model=RegimeHistoryResponse,
+)
+def regime_history(days: int = 30) -> dict:
+    """Last N days of regime history from macro_snapshots."""
+    cached = macro_cache.get(f"regime_history_{days}")
+    if cached is not None:
+        return cached
+
+    import json as json_mod
+
+    from sqlalchemy import select
+    from src.db.engine import session_scope
+    from src.db.models import MacroSnapshot
+
+    gen = session_scope()
+    session = next(gen)
+    try:
+        stmt = (
+            select(MacroSnapshot)
+            .order_by(MacroSnapshot.timestamp.desc())
+            .limit(days)
+        )
+        snapshots = session.execute(stmt).scalars().all()
+
+        result_days = []
+        for snap in reversed(snapshots):
+            regime = "normal"
+            if snap.full_json:
+                try:
+                    data = json_mod.loads(snap.full_json)
+                    regime = data.get("regime", data.get("vix_regime", {}).get("regime", "normal"))
+                except (json_mod.JSONDecodeError, AttributeError):
+                    pass
+
+            date_str = str(snap.timestamp)[:10] if snap.timestamp else ""
+            result_days.append({
+                "date": date_str,
+                "regime": regime,
+                "color": _REGIME_COLORS.get(regime, "green"),
+            })
+
+        result = {"days": result_days}
+        macro_cache.set(f"regime_history_{days}", result, ttl=600)
+
+        try:
+            gen.send(None)
+        except StopIteration:
+            pass
+        return result
+    except Exception:
+        try:
+            gen.throw(Exception)
+        except StopIteration:
+            pass
+        raise
