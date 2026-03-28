@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { render, update, onOpenChart } from '../components/CotTable.js';
+import { render, update, onOpenChart, _reset } from '../components/CotTable.js';
 
 /** Minimal COT market row data. */
 function makeRow(overrides = {}) {
@@ -17,10 +17,11 @@ function makeRow(overrides = {}) {
   };
 }
 
-describe('CotTable', () => {
+describe('CotTable (Accordion)', () => {
   let container;
 
   beforeEach(() => {
+    _reset();
     document.body.innerHTML = '';
     container = document.createElement('div');
     container.id = 'panel-cot';
@@ -32,7 +33,6 @@ describe('CotTable', () => {
 
     expect(document.getElementById('cotS')).not.toBeNull();
     expect(document.getElementById('cotGrid')).not.toBeNull();
-    expect(document.getElementById('fchips')).not.toBeNull();
   });
 
   it('renders section heading "COT-posisjoner"', () => {
@@ -42,47 +42,68 @@ describe('CotTable', () => {
     expect(heading.textContent).toBe('COT-posisjoner');
   });
 
-  it('renders table rows after update()', () => {
-    render(container);
-    update([makeRow(), makeRow({ symbol: 'GC', navn_no: 'Gull', kategori: 'ravarer' })]);
-
-    const rows = document.querySelectorAll('#cotGrid tbody tr');
-    expect(rows.length).toBe(2);
-  });
-
   it('shows market count badge', () => {
     render(container);
-    update([makeRow(), makeRow({ symbol: 'GC', navn_no: 'Gull', kategori: 'ravarer' }), makeRow({ symbol: 'EC', navn_no: 'Euro FX', kategori: 'valuta' })]);
+    update([
+      makeRow(),
+      makeRow({ symbol: 'GC', navn_no: 'Gull', kategori: 'ravarer' }),
+      makeRow({ symbol: 'EC', navn_no: 'Euro FX', kategori: 'valuta' }),
+    ]);
 
     const cnt = document.getElementById('cotCnt');
     expect(cnt.textContent).toBe('3 markeder');
   });
 
-  it('displays the Norwegian name in the first column', () => {
+  it('renders accordion groups by category', () => {
+    render(container);
+    update([
+      makeRow({ symbol: 'ES', kategori: 'aksjer' }),
+      makeRow({ symbol: 'GC', kategori: 'ravarer' }),
+    ]);
+
+    const accordions = document.querySelectorAll('.cot-accordion');
+    expect(accordions.length).toBe(2);
+  });
+
+  it('shows category labels with emoji', () => {
+    render(container);
+    update([makeRow({ kategori: 'aksjer' })]);
+
+    const header = document.querySelector('.cot-accordion-header');
+    expect(header.textContent).toContain('Aksjer');
+  });
+
+  it('shows stacked bar in category header', () => {
+    render(container);
+    update([makeRow({ kategori: 'aksjer', spekulanter: { net: 100000 }, open_interest: 500000 })]);
+
+    const header = document.querySelector('.cot-accordion-header');
+    expect(header.innerHTML).toContain('var(--bull)');
+  });
+
+  it('renders market cards inside accordion body', () => {
+    render(container);
+    update([makeRow(), makeRow({ symbol: 'NQ', navn_no: 'Nasdaq', kategori: 'aksjer' })]);
+
+    // Click the aksjer header to open it (first category auto-opens)
+    const cards = document.querySelectorAll('.cot-market-card');
+    expect(cards.length).toBeGreaterThanOrEqual(1);
+  });
+
+  it('displays Norwegian name in market cards', () => {
     render(container);
     update([makeRow()]);
 
-    const name = document.querySelector('.tdname');
-    expect(name.textContent).toBe('S&P 500 mini');
+    const card = document.querySelector('.cot-market-card');
+    expect(card.textContent).toContain('S&P 500 mini');
   });
 
-  it('displays "forklaring" as subtitle', () => {
+  it('shows signal badge in market card', () => {
     render(container);
-    update([makeRow()]);
+    update([makeRow({ spekulanter: { net: 500000 }, open_interest: 1000000 })]);
 
-    const sub = document.querySelector('.tdsub');
-    expect(sub.textContent).toBe('Aksjeindeks');
-  });
-
-  it('renders filter chips for categories present in data', () => {
-    render(container);
-    update([makeRow(), makeRow({ symbol: 'GC', kategori: 'ravarer' })]);
-
-    const chips = document.querySelectorAll('#fchips .fc');
-    const labels = Array.from(chips).map((c) => c.dataset.cat);
-    expect(labels).toContain('alle');
-    expect(labels).toContain('aksjer');
-    expect(labels).toContain('ravarer');
+    const badge = document.querySelector('.sp2');
+    expect(badge).not.toBeNull();
   });
 
   it('shows empty state when data is empty', () => {
@@ -97,30 +118,20 @@ describe('CotTable', () => {
     render(container);
     update(null);
 
-    // Should not throw; grid stays as-is
     const grid = document.getElementById('cotGrid');
     expect(grid).not.toBeNull();
   });
 
-  it('filters by category when a chip is clicked', () => {
+  it('auto-opens first category with data', () => {
     render(container);
-    update([
-      makeRow({ symbol: 'ES', kategori: 'aksjer', navn_no: 'S&P' }),
-      makeRow({ symbol: 'GC', kategori: 'ravarer', navn_no: 'Gull' }),
-    ]);
+    update([makeRow({ kategori: 'valuta' })]);
 
-    // Click the 'ravarer' filter chip
-    const chips = document.querySelectorAll('#fchips .fc');
-    const ravarerChip = Array.from(chips).find((c) => c.dataset.cat === 'ravarer');
-    expect(ravarerChip).not.toBeNull();
-    ravarerChip.click();
-
-    const rows = document.querySelectorAll('#cotGrid tbody tr');
-    expect(rows.length).toBe(1);
-    expect(document.querySelector('.tdname').textContent).toBe('Gull');
+    const body = document.querySelector('.cot-accordion-body');
+    // Auto-opened accordion shows as grid display
+    expect(body.style.display).toBe('grid');
   });
 
-  it('calls onOpenChart callback when a row is clicked', () => {
+  it('calls onOpenChart callback when a card is clicked', () => {
     render(container);
 
     let called = null;
@@ -128,22 +139,47 @@ describe('CotTable', () => {
       called = { sym, report, name };
     });
 
-    // Reset filter to 'alle' by clicking the 'alle' chip, then update data
     update([makeRow()]);
 
-    // The previous filter test may have set activeFilter to 'ravarer',
-    // so click 'alle' chip to reset before asserting on row presence.
-    const alleChip = Array.from(document.querySelectorAll('#fchips .fc')).find(
-      (c) => c.dataset.cat === 'alle'
-    );
-    if (alleChip) alleChip.click();
-
-    const row = document.querySelector('tr[data-sym]');
-    expect(row).not.toBeNull();
-    row.click();
+    const card = document.querySelector('.cot-market-card');
+    expect(card).not.toBeNull();
+    card.click();
 
     expect(called).not.toBeNull();
     expect(called.sym).toBe('ES');
     expect(called.report).toBe('Legacy');
+  });
+
+  it('toggles accordion on header click', () => {
+    render(container);
+    update([makeRow({ kategori: 'aksjer' }), makeRow({ symbol: 'GC', kategori: 'ravarer' })]);
+
+    // aksjer should be auto-opened, ravarer closed
+    const headers = document.querySelectorAll('.cot-accordion-header');
+    const ravarerHeader = Array.from(headers).find((h) => h.dataset.cat === 'ravarer');
+    expect(ravarerHeader).not.toBeNull();
+
+    // Click to open ravarer
+    ravarerHeader.click();
+    const ravarerBody = ravarerHeader.closest('.cot-accordion').querySelector('.cot-accordion-body');
+    // After click, the accordion should re-render with ravarer open
+    expect(document.querySelector('[data-cat="ravarer"] .cot-accordion-body').style.display).not.toBe('none');
+  });
+
+  it('shows net % in market card', () => {
+    render(container);
+    update([makeRow({ spekulanter: { net: 80000 }, open_interest: 2500000 })]);
+
+    const card = document.querySelector('.cot-market-card');
+    // 80000/2500000 = 3.2%
+    expect(card.textContent).toContain('3.2%');
+  });
+
+  it('renders sparkline when cot_history is provided', () => {
+    render(container);
+    update([makeRow({ cot_history: [10, 20, 30, 40, 50] })]);
+
+    const card = document.querySelector('.cot-market-card');
+    expect(card.innerHTML).toContain('<svg');
   });
 });

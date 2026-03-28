@@ -1,36 +1,38 @@
 /**
- * CotTable component — searchable, filterable table of COT positions.
+ * CotTable component — 8-category accordion of COT positions.
  *
- * Ports the renderCot / setCF / filterCot functions from v1 index.html.
+ * Replaces the flat table with an accordion layout grouped by category.
+ * Each category header shows a stacked bull/neutral/bear bar + counts.
+ * Each market card shows signal badge, net %, and mini sparkline.
  */
 
 import { formatNumber, colorClass, escapeHtml } from '../utils.js';
+import { renderSparkline } from '../charts/svgSparkline.js';
 
 // ── Internal state ──────────────────────────────────────────
 let allData = [];
-let activeFilter = 'alle';
 let searchQuery = '';
+let openCategories = new Set();
 
-/** Category labels (Norwegian UI) */
+/** Category config: key -> { label, emoji } */
 const CATS = {
-  alle: 'Alle',
-  aksjer: 'Aksjer',
-  valuta: 'Valuta',
-  renter: 'Renter',
-  ravarer: 'Ravarer',
-  krypto: 'Krypto',
-  landbruk: 'Landbruk',
-  volatilitet: 'Vol',
-  annet: 'Annet',
+  aksjer:       { label: 'Aksjer',       emoji: '\uD83D\uDCC8' },
+  valuta:       { label: 'Valuta',       emoji: '\uD83D\uDCB1' },
+  renter:       { label: 'Renter',       emoji: '\uD83C\uDFE6' },
+  ravarer:      { label: 'Ravarer',      emoji: '\u26CF' },
+  landbruk:     { label: 'Landbruk',     emoji: '\uD83C\uDF3E' },
+  krypto:       { label: 'Krypto',       emoji: '\u20BF' },
+  volatilitet:  { label: 'Volatilitet',  emoji: '\uD83C\uDF0A' },
+  annet:        { label: 'Annet',        emoji: '\uD83D\uDCE6' },
 };
 
 /** Signal info map */
 const SI = {
-  'bull-strong': { i: 'B+', t: 'Kjoeper sterkt' },
-  'bull-mild':   { i: 'B',  t: 'Svakt bullish' },
-  'neutral':     { i: 'N',  t: 'Noytral' },
-  'bear-mild':   { i: 'S',  t: 'Svakt bearish' },
-  'bear-strong': { i: 'S+', t: 'Selger sterkt' },
+  'bull-strong': { i: 'B+', t: 'Kjoeper sterkt', cls: 'bull' },
+  'bull-mild':   { i: 'B',  t: 'Svakt bullish',  cls: 'bull' },
+  'neutral':     { i: 'N',  t: 'Noytral',        cls: 'neutral' },
+  'bear-mild':   { i: 'S',  t: 'Svakt bearish',  cls: 'bear' },
+  'bear-strong': { i: 'S+', t: 'Selger sterkt',  cls: 'bear' },
 };
 
 function sig(net, oi) {
@@ -54,68 +56,119 @@ export function onOpenChart(cb) {
   onRowClick = cb;
 }
 
+// ── Category grouping ────────────────────────────────────
+function groupByCategory(data) {
+  const groups = {};
+  for (const cat of Object.keys(CATS)) {
+    groups[cat] = [];
+  }
+  for (const d of data) {
+    const cat = d.kategori || 'annet';
+    if (!groups[cat]) groups[cat] = [];
+    groups[cat].push(d);
+  }
+  return groups;
+}
+
+function countSignals(items) {
+  let bull = 0, neutral = 0, bear = 0;
+  for (const d of items) {
+    const sp = d.spekulanter || {};
+    const s = sig(sp.net || 0, d.open_interest || 1);
+    if (s.startsWith('bull')) bull++;
+    else if (s.startsWith('bear')) bear++;
+    else neutral++;
+  }
+  return { bull, neutral, bear, total: items.length };
+}
+
+function renderStackedBar(counts) {
+  const t = counts.total || 1;
+  const bw = (counts.bull / t * 100).toFixed(0);
+  const nw = (counts.neutral / t * 100).toFixed(0);
+  const ew = (counts.bear / t * 100).toFixed(0);
+  return `<div style="display:flex;height:6px;border-radius:3px;overflow:hidden;width:100%;gap:1px" aria-label="Bull ${counts.bull}, Neutral ${counts.neutral}, Bear ${counts.bear}"><div style="width:${bw}%;background:var(--bull)"></div><div style="width:${nw}%;background:var(--m)"></div><div style="width:${ew}%;background:var(--bear)"></div></div>`;
+}
+
 // ── Rendering ───────────────────────────────────────────────
 
-function renderTable() {
-  const data = allData.filter((d) => {
-    if (activeFilter !== 'alle' && d.kategori !== activeFilter) return false;
+function renderMarketCard(d) {
+  const sp = d.spekulanter || {};
+  const s = sig(sp.net || 0, d.open_interest || 1);
+  const si = SI[s];
+  const net = sp.net || 0;
+  const pctOi = d.open_interest ? ((net / d.open_interest) * 100).toFixed(1) : '0.0';
+  const hist = d.cot_history || [];
+  const spark = hist.length > 1 ? renderSparkline(hist, { width: 60, height: 20 }) : '';
+
+  return `<div class="cot-market-card" data-sym="${escapeHtml(d.symbol)}" data-report="${escapeHtml(d.report)}" data-name="${encodeURIComponent(d.navn_no || d.market)}" tabindex="0" role="button" aria-label="${escapeHtml(d.navn_no || d.market)}: ${escapeHtml(si.t)}">
+    <div style="display:flex;align-items:center;gap:8px">
+      <span class="sp2 ${s}" style="min-width:28px;text-align:center">${escapeHtml(si.i)}</span>
+      <div style="flex:1;min-width:0">
+        <div style="font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escapeHtml(d.navn_no || d.market)}</div>
+        <div style="font-size:10px;color:var(--m)">${escapeHtml(d.forklaring || '')}</div>
+      </div>
+      <div style="text-align:right;min-width:50px">
+        <div class="${colorClass(net)}" style="font-family:'DM Mono',monospace;font-size:12px;font-weight:600">${pctOi}%</div>
+        <div style="font-size:9px;color:var(--m)">${net > 0 ? '+' : ''}${escapeHtml(formatNumber(net))}</div>
+      </div>
+      ${spark ? '<div style="min-width:60px">' + spark + '</div>' : ''}
+    </div>
+  </div>`;
+}
+
+function renderAccordion() {
+  const filtered = allData.filter((d) => {
     if (!searchQuery) return true;
     return (d.navn_no + d.market + d.symbol + d.kategori).toLowerCase().includes(searchQuery);
   });
 
   const cntEl = document.getElementById('cotCnt');
-  if (cntEl) cntEl.textContent = data.length + ' markeder';
-
-  // Category counts
-  const counts = { alle: allData.length };
-  allData.forEach((d) => {
-    counts[d.kategori] = (counts[d.kategori] || 0) + 1;
-  });
-
-  const fchEl = document.getElementById('fchips');
-  if (fchEl) {
-    fchEl.innerHTML = Object.entries(CATS)
-      .filter(([k]) => k === 'alle' || counts[k])
-      .map(
-        ([k, v]) =>
-          `<button class="fc${k === activeFilter ? ' on' : ''}" data-cat="${k}" aria-pressed="${k === activeFilter ? 'true' : 'false'}" aria-label="Filter: ${v} (${counts[k] || 0} markeder)">${v} <span style="opacity:.6" aria-hidden="true">${counts[k] || 0}</span></button>`
-      )
-      .join('');
-  }
+  if (cntEl) cntEl.textContent = filtered.length + ' markeder';
 
   const gridEl = document.getElementById('cotGrid');
   if (!gridEl) return;
 
-  if (!data.length) {
-    const isSearch = searchQuery || activeFilter !== 'alle';
+  if (!filtered.length) {
+    const isSearch = searchQuery.length > 0;
     gridEl.innerHTML = `<div class="empty-state">
       <div class="empty-state-icon">${isSearch ? '\uD83D\uDD0D' : '\uD83D\uDCCA'}</div>
       <div class="empty-state-title">${isSearch ? 'Ingen resultater' : 'Ingen COT-data'}</div>
-      <div class="empty-state-text">${isSearch ? 'Prov a endre sok eller filter.' : 'Kjor fetch_all.py for a laste inn data.'}</div>
+      <div class="empty-state-text">${isSearch ? 'Prov a endre sok.' : 'Kjor fetch_all.py for a laste inn data.'}</div>
     </div>`;
     return;
   }
 
-  const rows = data
-    .map((d) => {
-      const sp = d.spekulanter || {};
-      const s2 = sig(sp.net || 0, d.open_interest || 1);
-      const si = SI[s2];
-      return `<tr data-sym="${escapeHtml(d.symbol)}" data-report="${escapeHtml(d.report)}" data-name="${encodeURIComponent(d.navn_no || d.market)}" tabindex="0" role="row" aria-label="${escapeHtml(d.navn_no || d.market)}: ${escapeHtml(si.t)}, netto ${escapeHtml(formatNumber(sp.net || 0))}">
-        <td style="cursor:pointer" class="cot-row-click"><div class="tdname">${escapeHtml(d.navn_no || d.market)}</div><div class="tdsub">${escapeHtml(d.forklaring || '')}</div></td>
-        <td><span class="sp2 ${s2}" role="status">${escapeHtml(si.i)} ${escapeHtml(si.t)}</span></td>
-        <td class="${sp.net >= 0 ? 'tdbull' : 'tdbear'}">${sp.net > 0 ? '+' : ''}${escapeHtml(formatNumber(sp.net || 0))}</td>
-        <td class="${d.change_spec_net >= 0 ? 'tdbull' : 'tdbear'}">${d.change_spec_net > 0 ? '+' : ''}${escapeHtml(formatNumber(d.change_spec_net || 0))}</td>
-        <td class="tdr">${escapeHtml(formatNumber(d.open_interest || 0))}</td>
-        <td class="tdr" style="font-size:10px;color:var(--m)">${escapeHtml(d.report)}</td>
-      </tr>`;
+  const groups = groupByCategory(filtered);
+
+  gridEl.innerHTML = Object.entries(CATS)
+    .filter(([cat]) => groups[cat] && groups[cat].length > 0)
+    .map(([cat, cfg]) => {
+      const items = groups[cat];
+      const counts = countSignals(items);
+      const isOpen = openCategories.has(cat);
+
+      return `<div class="cot-accordion" data-cat="${cat}">
+        <div class="cot-accordion-header" data-cat="${cat}" role="button" tabindex="0" aria-expanded="${isOpen}" aria-label="${cfg.label}: ${counts.total} markeder">
+          <div style="display:flex;align-items:center;gap:8px;flex:1">
+            <span style="font-size:16px">${cfg.emoji}</span>
+            <span style="font-weight:600;font-size:14px">${cfg.label}</span>
+            <span style="font-size:11px;color:var(--m)">${counts.total}</span>
+          </div>
+          <div style="display:flex;align-items:center;gap:8px;min-width:100px">
+            <span style="font-size:10px;color:var(--bull)">${counts.bull}B</span>
+            <span style="font-size:10px;color:var(--m)">${counts.neutral}N</span>
+            <span style="font-size:10px;color:var(--bear)">${counts.bear}S</span>
+          </div>
+          <div style="width:80px">${renderStackedBar(counts)}</div>
+          <span style="font-size:12px;color:var(--m);margin-left:4px">${isOpen ? '\u25B2' : '\u25BC'}</span>
+        </div>
+        <div class="cot-accordion-body" style="display:${isOpen ? 'grid' : 'none'};grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:8px;padding:8px 0">
+          ${items.map((d) => renderMarketCard(d)).join('')}
+        </div>
+      </div>`;
     })
     .join('');
-
-  gridEl.innerHTML = `<div class="cotw"><table class="cott" aria-label="COT posisjoner tabell"><thead><tr>
-    <th scope="col">Marked</th><th scope="col">Signal</th><th scope="col" style="text-align:right">Spec. Netto</th>
-    <th scope="col" style="text-align:right">Uke</th><th scope="col" style="text-align:right">OI</th>
-    <th scope="col" style="text-align:right">Kilde</th></tr></thead><tbody>${rows}</tbody></table></div>`;
 }
 
 // ── Public API ──────────────────────────────────────────────
@@ -127,47 +180,76 @@ function renderTable() {
 export function render(container) {
   container.innerHTML = `
     <div class="sh"><h2 class="sh-t">COT-posisjoner</h2><div class="sh-b" id="cotCnt" aria-live="polite">-</div></div>
-    <div class="sbar2" role="search" aria-label="Sok og filtrer COT-markeder">
+    <div class="sbar2" role="search" aria-label="Sok i COT-markeder">
       <label for="cotS" class="sr-only">Sok i COT-markeder</label>
       <input type="search" id="cotS" placeholder="Sok marked..." autocomplete="off" aria-label="Sok marked">
-      <div id="fchips" role="group" aria-label="Kategorifilter"></div>
     </div>
-    <div id="cotGrid" role="region" aria-label="COT tabell" aria-live="polite"></div>`;
+    <div id="cotGrid" role="region" aria-label="COT accordion" aria-live="polite"></div>`;
 
   // Wire search input
   const searchInput = document.getElementById('cotS');
   if (searchInput) {
     searchInput.addEventListener('input', () => {
       searchQuery = searchInput.value.toLowerCase();
-      renderTable();
+      renderAccordion();
     });
   }
 
-  // Wire filter chips (delegated)
+  // Wire accordion toggle + card click (delegated)
   container.addEventListener('click', (e) => {
-    const chip = e.target.closest('.fc');
-    if (chip && chip.dataset.cat) {
-      activeFilter = chip.dataset.cat;
-      renderTable();
-    }
-
-    // Row click -> open chart
-    const row = e.target.closest('tr[data-sym]');
-    if (row && onRowClick) {
-      onRowClick(row.dataset.sym, row.dataset.report, decodeURIComponent(row.dataset.name));
-    }
-  });
-
-  // Keyboard: Enter/Space on table rows to open chart
-  container.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter' || e.key === ' ') {
-      const row = e.target.closest('tr[data-sym]');
-      if (row && onRowClick) {
-        e.preventDefault();
-        onRowClick(row.dataset.sym, row.dataset.report, decodeURIComponent(row.dataset.name));
+    // Accordion header toggle
+    const header = e.target.closest('.cot-accordion-header');
+    if (header) {
+      const cat = header.dataset.cat;
+      if (openCategories.has(cat)) {
+        openCategories.delete(cat);
+      } else {
+        openCategories.add(cat);
       }
+      renderAccordion();
+      return;
+    }
+
+    // Market card click -> open chart
+    const card = e.target.closest('.cot-market-card');
+    if (card && onRowClick) {
+      onRowClick(card.dataset.sym, card.dataset.report, decodeURIComponent(card.dataset.name));
     }
   });
+
+  // Keyboard: Enter/Space on accordion headers and cards
+  container.addEventListener('keydown', (e) => {
+    if (e.key !== 'Enter' && e.key !== ' ') return;
+
+    const header = e.target.closest('.cot-accordion-header');
+    if (header) {
+      e.preventDefault();
+      const cat = header.dataset.cat;
+      if (openCategories.has(cat)) {
+        openCategories.delete(cat);
+      } else {
+        openCategories.add(cat);
+      }
+      renderAccordion();
+      return;
+    }
+
+    const card = e.target.closest('.cot-market-card');
+    if (card && onRowClick) {
+      e.preventDefault();
+      onRowClick(card.dataset.sym, card.dataset.report, decodeURIComponent(card.dataset.name));
+    }
+  });
+}
+
+/**
+ * Reset internal state (used by tests).
+ */
+export function _reset() {
+  allData = [];
+  searchQuery = '';
+  openCategories.clear();
+  onRowClick = null;
 }
 
 /**
@@ -177,5 +259,17 @@ export function render(container) {
 export function update(data) {
   if (!Array.isArray(data)) return;
   allData = data;
-  renderTable();
+
+  // Auto-open first category with data if none are open
+  if (openCategories.size === 0 && data.length > 0) {
+    const groups = groupByCategory(data);
+    for (const cat of Object.keys(CATS)) {
+      if (groups[cat] && groups[cat].length > 0) {
+        openCategories.add(cat);
+        break;
+      }
+    }
+  }
+
+  renderAccordion();
 }
