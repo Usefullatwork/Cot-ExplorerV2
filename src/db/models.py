@@ -511,6 +511,7 @@ class SeismicEvent(Base):
     fetched_at = Column(DateTime, nullable=False, default=lambda: datetime.now(timezone.utc))
 
     __table_args__ = (
+        UniqueConstraint("event_time", "place", name="uq_seismic_event_time_place"),
         Index("ix_seismic_region", "region"),
         Index("ix_seismic_fetched", "fetched_at"),
     )
@@ -565,6 +566,7 @@ class GeoIntelArticle(Base):
     fetched_at = Column(DateTime, nullable=False, default=lambda: datetime.now(timezone.utc))
 
     __table_args__ = (
+        UniqueConstraint("url", "category", name="uq_geointel_url_category"),
         Index("ix_geointel_category", "category"),
         Index("ix_geointel_fetched", "fetched_at"),
     )
@@ -584,7 +586,7 @@ class SignalPerformance(Base):
     __tablename__ = "signal_performance"
 
     id = Column(Integer, primary_key=True, autoincrement=True)
-    signal_id = Column(Integer, ForeignKey("signals.id"), nullable=False)
+    signal_id = Column(Integer, ForeignKey("signals.id", ondelete="CASCADE"), nullable=False)
     instrument = Column(String(32), nullable=False)
     direction = Column(String(8), nullable=False)
     grade = Column(String(4), nullable=False)
