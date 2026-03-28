@@ -107,6 +107,21 @@ export function render(container) {
         <span id="cfgSaveMsg" style="font-size:11px;color:var(--m)" aria-live="polite"></span>
       </div>
     </div>
+    <div class="sh" style="margin-top:16px"><h2 class="sh-t">Posisjonskalkulator</h2><div class="sh-b">Beregn lot-storrelse</div></div>
+    <div class="card" style="margin-bottom:18px" id="posCalcCard" role="region" aria-label="Posisjonskalkulator">
+      <div class="g2" style="gap:12px">
+        ${cfgField('Balanse (USD)', 'calcBalance', `<input id="calcBalance" type="number" min="100" value="10000" style="${inputStyle}">`)}
+        ${cfgField('Risiko %', 'calcRisk', `<input id="calcRisk" type="number" min="0.1" max="10" step="0.1" value="1.0" style="${inputStyle}">`)}
+        ${cfgField('Instrument', 'calcInst', `<select id="calcInst" style="${inputStyle}"><option value="EURUSD">EUR/USD</option><option value="GBPUSD">GBP/USD</option><option value="USDJPY">USD/JPY</option><option value="AUDUSD">AUD/USD</option><option value="Gold">Gull</option><option value="Brent">Brent</option><option value="SPX">S&P 500</option><option value="NAS100">Nasdaq</option></select>`)}
+        ${cfgField('SL distanse (pips)', 'calcSL', `<input id="calcSL" type="number" min="1" value="30" style="${inputStyle}">`)}
+        ${cfgField('VIX', 'calcVix', `<input id="calcVix" type="number" min="0" step="0.1" value="15.0" style="${inputStyle}">`)}
+        ${cfgField('Grade', 'calcGrade', `<select id="calcGrade" style="${inputStyle}"><option value="A+">A+</option><option value="A" selected>A</option><option value="B">B</option><option value="C">C</option></select>`)}
+      </div>
+      <div style="margin-top:12px;display:flex;gap:8px;align-items:center">
+        <button id="calcSizeBtn" class="fc" style="background:var(--bbg);border-color:var(--bull);color:var(--bull);padding:8px 20px;font-size:12px;font-weight:600">Beregn</button>
+      </div>
+      <div id="calcResult" style="margin-top:12px;font-size:13px;color:var(--m);display:none" aria-live="polite"></div>
+    </div>
     <div class="sh"><h2 class="sh-t">Handelslogg</h2><div class="sh-b">Siste hendelser</div></div>
     <div class="cotw" style="overflow-x:auto">
       <table class="cott"><thead><tr><th>Tid</th><th>Hendelse</th><th>Instrument</th><th>Detaljer</th></tr></thead>
@@ -116,6 +131,7 @@ export function render(container) {
   wireKillSwitch();
   wireConfigSave();
   wireBotToggle();
+  wirePositionCalc();
 }
 
 /* ── Event wiring ────────────────────────────────────────── */
@@ -301,4 +317,61 @@ export async function refreshAll() {
 }
 
 /** Clean up chart instances when leaving the tab. */
+function wirePositionCalc() {
+  const btn = document.getElementById('calcSizeBtn');
+  if (!btn) return;
+
+  btn.addEventListener('click', async () => {
+    const balance = parseFloat(document.getElementById('calcBalance')?.value) || 10000;
+    const riskPct = parseFloat(document.getElementById('calcRisk')?.value) || 1.0;
+    const inst = document.getElementById('calcInst')?.value || 'EURUSD';
+    const slPips = parseFloat(document.getElementById('calcSL')?.value) || 30;
+    const vix = parseFloat(document.getElementById('calcVix')?.value) || 15.0;
+    const grade = document.getElementById('calcGrade')?.value || 'A';
+
+    const resultEl = document.getElementById('calcResult');
+    if (!resultEl) return;
+
+    // Use a simple entry/SL pair (entry 1.0 + SL offset for pip calculation)
+    const entry = 1.10000;
+    const slDist = slPips * 0.00010; // forex pip size
+    const sl = entry - slDist;
+
+    try {
+      const { default: post } = { default: async (path, body) => {
+        const url = new URL(path, window.__API_BASE || window.location.origin);
+        const res = await fetch(url.toString(), {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body),
+        });
+        if (!res.ok) throw new Error(`API ${res.status}`);
+        return res.json();
+      }};
+
+      const data = await post('/api/v1/trading/calculate-size', {
+        account_balance: balance,
+        risk_pct: riskPct,
+        instrument: inst,
+        entry,
+        stop_loss: sl,
+        vix,
+        grade,
+      });
+
+      resultEl.style.display = 'block';
+      resultEl.innerHTML = `
+        <div class="g4" style="gap:8px;margin-top:8px">
+          <div class="card"><div class="ct">Lot-storrelse</div><div class="snum bull" style="font-family:'DM Mono',monospace">${data.lot_size.toFixed(2)}</div></div>
+          <div class="card"><div class="ct">Maks tap</div><div class="snum bear" style="font-family:'DM Mono',monospace">$${data.max_loss_usd.toFixed(0)}</div></div>
+          <div class="card"><div class="ct">VIX Regime</div><div class="snum warn" style="font-family:'DM Mono',monospace;font-size:14px">${escapeHtml(data.vix_regime)}</div></div>
+          <div class="card"><div class="ct">Tier-multiplikator</div><div class="snum" style="font-family:'DM Mono',monospace">${data.tier_multiplier.toFixed(1)}x</div></div>
+        </div>`;
+    } catch (e) {
+      resultEl.style.display = 'block';
+      resultEl.innerHTML = '<span style="color:var(--bear)">Feil: ' + escapeHtml(e.message) + '</span>';
+    }
+  });
+}
+
 export function cleanup() { destroyPnlChart(); }

@@ -267,6 +267,82 @@ def stop_bot() -> dict[str, str]:
     return {"status": "ok", "message": "Bot stopped"}
 
 
+# ── Position Size Calculator ─────────────────────────────────────────────────
+
+
+class PositionSizeRequest(BaseModel):
+    """Request for position size calculation."""
+
+    account_balance: float = Field(..., gt=0, description="Account equity in USD")
+    risk_pct: float = Field(1.0, gt=0, le=10, description="Risk per trade as percentage (e.g. 1.0 = 1%)")
+    instrument: str = Field(..., description="Instrument key (e.g. EURUSD)")
+    entry: float = Field(..., gt=0, description="Planned entry price")
+    stop_loss: float = Field(..., gt=0, description="Stop-loss price")
+    vix: float = Field(15.0, ge=0, description="Current VIX value")
+    grade: str = Field("A", description="Signal grade (A+, A, B, C)")
+
+
+class PositionSizeResponse(BaseModel):
+    """Response for position size calculation."""
+
+    lot_size: float
+    risk_amount_usd: float
+    max_loss_usd: float
+    vix_regime: str
+    tier_multiplier: float
+    sl_distance_pips: float
+    position_value_usd: float
+
+
+@router.post(
+    "/calculate-size",
+    response_model=PositionSizeResponse,
+    summary="Calculate position size",
+    description="Calculate lot size based on account balance, risk %, instrument, and stop-loss distance.",
+)
+def calculate_position_size(req: PositionSizeRequest) -> dict:
+    """Calculate position size with VIX regime adjustment."""
+    from src.trading.bot.lot_sizing import (
+        LOT_PARAMS,
+        calculate_lot_size,
+        classify_vix,
+        get_tier_multiplier,
+    )
+    from src.trading.bot.config import LOT_PARAMS
+
+    risk_decimal = req.risk_pct / 100.0
+    lot_size = calculate_lot_size(
+        account_balance=req.account_balance,
+        risk_pct=risk_decimal,
+        entry=req.entry,
+        stop_loss=req.stop_loss,
+        vix=req.vix,
+        grade=req.grade,
+        instrument=req.instrument,
+    )
+
+    params = LOT_PARAMS.get(req.instrument)
+    sl_distance = abs(req.entry - req.stop_loss)
+    sl_pips = sl_distance / params.pip_size if params and params.pip_size else 0
+    tier_mult = get_tier_multiplier(req.vix, req.grade)
+    vix_regime = classify_vix(req.vix).value
+
+    risk_amount = req.account_balance * risk_decimal * tier_mult
+    pip_value = params.pip_value_per_lot if params else 10.0
+    max_loss = lot_size * sl_pips * pip_value if sl_pips else 0
+    position_value = lot_size * req.entry * (100000 if params and params.pip_size < 0.01 else 1)
+
+    return {
+        "lot_size": lot_size,
+        "risk_amount_usd": round(risk_amount, 2),
+        "max_loss_usd": round(max_loss, 2),
+        "vix_regime": vix_regime,
+        "tier_multiplier": tier_mult,
+        "sl_distance_pips": round(sl_pips, 1),
+        "position_value_usd": round(position_value, 2),
+    }
+
+
 # ── TradingView webhook ─────────────────────────────────────────────────────
 
 tv_router = APIRouter(prefix="/api/v1", tags=["webhook"])
