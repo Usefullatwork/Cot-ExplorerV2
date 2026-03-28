@@ -30,11 +30,11 @@ describe('TopBar', () => {
     expect(logo.textContent).toContain('puls');
   });
 
-  it('renders all 12 navigation tabs', () => {
+  it('renders all 13 navigation tabs', () => {
     render(container);
 
     const tabs = container.querySelectorAll('.nt');
-    expect(tabs.length).toBe(12);
+    expect(tabs.length).toBe(13);
 
     const labels = Array.from(tabs).map((t) => t.textContent);
     expect(labels).toContain('Setups');

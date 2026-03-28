@@ -39,6 +39,7 @@ import * as MetalsIntelPanel from './components/MetalsIntelPanel.js';
 import * as CorrelationPanel from './components/CorrelationPanel.js';
 import * as SignalLogPanel from './components/SignalLogPanel.js';
 import * as GeoEventsPanel from './components/GeoEventsPanel.js';
+import * as PricesPanel from './components/PricesPanel.js';
 
 /* ── Error boundary ──────────────────────────────────────── */
 
@@ -132,6 +133,9 @@ function buildShell() {
       <div class="panel" id="panel-geo-events" role="tabpanel" aria-labelledby="tab-geo-events" aria-hidden="true">
         <div class="loading" role="status"><div class="spinner" aria-hidden="true"></div>Laster geo-signaler...</div>
       </div>
+      <div class="panel" id="panel-prices" role="tabpanel" aria-labelledby="tab-prices" aria-hidden="true">
+        <div class="loading" role="status"><div class="spinner" aria-hidden="true"></div>Laster priser...</div>
+      </div>
     </main>
     <footer role="contentinfo">
       <span>Kilde: <a href="https://cftc.gov" target="_blank" rel="noopener noreferrer">CFTC.gov</a> &middot; Yahoo Finance &middot; ForexFactory</span>
@@ -203,6 +207,10 @@ function initComponents() {
   // Geo Events panel
   const geoPanel = document.getElementById('panel-geo-events');
   safeCall('GeoEventsPanel', () => GeoEventsPanel.render(geoPanel), geoPanel);
+
+  // Prices panel
+  const pricesPanel = document.getElementById('panel-prices');
+  safeCall('PricesPanel', () => PricesPanel.render(pricesPanel), pricesPanel);
 }
 
 /* ── State subscriptions ──────────────────────────────────── */
@@ -264,6 +272,11 @@ function wireSubscriptions() {
     }
     if (tab === 'geo-events') {
       safeAsync('GeoEventsPanel.refreshAll', () => GeoEventsPanel.refreshAll());
+    }
+    if (tab === 'prices') {
+      safeAsync('PricesPanel.refreshAll', () => PricesPanel.refreshAll());
+    } else {
+      safeCall('PricesPanel.stopPolling', () => PricesPanel.stopPolling());
     }
   });
 

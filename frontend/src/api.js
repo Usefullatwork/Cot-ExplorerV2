@@ -103,6 +103,12 @@ export function fetchADR() {
   return get('/api/v1/macro/adr');
 }
 
+// ── Prices ─────────────────────────────────────────────────
+
+export function fetchPricesLive() {
+  return get('/api/v1/prices/live');
+}
+
 // ── Health / Metrics ────────────────────────────────────────
 
 export function fetchHealth() {

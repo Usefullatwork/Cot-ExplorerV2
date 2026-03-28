@@ -21,6 +21,7 @@ const TABS = [
   { key: 'correlations', label: '\uD83D\uDD17 Korrelasjoner' },
   { key: 'signal-log',   label: '\uD83D\uDCCB Signal-logg' },
   { key: 'geo-events',   label: '\uD83C\uDF0D Geo-Signaler' },
+  { key: 'prices',       label: '\uD83D\uDCB0 Priser' },
 ];
 
 // ── Ticker display names ────────────────────────────────────

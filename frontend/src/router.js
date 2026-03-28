@@ -23,6 +23,7 @@ const TABS = [
   'correlations',
   'signal-log',
   'geo-events',
+  'prices',
 ];
 
 const DEFAULT_TAB = 'setups';
