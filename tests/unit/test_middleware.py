@@ -2,18 +2,18 @@
 
 from __future__ import annotations
 
+import logging
 import os
 import time
 from unittest.mock import patch
 
-import pytest
 from fastapi import FastAPI
 from httpx import ASGITransport, AsyncClient
 
+import src.api.middleware.auth as auth_module
 from src.api.middleware.auth import APIKeyMiddleware
 from src.api.middleware.cache import TTLCache
 from src.api.middleware.rate_limit import RateLimitMiddleware
-
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -25,12 +25,16 @@ def _make_app(
     api_key: str = "test-key",
     rate_limit: bool = False,
     max_requests: int = 5,
+    trust_proxy: bool | None = None,
 ) -> FastAPI:
     """Build a minimal FastAPI app with selected middleware and test routes."""
     app = FastAPI()
 
     if rate_limit:
-        app.add_middleware(RateLimitMiddleware, max_requests=max_requests)
+        kwargs: dict = {"max_requests": max_requests}
+        if trust_proxy is not None:
+            kwargs["trust_proxy"] = trust_proxy
+        app.add_middleware(RateLimitMiddleware, **kwargs)
     if auth:
         app.add_middleware(APIKeyMiddleware)
 
@@ -147,9 +151,6 @@ async def test_rate_limit_reset():
         for mw in app.user_middleware:
             pass  # middleware is already mounted, access via app internals
 
-        # Access the actual middleware instance from the middleware stack.
-        # Starlette wraps middleware; the RateLimitMiddleware is the outermost.
-        rl_mw = app.middleware_stack
         # Walk the middleware stack to find RateLimitMiddleware
         found = None
         node = app.middleware_stack
@@ -171,7 +172,7 @@ async def test_rate_limit_reset():
 
 async def test_rate_limit_different_ips():
     """Different client IPs have independent rate-limit buckets."""
-    app = _make_app(rate_limit=True, max_requests=2)
+    app = _make_app(rate_limit=True, max_requests=2, trust_proxy=True)
     async with _client(app) as c:
         # Exhaust the limit for IP "1.2.3.4"
         for _ in range(2):
@@ -249,3 +250,116 @@ def test_cache_clear():
     assert len(cache) == 2
     cache.clear()
     assert len(cache) == 0
+
+
+# =========================================================================
+# Security hardening — Auth public-mode warning
+# =========================================================================
+
+
+async def test_auth_public_mode_logs_warning(caplog):
+    """When SCALP_API_KEY is not set, a warning is logged (once)."""
+    # Reset the module-level flag so the warning fires in this test
+    auth_module._warned_public_mode = False
+    # Build app WITH auth middleware but WITHOUT an API key in the env
+    app = FastAPI()
+    app.add_middleware(APIKeyMiddleware)
+
+    @app.get("/api/v1/data")
+    async def _data():
+        return {"value": 42}
+
+    os.environ.pop("SCALP_API_KEY", None)
+
+    with caplog.at_level(logging.WARNING, logger="src.api.middleware.auth"):
+        async with _client(app) as c:
+            resp = await c.get("/api/v1/data")
+            assert resp.status_code == 200
+    assert any("PUBLIC mode" in msg for msg in caplog.messages)
+    # Restore flag
+    auth_module._warned_public_mode = False
+
+
+# =========================================================================
+# Security hardening — Rate limiter proxy trust
+# =========================================================================
+
+
+async def test_rate_limit_ignores_xff_by_default():
+    """Without trust_proxy, X-Forwarded-For header is ignored."""
+    app = _make_app(rate_limit=True, max_requests=2, trust_proxy=False)
+    async with _client(app) as c:
+        # Send 2 requests with XFF header — should use real client IP instead
+        for _ in range(2):
+            resp = await c.get("/health", headers={"X-Forwarded-For": "1.2.3.4"})
+            assert resp.status_code == 200
+
+        # Third request should be rate-limited based on actual client IP
+        # (all 3 requests share the same real IP)
+        resp = await c.get("/health", headers={"X-Forwarded-For": "5.6.7.8"})
+        assert resp.status_code == 429
+
+
+async def test_rate_limit_trusts_xff_when_enabled():
+    """With trust_proxy=True, X-Forwarded-For is used for IP extraction."""
+    app = _make_app(rate_limit=True, max_requests=2, trust_proxy=True)
+    async with _client(app) as c:
+        # Exhaust limit for IP "1.2.3.4"
+        for _ in range(2):
+            resp = await c.get("/health", headers={"X-Forwarded-For": "1.2.3.4"})
+            assert resp.status_code == 200
+
+        # Same XFF IP — should be rate limited
+        resp = await c.get("/health", headers={"X-Forwarded-For": "1.2.3.4"})
+        assert resp.status_code == 429
+
+        # Different XFF IP — should be allowed
+        resp = await c.get("/health", headers={"X-Forwarded-For": "5.6.7.8"})
+        assert resp.status_code == 200
+
+
+async def test_rate_limit_memory_cap():
+    """After >10k IPs, the _hits dict is pruned to prevent memory exhaustion."""
+    app = _make_app(rate_limit=True, max_requests=100)
+
+    # Find the RateLimitMiddleware instance in the middleware stack
+    node = app.middleware_stack
+    rl_mw = None
+    while node is not None:
+        if isinstance(node, RateLimitMiddleware):
+            rl_mw = node
+            break
+        node = getattr(node, "app", None)
+
+    # Need to build the app first so middleware_stack exists
+    # For an ASGI app, the middleware stack is built on first request.
+    # Force it by making one request first.
+    async with _client(app) as c:
+        await c.get("/health")
+
+    # Re-find after stack is built
+    node = app.middleware_stack
+    rl_mw = None
+    while node is not None:
+        if isinstance(node, RateLimitMiddleware):
+            rl_mw = node
+            break
+        node = getattr(node, "app", None)
+
+    assert rl_mw is not None, "RateLimitMiddleware not found in stack"
+
+    # Inject 10_001 fake IPs directly into _hits
+    import time as _time
+    now = _time.monotonic()
+    for i in range(10_001):
+        rl_mw._hits[f"fake-{i}"] = [now]
+
+    assert len(rl_mw._hits) > 10_000
+
+    # Next request triggers the memory cap check
+    async with _client(app) as c:
+        resp = await c.get("/health")
+        assert resp.status_code == 200
+
+    # After the cap, at most ~5001 entries remain (10001 - 5000 + new request IP + prune leftovers)
+    assert len(rl_mw._hits) <= 5_100

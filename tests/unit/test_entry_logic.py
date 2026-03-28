@@ -6,6 +6,7 @@ from src.trading.bot.entry_logic import (
     EntryResult,
     check_candle_confirmation,
     check_ema9_filter,
+    check_rsi_filter,
     check_zone_proximity,
     evaluate_entry,
 )
@@ -242,3 +243,18 @@ class TestEvaluateEntry:
         )
         assert result.passed is False
         assert result.reason == "ema9_filter_failed"
+
+
+# ===== RSI filter boundary =======================================================
+
+
+class TestRsiFilterBoundary:
+    """RSI filter boundary conditions — exact thresholds should reject."""
+
+    def test_rsi_filter_bull_at_exact_overbought(self):
+        """RSI=75.0 with overbought=75.0 -> returns False (rejects entry)."""
+        assert check_rsi_filter(75.0, "bull", overbought=75.0) is False
+
+    def test_rsi_filter_bear_at_exact_oversold(self):
+        """RSI=25.0 with oversold=25.0 -> returns False (rejects entry)."""
+        assert check_rsi_filter(25.0, "bear", oversold=25.0) is False

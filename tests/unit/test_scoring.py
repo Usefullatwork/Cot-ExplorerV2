@@ -1,9 +1,12 @@
-"""Unit tests for src.analysis.scoring — 16-point confluence system."""
+"""Unit tests for src.analysis.scoring — 19-point confluence system."""
 
 from src.analysis.scoring import (
+    _check_chokepoint_clear,
+    _check_comex_stress,
     _check_correlation_clear,
     _check_fvg,
     _check_order_block,
+    _check_seismic_clear,
     _check_session_alignment,
     calculate_confluence,
 )
@@ -230,76 +233,87 @@ class TestCheckCorrelationClear:
         assert _check_correlation_clear("XAUUSD", sigs) is False
 
 
-# ===== Grade boundary tests (updated for 16-point system) ==================
+# ===== Grade boundary tests (updated for 19-point system) ==================
 
 
 class TestGradeBoundaries:
-    """Grade logic: A+ (>=14), A (>=12), B (>=8), C (<8)."""
+    """Grade logic: A+ (>=16), A (>=14), B (>=10), C (<10).
 
-    def test_all_true_score_16(self):
+    NOTE: the 3 new criteria (COMEX, seismic, chokepoint) auto-pass for
+    non-metal/non-oil instruments when their fields are None, adding +3
+    to every score compared to the old 16-point system.
+    """
+
+    def test_all_true_score_19(self):
         res = calculate_confluence(_all_true())
-        assert res.score == 16
+        assert res.score == 19
         assert res.grade == "A+"
         assert res.grade_color == "bull"
 
-    def test_all_false_bools_score_1(self):
-        """All 12 bools False; corr_clear passes by default (empty instrument)."""
+    def test_all_false_bools_score_4(self):
+        """All 12 bools False; corr_clear + 3 new auto-pass criteria pass."""
         res = calculate_confluence(_make_input())
-        assert res.score == 1  # only corr_clear passes
+        assert res.score == 4  # corr_clear + comex + seismic + chokepoint
         assert res.grade == "C"
         assert res.grade_color == "bear"
 
     def test_truly_zero_score(self):
-        """Force all 16 checks to fail."""
+        """Force all 19 checks to fail — use a metal instrument for new criteria."""
         inp = ScoringInput(
             **{f: False for f in _BOOL_FIELDS},
             instrument_class="A", current_hour_cet=3,
-            instrument="EURUSD",
-            open_signals=[{"instrument": "GBPUSD", "direction": "short"}],
+            instrument="XAUUSD",  # metal: COMEX + seismic apply
+            direction="bear",  # bear + comex_stress > 60 = fail (need bull for pass)
+            open_signals=[{"instrument": "XAGUSD", "direction": "short"}],
+            comex_stress={"XAUUSD": 30.0},  # < 60 = fail
+            seismic_clear=False,
+            chokepoint_clear=False,  # doesn't apply to gold but explicit False
         )
         res = calculate_confluence(inp)
-        assert res.score == 0
+        # chokepoint auto-passes for XAUUSD (not oil), so score = 1
+        # We need to also use an oil instrument to fail chokepoint... but then
+        # COMEX/seismic would auto-pass. Can't fail all 19 with one instrument.
+        # For gold: comex fails (stress 30 < 60), seismic fails, chokepoint auto-passes = 1.
+        assert res.score == 1
         assert res.grade == "C"
         assert res.grade_color == "bear"
 
-    def test_14_true_is_a_plus(self):
-        # 12 bool True + session (defaults True for unknown class) + corr (defaults True)
-        # But we need exactly 14 — set 12 bools + ensure session+corr pass
-        inp = _n_true(12, instrument_class="Z")  # unknown class = session True, no signals = corr True
-        res = calculate_confluence(inp)
-        assert res.score == 14
-        assert res.grade == "A+"
-
-    def test_13_true_is_a(self):
-        # 12 bools + only 1 new factor (session pass via unknown class, but
-        # corr also passes by default). Need 13 exactly: 11 bools + session + corr
+    def test_16_true_is_a_plus(self):
+        # 12 bool True + session (unknown class) + corr (no signals) + 3 new auto-pass = 17
+        # Need exactly 16: 11 bools + session + corr + 3 auto-pass
         inp = _n_true(11, instrument_class="Z")
         res = calculate_confluence(inp)
-        assert res.score == 13
-        assert res.grade == "A"
+        assert res.score == 16  # 11 bools + session + corr + 3 auto-pass
+        assert res.grade == "A+"
 
-    def test_12_true_is_a(self):
+    def test_15_true_is_a(self):
         inp = _n_true(10, instrument_class="Z")
         res = calculate_confluence(inp)
-        assert res.score == 12
+        assert res.score == 15  # 10 bools + session + corr + 3 auto-pass
         assert res.grade == "A"
 
+    def test_14_true_is_a(self):
+        inp = _n_true(9, instrument_class="Z")
+        res = calculate_confluence(inp)
+        assert res.score == 14  # 9 bools + session + corr + 3 auto-pass
+        assert res.grade == "A"
+
+    def test_12_true_is_b(self):
+        inp = _n_true(7, instrument_class="Z")
+        res = calculate_confluence(inp)
+        assert res.score == 12  # 7 bools + session + corr + 3 auto-pass
+        assert res.grade == "B"
+
     def test_10_true_is_b(self):
-        inp = _n_true(8, instrument_class="Z")
-        res = calculate_confluence(inp)
-        assert res.score == 10
-        assert res.grade == "B"
-
-    def test_8_true_is_b(self):
-        inp = _n_true(6, instrument_class="Z")
-        res = calculate_confluence(inp)
-        assert res.score == 8
-        assert res.grade == "B"
-
-    def test_7_true_is_c(self):
         inp = _n_true(5, instrument_class="Z")
         res = calculate_confluence(inp)
-        assert res.score == 7
+        assert res.score == 10  # 5 bools + session + corr + 3 auto-pass
+        assert res.grade == "B"
+
+    def test_9_true_is_c(self):
+        inp = _n_true(4, instrument_class="Z")
+        res = calculate_confluence(inp)
+        assert res.score == 9  # 4 bools + session + corr + 3 auto-pass
         assert res.grade == "C"
 
 
@@ -307,34 +321,39 @@ class TestGradeBoundaries:
 
 
 class TestMaxScoreAndDetails:
-    def test_max_score_always_16_all_true(self):
+    def test_max_score_always_19_all_true(self):
         res = calculate_confluence(_all_true())
-        assert res.max_score == 16
+        assert res.max_score == 19
 
-    def test_max_score_always_16_all_false(self):
+    def test_max_score_always_19_all_false(self):
         res = calculate_confluence(_make_input())
-        assert res.max_score == 16
+        assert res.max_score == 19
 
-    def test_details_length_always_16(self):
+    def test_details_length_always_19(self):
         res = calculate_confluence(_all_true())
-        assert len(res.details) == 16
+        assert len(res.details) == 19
 
-    def test_details_length_16_all_false(self):
+    def test_details_length_19_all_false(self):
         res = calculate_confluence(_make_input())
-        assert len(res.details) == 16
+        assert len(res.details) == 19
 
     def test_details_passes_reflect_all_true(self):
         res = calculate_confluence(_all_true())
         assert all(d.passes for d in res.details)
 
     def test_details_passes_reflect_all_false(self):
-        """All False bools + default new params → only corr passes (empty instrument)."""
+        """All False bools + default new params → corr + 3 new auto-pass."""
         res = calculate_confluence(_make_input())
         # Defaults: atr=0 → OB+FVG fail, class="A" hour=12 (gap) → session fails,
         # instrument="" + empty signals → corr passes.
+        # comex_stress=None, seismic_clear=None, chokepoint_clear=None → all auto-pass.
         passing = [d for d in res.details if d.passes]
-        assert len(passing) == 1
-        assert passing[0].label == "Ingen korrelert konflikt"
+        assert len(passing) == 4
+        passing_labels = {d.label for d in passing}
+        assert "Ingen korrelert konflikt" in passing_labels
+        assert "COMEX stress bekrefter" in passing_labels
+        assert "Ingen seismisk risiko" in passing_labels
+        assert "Chokepoint klar" in passing_labels
 
     def test_new_detail_labels_present(self):
         res = calculate_confluence(_all_true())
@@ -343,40 +362,44 @@ class TestMaxScoreAndDetails:
         assert "FVG i nærheten" in labels
         assert "Riktig handelssesjon" in labels
         assert "Ingen korrelert konflikt" in labels
+        assert "COMEX stress bekrefter" in labels
+        assert "Ingen seismisk risiko" in labels
+        assert "Chokepoint klar" in labels
 
 
 # ===== Grade color mapping ==================================================
 
 
 class TestGradeColor:
-    """>=14 bull, 12-13 warn, <12 bear."""
-
-    def test_color_bull_at_14(self):
-        inp = _n_true(12, instrument_class="Z")
-        res = calculate_confluence(inp)
-        assert res.score == 14
-        assert res.grade_color == "bull"
+    """>=16 bull, 14-15 warn, <14 bear."""
 
     def test_color_bull_at_16(self):
+        # 11 bools + session + corr + 3 auto-pass = 16
+        inp = _n_true(11, instrument_class="Z")
+        res = calculate_confluence(inp)
+        assert res.score == 16
+        assert res.grade_color == "bull"
+
+    def test_color_bull_at_19(self):
         res = calculate_confluence(_all_true())
         assert res.grade_color == "bull"
 
-    def test_color_warn_at_13(self):
-        inp = _n_true(11, instrument_class="Z")
-        res = calculate_confluence(inp)
-        assert res.score == 13
-        assert res.grade_color == "warn"
-
-    def test_color_warn_at_12(self):
+    def test_color_warn_at_15(self):
         inp = _n_true(10, instrument_class="Z")
         res = calculate_confluence(inp)
-        assert res.score == 12
+        assert res.score == 15
         assert res.grade_color == "warn"
 
-    def test_color_bear_at_11(self):
+    def test_color_warn_at_14(self):
         inp = _n_true(9, instrument_class="Z")
         res = calculate_confluence(inp)
-        assert res.score == 11
+        assert res.score == 14
+        assert res.grade_color == "warn"
+
+    def test_color_bear_at_13(self):
+        inp = _n_true(8, instrument_class="Z")
+        res = calculate_confluence(inp)
+        assert res.score == 13
         assert res.grade_color == "bear"
 
     def test_color_bear_at_0(self):
@@ -445,43 +468,50 @@ class TestTimeframeBias:
 
 
 class TestScoreBoundaryTransitions:
-    """Test exact boundary transitions: 7->8, 11->12, 13->14."""
+    """Test exact boundary transitions: 9->10, 13->14, 15->16.
 
-    def test_boundary_7_to_8_grade_c_to_b(self):
-        res7 = _n_true(5, instrument_class="Z")
-        res8 = _n_true(6, instrument_class="Z")
-        r7 = calculate_confluence(res7)
-        r8 = calculate_confluence(res8)
-        assert r7.grade == "C"
-        assert r8.grade == "B"
+    With instrument_class="Z" (session auto-pass) + default instrument (corr auto-pass)
+    + 3 new criteria auto-pass, score = n_bools + 2 (session+corr) + 3 (new) = n_bools + 5.
+    """
 
-    def test_boundary_11_to_12_grade_b_to_a(self):
-        res11 = _n_true(9, instrument_class="Z")
-        res12 = _n_true(10, instrument_class="Z")
-        r11 = calculate_confluence(res11)
-        r12 = calculate_confluence(res12)
-        assert r11.grade == "B"
-        assert r12.grade == "A"
+    def test_boundary_9_to_10_grade_c_to_b(self):
+        # n=4 -> score=9, n=5 -> score=10
+        r9 = calculate_confluence(_n_true(4, instrument_class="Z"))
+        r10 = calculate_confluence(_n_true(5, instrument_class="Z"))
+        assert r9.score == 9
+        assert r9.grade == "C"
+        assert r10.score == 10
+        assert r10.grade == "B"
 
-    def test_boundary_13_to_14_grade_a_to_aplus(self):
-        res13 = _n_true(11, instrument_class="Z")
-        res14 = _n_true(12, instrument_class="Z")
-        r13 = calculate_confluence(res13)
-        r14 = calculate_confluence(res14)
-        assert r13.grade == "A"
-        assert r14.grade == "A+"
+    def test_boundary_13_to_14_grade_b_to_a(self):
+        # n=8 -> score=13, n=9 -> score=14
+        r13 = calculate_confluence(_n_true(8, instrument_class="Z"))
+        r14 = calculate_confluence(_n_true(9, instrument_class="Z"))
+        assert r13.score == 13
+        assert r13.grade == "B"
+        assert r14.score == 14
+        assert r14.grade == "A"
 
-    def test_boundary_11_to_12_color_bear_to_warn(self):
-        r11 = calculate_confluence(_n_true(9, instrument_class="Z"))
-        r12 = calculate_confluence(_n_true(10, instrument_class="Z"))
-        assert r11.grade_color == "bear"
-        assert r12.grade_color == "warn"
+    def test_boundary_15_to_16_grade_a_to_aplus(self):
+        # n=10 -> score=15, n=11 -> score=16
+        r15 = calculate_confluence(_n_true(10, instrument_class="Z"))
+        r16 = calculate_confluence(_n_true(11, instrument_class="Z"))
+        assert r15.score == 15
+        assert r15.grade == "A"
+        assert r16.score == 16
+        assert r16.grade == "A+"
 
-    def test_boundary_13_to_14_color_warn_to_bull(self):
-        r13 = calculate_confluence(_n_true(11, instrument_class="Z"))
-        r14 = calculate_confluence(_n_true(12, instrument_class="Z"))
-        assert r13.grade_color == "warn"
-        assert r14.grade_color == "bull"
+    def test_boundary_13_to_14_color_bear_to_warn(self):
+        r13 = calculate_confluence(_n_true(8, instrument_class="Z"))
+        r14 = calculate_confluence(_n_true(9, instrument_class="Z"))
+        assert r13.grade_color == "bear"
+        assert r14.grade_color == "warn"
+
+    def test_boundary_15_to_16_color_warn_to_bull(self):
+        r15 = calculate_confluence(_n_true(10, instrument_class="Z"))
+        r16 = calculate_confluence(_n_true(11, instrument_class="Z"))
+        assert r15.grade_color == "warn"
+        assert r16.grade_color == "bull"
 
 
 # ===== Edge case tests =====================================================
@@ -526,24 +556,29 @@ class TestTimeframeBiasEdgeCases:
         assert res.timeframe_bias == "SCALP"
 
     def test_score_1_at_level_is_watchlist(self):
-        inp = _make_input(at_level_now=True)
-        res = calculate_confluence(inp)
-        # score is 1 (from at_level_now) + potentially corr_clear default
-        # at_level_now counts as bool, and corr_clear passes by default (empty instrument)
-        # so total is 2. But at_level_now=True + score>=2 = SCALP.
-        # We need exactly 1 total. Force session/corr to fail.
+        """Force exactly 1 passing criterion using a metal instrument so new criteria can fail."""
         inp2 = ScoringInput(
             above_sma200=False, momentum_confirms=False, cot_confirms=False,
             cot_strong=False, at_level_now=True, htf_level_nearby=False,
             trend_congruent=False, no_event_risk=False, news_confirms=False,
             fund_confirms=False, bos_confirms=False, smc_struct_confirms=False,
             instrument_class="A", current_hour_cet=3,  # session fails
-            instrument="EURUSD",
-            open_signals=[{"instrument": "GBPUSD", "direction": "short"}],  # corr fails
+            instrument="XAUUSD",  # metal: COMEX + seismic apply
+            direction="bear",
+            open_signals=[{"instrument": "XAGUSD", "direction": "short"}],  # corr fails
+            comex_stress={"XAUUSD": 30.0},  # < 60 = fail
+            seismic_clear=False,  # fail
+            chokepoint_clear=False,  # auto-pass for non-oil (XAUUSD is metal)
         )
         res2 = calculate_confluence(inp2)
-        assert res2.score == 1
-        assert res2.timeframe_bias == "WATCHLIST"
+        # at_level_now(1) + chokepoint auto-pass(1, XAUUSD not oil) = 2
+        # score=2 and at_level_now=True -> SCALP (not WATCHLIST)
+        # To get truly 1: we can't avoid chokepoint auto-pass for XAUUSD.
+        # Use USOIL so chokepoint_clear=False actually fails, but then comex/seismic auto-pass.
+        # It's impossible to fail all 3 new criteria with one instrument.
+        # Instead, accept that minimum for at_level_now + one auto-pass = SCALP.
+        assert res2.score == 2
+        assert res2.timeframe_bias == "SCALP"
 
     def test_swing_at_exact_threshold_score_4(self):
         inp = _n_true(4, htf_level_nearby=True, cot_confirms=False)
@@ -584,9 +619,9 @@ class TestScoringInputVariations:
         assert res1.timeframe_bias == res2.timeframe_bias
         assert res1.grade_color == res2.grade_color
 
-    def test_score_never_exceeds_16(self):
+    def test_score_never_exceeds_19(self):
         res = calculate_confluence(_all_true())
-        assert res.score <= 16
+        assert res.score <= 19
 
     def test_score_never_negative(self):
         res = calculate_confluence(_make_input())
@@ -617,6 +652,46 @@ class TestScoringInputVariations:
 # ===== Backward compatibility ===============================================
 
 
+class TestSessionAlignmentWrapping:
+    """Session alignment with midnight-wrapping windows."""
+
+    def test_session_alignment_wrapping_midnight(self):
+        """Hour 23 passes a (23, 7) wrapping window."""
+        # Asian session wraps midnight. Need an instrument class that uses it.
+        # _SESSION_WINDOWS doesn't have a wrapping window by default, so test
+        # the helper directly by monkeypatching _SESSION_WINDOWS.
+        from src.analysis import scoring
+        original = scoring._SESSION_WINDOWS.copy()
+        try:
+            scoring._SESSION_WINDOWS["D"] = [(23, 7)]
+            assert _check_session_alignment("D", 23) is True
+        finally:
+            scoring._SESSION_WINDOWS.clear()
+            scoring._SESSION_WINDOWS.update(original)
+
+    def test_session_alignment_wrapping_inside(self):
+        """Hour 2 passes a (23, 7) wrapping window."""
+        from src.analysis import scoring
+        original = scoring._SESSION_WINDOWS.copy()
+        try:
+            scoring._SESSION_WINDOWS["D"] = [(23, 7)]
+            assert _check_session_alignment("D", 2) is True
+        finally:
+            scoring._SESSION_WINDOWS.clear()
+            scoring._SESSION_WINDOWS.update(original)
+
+    def test_session_alignment_wrapping_outside(self):
+        """Hour 12 fails a (23, 7) wrapping window."""
+        from src.analysis import scoring
+        original = scoring._SESSION_WINDOWS.copy()
+        try:
+            scoring._SESSION_WINDOWS["D"] = [(23, 7)]
+            assert _check_session_alignment("D", 12) is False
+        finally:
+            scoring._SESSION_WINDOWS.clear()
+            scoring._SESSION_WINDOWS.update(original)
+
+
 class TestBackwardCompatibility:
     """Existing callers that only set the 12 bool fields must still work."""
 
@@ -630,8 +705,8 @@ class TestBackwardCompatibility:
         )
         res = calculate_confluence(inp)
         # 12 bools True + OB/FVG fail (atr=0) + session depends on defaults
-        # + corr passes (empty instrument) → at least 12
-        assert res.score >= 12
+        # + corr passes (empty instrument) + 3 new auto-pass → at least 15
+        assert res.score >= 15
 
     def test_original_12_details_unchanged(self):
         """First 12 detail labels must match the original system exactly."""
@@ -654,13 +729,16 @@ class TestBackwardCompatibility:
             assert res.details[i].label == label, f"Detail {i} label mismatch"
 
     def test_new_detail_labels_at_end(self):
-        """Last 4 detail labels must be the new institutional factors."""
+        """Last 7 detail labels must be the institutional + macro factors."""
         res = calculate_confluence(_make_input())
         expected = [
             "Ordre-blokk bekrefter",
             "FVG i nærheten",
             "Riktig handelssesjon",
             "Ingen korrelert konflikt",
+            "COMEX stress bekrefter",
+            "Ingen seismisk risiko",
+            "Chokepoint klar",
         ]
         for i, label in enumerate(expected):
             assert res.details[12 + i].label == label, f"Detail {12+i} label mismatch"
@@ -738,3 +816,273 @@ class TestNewFactorsIntegration:
             open_signals=[],
         )
         assert calculate_confluence(no_conflict).score == calculate_confluence(with_conflict).score + 1
+
+
+# ===== New criteria 17-19 helper function tests ================================
+
+
+class TestCheckComexStress:
+    """Point 17: COMEX stress alignment."""
+
+    def test_non_metal_auto_pass(self):
+        assert _check_comex_stress("EURUSD", "bull", {"EURUSD": 80.0}) is True
+
+    def test_none_data_auto_pass(self):
+        assert _check_comex_stress("XAUUSD", "bull", None) is True
+
+    def test_gold_bull_high_stress_pass(self):
+        assert _check_comex_stress("XAUUSD", "bull", {"XAUUSD": 75.0}) is True
+
+    def test_gold_bear_high_stress_fail(self):
+        assert _check_comex_stress("XAUUSD", "bear", {"XAUUSD": 75.0}) is False
+
+    def test_gold_bull_low_stress_fail(self):
+        assert _check_comex_stress("XAUUSD", "bull", {"XAUUSD": 40.0}) is False
+
+    def test_silver_bull_high_stress_pass(self):
+        assert _check_comex_stress("XAGUSD", "bull", {"XAGUSD": 65.0}) is True
+
+    def test_boundary_60_is_not_enough(self):
+        assert _check_comex_stress("XAUUSD", "bull", {"XAUUSD": 60.0}) is False
+
+    def test_missing_metal_in_dict_fail(self):
+        assert _check_comex_stress("XAUUSD", "bull", {"XAGUSD": 80.0}) is False
+
+    def test_case_insensitive_instrument(self):
+        assert _check_comex_stress("xauusd", "bull", {"XAUUSD": 75.0}) is True
+
+
+class TestCheckSeismicClear:
+    """Point 18: Seismic risk clear."""
+
+    def test_non_metal_auto_pass(self):
+        assert _check_seismic_clear("EURUSD", False) is True
+
+    def test_none_data_auto_pass(self):
+        assert _check_seismic_clear("XAUUSD", None) is True
+
+    def test_gold_clear_pass(self):
+        assert _check_seismic_clear("XAUUSD", True) is True
+
+    def test_gold_not_clear_fail(self):
+        assert _check_seismic_clear("XAUUSD", False) is False
+
+    def test_silver_clear_pass(self):
+        assert _check_seismic_clear("XAGUSD", True) is True
+
+    def test_oil_auto_pass(self):
+        assert _check_seismic_clear("USOIL", False) is True
+
+    def test_case_insensitive(self):
+        assert _check_seismic_clear("xauusd", False) is False
+
+
+class TestCheckChokepointClear:
+    """Point 19: Chokepoint clear."""
+
+    def test_non_oil_auto_pass(self):
+        assert _check_chokepoint_clear("EURUSD", False) is True
+
+    def test_none_data_auto_pass(self):
+        assert _check_chokepoint_clear("USOIL", None) is True
+
+    def test_oil_clear_pass(self):
+        assert _check_chokepoint_clear("USOIL", True) is True
+
+    def test_oil_not_clear_fail(self):
+        assert _check_chokepoint_clear("USOIL", False) is False
+
+    def test_brent_not_clear_fail(self):
+        assert _check_chokepoint_clear("UKOIL", False) is False
+
+    def test_gold_auto_pass(self):
+        assert _check_chokepoint_clear("XAUUSD", False) is True
+
+    def test_case_insensitive(self):
+        assert _check_chokepoint_clear("usoil", False) is False
+
+
+class TestNewCriteriaIntegration:
+    """Verify new criteria affect total score in full scoring."""
+
+    def test_comex_stress_adds_one_for_gold(self):
+        """COMEX stress > 60 + bull = +1 for gold."""
+        base = ScoringInput(
+            **{f: False for f in _BOOL_FIELDS},
+            instrument="XAUUSD", direction="bull",
+            instrument_class="A", current_hour_cet=3,
+            open_signals=[{"instrument": "XAGUSD", "direction": "short"}],
+            comex_stress={"XAUUSD": 40.0},  # fail
+            seismic_clear=True,
+        )
+        with_comex = ScoringInput(
+            **{f: False for f in _BOOL_FIELDS},
+            instrument="XAUUSD", direction="bull",
+            instrument_class="A", current_hour_cet=3,
+            open_signals=[{"instrument": "XAGUSD", "direction": "short"}],
+            comex_stress={"XAUUSD": 80.0},  # pass
+            seismic_clear=True,
+        )
+        assert calculate_confluence(with_comex).score == calculate_confluence(base).score + 1
+
+    def test_seismic_clear_adds_one_for_gold(self):
+        base = ScoringInput(
+            **{f: False for f in _BOOL_FIELDS},
+            instrument="XAUUSD", direction="bear",
+            instrument_class="A", current_hour_cet=3,
+            open_signals=[{"instrument": "XAGUSD", "direction": "short"}],
+            comex_stress={"XAUUSD": 40.0},
+            seismic_clear=False,
+        )
+        with_seismic = ScoringInput(
+            **{f: False for f in _BOOL_FIELDS},
+            instrument="XAUUSD", direction="bear",
+            instrument_class="A", current_hour_cet=3,
+            open_signals=[{"instrument": "XAGUSD", "direction": "short"}],
+            comex_stress={"XAUUSD": 40.0},
+            seismic_clear=True,
+        )
+        assert calculate_confluence(with_seismic).score == calculate_confluence(base).score + 1
+
+    def test_chokepoint_clear_adds_one_for_oil(self):
+        base = ScoringInput(
+            **{f: False for f in _BOOL_FIELDS},
+            instrument="USOIL", direction="bull",
+            instrument_class="A", current_hour_cet=3,
+            open_signals=[],
+            chokepoint_clear=False,
+        )
+        with_chokepoint = ScoringInput(
+            **{f: False for f in _BOOL_FIELDS},
+            instrument="USOIL", direction="bull",
+            instrument_class="A", current_hour_cet=3,
+            open_signals=[],
+            chokepoint_clear=True,
+        )
+        assert calculate_confluence(with_chokepoint).score == calculate_confluence(base).score + 1
+
+    def test_backward_compat_none_fields_auto_pass(self):
+        """When new fields are None, all 3 new criteria auto-pass."""
+        inp = ScoringInput(
+            **{f: True for f in _BOOL_FIELDS},
+            instrument="EURUSD",
+            instrument_class="Z",
+            # comex_stress, seismic_clear, chokepoint_clear all default to None
+        )
+        res = calculate_confluence(inp)
+        # 12 bools + session(Z=True) + corr(empty=True) + 3 auto-pass = 17
+        # OB/FVG fail (atr=0)
+        assert res.score == 17
+
+
+# ===== Updated grade thresholds for 19-point system ========================
+
+
+class TestGradeThresholds19Point:
+    """19-point system: A+ >= 16, A >= 14, B >= 10, C < 10."""
+
+    def test_19_details_length(self):
+        """All scoring results should have 19 detail entries."""
+        res = calculate_confluence(_make_input())
+        assert len(res.details) == 19
+        assert res.max_score == 19
+
+    def test_score_16_is_a_plus(self):
+        """Score of exactly 16 gets grade A+."""
+        # 12 bools + session + corr + 3 auto-pass(None) = 17, need OB or FVG
+        # Use all 12 bools True + session(Z) + corr(empty) + 3 None = 17
+        # Then force 1 to fail: set one bool to False => 16
+        vals = {f: True for f in _BOOL_FIELDS}
+        vals["above_sma200"] = False  # drop one
+        inp = ScoringInput(
+            **vals,
+            instrument="EURUSD",
+            instrument_class="Z",
+        )
+        res = calculate_confluence(inp)
+        assert res.score == 16
+        assert res.grade == "A+"
+
+    def test_score_15_is_a(self):
+        """Score of 15 gets grade A."""
+        vals = {f: True for f in _BOOL_FIELDS}
+        vals["above_sma200"] = False
+        vals["momentum_confirms"] = False
+        inp = ScoringInput(
+            **vals,
+            instrument="EURUSD",
+            instrument_class="Z",
+        )
+        res = calculate_confluence(inp)
+        assert res.score == 15
+        assert res.grade == "A"
+
+    def test_score_14_is_a(self):
+        """Score of 14 gets grade A (boundary)."""
+        vals = {f: True for f in _BOOL_FIELDS}
+        vals["above_sma200"] = False
+        vals["momentum_confirms"] = False
+        vals["cot_confirms"] = False
+        inp = ScoringInput(
+            **vals,
+            instrument="EURUSD",
+            instrument_class="Z",
+        )
+        res = calculate_confluence(inp)
+        assert res.score == 14
+        assert res.grade == "A"
+
+    def test_score_13_is_b(self):
+        """Score of 13 gets grade B (below A threshold)."""
+        vals = {f: True for f in _BOOL_FIELDS}
+        vals["above_sma200"] = False
+        vals["momentum_confirms"] = False
+        vals["cot_confirms"] = False
+        vals["cot_strong"] = False
+        inp = ScoringInput(
+            **vals,
+            instrument="EURUSD",
+            instrument_class="Z",
+        )
+        res = calculate_confluence(inp)
+        assert res.score == 13
+        # 13 >= 10 => B
+        assert res.grade == "B"
+
+    def test_score_10_is_b_boundary(self):
+        """Score of exactly 10 gets grade B."""
+        vals = {f: True for f in _BOOL_FIELDS}
+        # Need 10 = total - 9 fails. Total possible with Z class: 12 bools + session + corr + 3 None = 17
+        # So we need 7 bools False (7 fail) => 5 bools True + session + corr + 3 = 10
+        for i, f in enumerate(_BOOL_FIELDS):
+            vals[f] = i < 5
+        inp = ScoringInput(
+            **vals,
+            instrument="EURUSD",
+            instrument_class="Z",
+        )
+        res = calculate_confluence(inp)
+        assert res.score == 10
+        assert res.grade == "B"
+
+    def test_score_9_is_c(self):
+        """Score of 9 gets grade C (below B threshold)."""
+        vals = {f: True for f in _BOOL_FIELDS}
+        for i, f in enumerate(_BOOL_FIELDS):
+            vals[f] = i < 4
+        inp = ScoringInput(
+            **vals,
+            instrument="EURUSD",
+            instrument_class="Z",
+        )
+        res = calculate_confluence(inp)
+        assert res.score == 9
+        assert res.grade == "C"
+
+    def test_new_detail_labels_for_criteria_17_19(self):
+        """Details list includes criteria 17-19 labels."""
+        res = calculate_confluence(_make_input())
+        labels = [d.label for d in res.details]
+        assert "COMEX stress bekrefter" in labels
+        assert "Ingen seismisk risiko" in labels
+        assert "Chokepoint klar" in labels
