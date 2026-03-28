@@ -219,3 +219,7 @@ export function fetchCorrelations() {
 export function fetchSignalLog() {
   return get('/api/v1/signal-log');
 }
+
+export function fetchSignalAnalytics() {
+  return get('/api/v1/signal-log/analytics');
+}

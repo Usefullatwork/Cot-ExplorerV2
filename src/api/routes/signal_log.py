@@ -7,7 +7,7 @@ from typing import Any, Optional
 
 from fastapi import APIRouter, HTTPException, Query
 from pydantic import BaseModel, Field
-from sqlalchemy import func, select
+from sqlalchemy import case, func, select
 
 from src.db.engine import session_scope
 from src.db.models import SignalPerformance
@@ -125,6 +125,134 @@ def update_signal_result(signal_id: int, body: ResultUpdateRequest) -> dict:
         return result
     except HTTPException:
         raise
+    except Exception:
+        try:
+            gen.throw(Exception)
+        except StopIteration:
+            pass
+        raise
+
+
+# ── Signal Analytics ─────────────────────────────────────────────────────────
+
+
+class InstrumentHitRate(BaseModel):
+    instrument: str
+    trades: int
+    hits: int
+    hit_rate: float
+    avg_pnl: float
+
+
+class GradeHitRate(BaseModel):
+    grade: str
+    trades: int
+    hits: int
+    hit_rate: float
+
+
+class StreakInfo(BaseModel):
+    longest_win: int
+    longest_loss: int
+    current_streak: int
+    current_type: str
+
+
+class SignalAnalyticsResponse(BaseModel):
+    by_instrument: list[InstrumentHitRate]
+    by_grade: list[GradeHitRate]
+    streak: StreakInfo
+    total_signals: int
+    total_closed: int
+
+
+@router.get(
+    "/analytics",
+    response_model=SignalAnalyticsResponse,
+    summary="Signal performance analytics",
+    description="Aggregated hit rates by instrument, grade, and streak analysis.",
+)
+def signal_analytics() -> dict:
+    """Performance breakdown by instrument, grade, and streaks."""
+    gen = session_scope()
+    session = next(gen)
+    try:
+        rows = session.execute(
+            select(SignalPerformance).order_by(SignalPerformance.created_at.asc())
+        ).scalars().all()
+
+        total = len(rows)
+        closed = [r for r in rows if r.result in ("HIT", "MISS")]
+
+        # By instrument
+        inst_map: dict[str, list] = {}
+        for r in closed:
+            inst_map.setdefault(r.instrument, []).append(r)
+
+        by_instrument = []
+        for inst, trades in sorted(inst_map.items()):
+            hits = sum(1 for t in trades if t.result == "HIT")
+            pnls = [t.pnl_pips or 0 for t in trades]
+            by_instrument.append({
+                "instrument": inst,
+                "trades": len(trades),
+                "hits": hits,
+                "hit_rate": round(hits / len(trades) * 100, 1) if trades else 0,
+                "avg_pnl": round(sum(pnls) / len(pnls), 2) if pnls else 0,
+            })
+
+        # By grade
+        grade_map: dict[str, list] = {}
+        for r in closed:
+            grade_map.setdefault(r.grade or "?", []).append(r)
+
+        by_grade = []
+        for grade, trades in sorted(grade_map.items()):
+            hits = sum(1 for t in trades if t.result == "HIT")
+            by_grade.append({
+                "grade": grade,
+                "trades": len(trades),
+                "hits": hits,
+                "hit_rate": round(hits / len(trades) * 100, 1) if trades else 0,
+            })
+
+        # Streaks
+        longest_win = longest_loss = current = 0
+        current_type = "none"
+        for r in closed:
+            if r.result == "HIT":
+                if current_type == "win":
+                    current += 1
+                else:
+                    current = 1
+                    current_type = "win"
+                longest_win = max(longest_win, current)
+            else:
+                if current_type == "loss":
+                    current += 1
+                else:
+                    current = 1
+                    current_type = "loss"
+                longest_loss = max(longest_loss, current)
+
+        result = {
+            "by_instrument": by_instrument,
+            "by_grade": by_grade,
+            "streak": {
+                "longest_win": longest_win,
+                "longest_loss": longest_loss,
+                "current_streak": current,
+                "current_type": current_type,
+            },
+            "total_signals": total,
+            "total_closed": len(closed),
+        }
+
+        try:
+            gen.send(None)
+        except StopIteration:
+            pass
+        return result
     except Exception:
         try:
             gen.throw(Exception)

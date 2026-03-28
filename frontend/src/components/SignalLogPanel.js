@@ -4,8 +4,8 @@
  * Follows MacroPanel pattern: render() builds skeleton, update() fills data.
  */
 
-import { escapeHtml, timeAgo, formatPrice } from '../utils.js';
-import { fetchSignalLog } from '../api.js';
+import { escapeHtml, timeAgo, formatPrice, colorClass } from '../utils.js';
+import { fetchSignalLog, fetchSignalAnalytics } from '../api.js';
 import { setState } from '../state.js';
 
 /* ── Helpers ─────────────────────────────────────────────── */
@@ -47,6 +47,10 @@ export function render(container) {
   container.innerHTML = `
     <div class="sh"><h2 class="sh-t">Signal-logg</h2><div class="sh-b">Ytelse og historikk</div></div>
     <div class="g4" id="sl-stats" role="group" aria-label="Signalstatistikk"></div>
+    <div class="sh" style="margin-top:16px"><h2 class="sh-t">Analytikk</h2><div class="sh-b">Per instrument &amp; klasse</div></div>
+    <div id="sl-analytics" style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:16px" role="region" aria-label="Signal-analytikk">
+      <div style="color:var(--m);font-size:12px">Laster analytikk...</div>
+    </div>
     <div class="card" style="margin-top:12px;overflow-x:auto" role="region" aria-label="Signaltabell">
       <table class="tt" id="sl-table" style="width:100%">
         <thead>
@@ -77,11 +81,52 @@ export function update(data) {
 /** Fetch signal log and push to state. */
 export async function refreshAll() {
   try {
-    const data = await fetchSignalLog();
+    const [data, analytics] = await Promise.all([
+      fetchSignalLog(),
+      fetchSignalAnalytics().catch(() => null),
+    ]);
     setState('signalLog', data);
+    renderAnalytics(analytics);
   } catch (e) {
     console.warn('[SignalLogPanel] fetch error:', e.message);
   }
+}
+
+function renderAnalytics(data) {
+  const el = document.getElementById('sl-analytics');
+  if (!el || !data) {
+    if (el) el.innerHTML = '<div style="color:var(--m);font-size:12px">Ingen analytikk-data</div>';
+    return;
+  }
+
+  // By instrument
+  const instHtml = data.by_instrument && data.by_instrument.length
+    ? '<div class="card"><div class="ct">Per instrument</div>' +
+      data.by_instrument.map((r) =>
+        `<div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:4px"><span>${escapeHtml(r.instrument)}</span><span>${r.trades}t &middot; <span class="${r.hit_rate >= 50 ? 'bull' : 'bear'}">${r.hit_rate.toFixed(0)}%</span> &middot; ${r.avg_pnl >= 0 ? '+' : ''}${r.avg_pnl.toFixed(1)}p</span></div>`
+      ).join('') + '</div>'
+    : '<div class="card"><div class="ct">Per instrument</div><div style="color:var(--m);font-size:12px">Ingen data</div></div>';
+
+  // By grade
+  const gradeHtml = data.by_grade && data.by_grade.length
+    ? '<div class="card"><div class="ct">Per klasse</div>' +
+      data.by_grade.map((g) =>
+        `<div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:4px"><span style="font-weight:600">${escapeHtml(g.grade)}</span><span>${g.trades}t &middot; <span class="${g.hit_rate >= 50 ? 'bull' : 'bear'}">${g.hit_rate.toFixed(0)}%</span></span></div>`
+      ).join('') + '</div>'
+    : '<div class="card"><div class="ct">Per klasse</div><div style="color:var(--m);font-size:12px">Ingen data</div></div>';
+
+  // Streaks
+  const s = data.streak || {};
+  const streakHtml = `<div class="card"><div class="ct">Rekker</div>
+    <div style="font-size:12px;line-height:2">
+      <div>Lengste gevinst: <span class="bull" style="font-weight:600">${s.longest_win || 0}</span></div>
+      <div>Lengste tap: <span class="bear" style="font-weight:600">${s.longest_loss || 0}</span></div>
+      <div>Naperende: <span class="${s.current_type === 'win' ? 'bull' : s.current_type === 'loss' ? 'bear' : ''}" style="font-weight:600">${s.current_streak || 0} ${s.current_type === 'win' ? 'gevinster' : s.current_type === 'loss' ? 'tap' : ''}</span></div>
+      <div>Totalt lukket: ${data.total_closed || 0} / ${data.total_signals || 0}</div>
+    </div>
+  </div>`;
+
+  el.innerHTML = instHtml + gradeHtml + streakHtml;
 }
 
 /* ── Stats bar ───────────────────────────────────────────── */
