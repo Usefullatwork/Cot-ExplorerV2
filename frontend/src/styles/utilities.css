@@ -108,6 +108,11 @@
   to { transform: rotate(360deg); }
 }
 
+@keyframes regime-pulse {
+  0%, 100% { border-bottom-color: var(--bear); }
+  50%      { border-bottom-color: rgba(248, 81, 73, 0.3); }
+}
+
 /* ── Skeleton loading screens ────────────────────────────── */
 @keyframes shimmer {
   0%   { background-position: -200% 0; }

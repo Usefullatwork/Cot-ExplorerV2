@@ -19,6 +19,10 @@ const TABS = [
   'pine',
   'competitor',
   'trading',
+  'metals-intel',
+  'correlations',
+  'signal-log',
+  'geo-events',
 ];
 
 const DEFAULT_TAB = 'setups';

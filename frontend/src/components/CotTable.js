@@ -4,7 +4,7 @@
  * Ports the renderCot / setCF / filterCot functions from v1 index.html.
  */
 
-import { formatNumber, colorClass } from '../utils.js';
+import { formatNumber, colorClass, escapeHtml } from '../utils.js';
 
 // ── Internal state ──────────────────────────────────────────
 let allData = [];
@@ -101,13 +101,13 @@ function renderTable() {
       const sp = d.spekulanter || {};
       const s2 = sig(sp.net || 0, d.open_interest || 1);
       const si = SI[s2];
-      return `<tr data-sym="${d.symbol}" data-report="${d.report}" data-name="${encodeURIComponent(d.navn_no || d.market)}" tabindex="0" role="row" aria-label="${d.navn_no || d.market}: ${si.t}, netto ${formatNumber(sp.net || 0)}">
-        <td style="cursor:pointer" class="cot-row-click"><div class="tdname">${d.navn_no || d.market}</div><div class="tdsub">${d.forklaring || ''}</div></td>
-        <td><span class="sp2 ${s2}" role="status">${si.i} ${si.t}</span></td>
-        <td class="${sp.net >= 0 ? 'tdbull' : 'tdbear'}">${sp.net > 0 ? '+' : ''}${formatNumber(sp.net || 0)}</td>
-        <td class="${d.change_spec_net >= 0 ? 'tdbull' : 'tdbear'}">${d.change_spec_net > 0 ? '+' : ''}${formatNumber(d.change_spec_net || 0)}</td>
-        <td class="tdr">${formatNumber(d.open_interest || 0)}</td>
-        <td class="tdr" style="font-size:10px;color:var(--m)">${d.report}</td>
+      return `<tr data-sym="${escapeHtml(d.symbol)}" data-report="${escapeHtml(d.report)}" data-name="${encodeURIComponent(d.navn_no || d.market)}" tabindex="0" role="row" aria-label="${escapeHtml(d.navn_no || d.market)}: ${escapeHtml(si.t)}, netto ${escapeHtml(formatNumber(sp.net || 0))}">
+        <td style="cursor:pointer" class="cot-row-click"><div class="tdname">${escapeHtml(d.navn_no || d.market)}</div><div class="tdsub">${escapeHtml(d.forklaring || '')}</div></td>
+        <td><span class="sp2 ${s2}" role="status">${escapeHtml(si.i)} ${escapeHtml(si.t)}</span></td>
+        <td class="${sp.net >= 0 ? 'tdbull' : 'tdbear'}">${sp.net > 0 ? '+' : ''}${escapeHtml(formatNumber(sp.net || 0))}</td>
+        <td class="${d.change_spec_net >= 0 ? 'tdbull' : 'tdbear'}">${d.change_spec_net > 0 ? '+' : ''}${escapeHtml(formatNumber(d.change_spec_net || 0))}</td>
+        <td class="tdr">${escapeHtml(formatNumber(d.open_interest || 0))}</td>
+        <td class="tdr" style="font-size:10px;color:var(--m)">${escapeHtml(d.report)}</td>
       </tr>`;
     })
     .join('');

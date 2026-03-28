@@ -34,6 +34,11 @@ import * as ScoreRadar from './components/ScoreRadar.js';
 import * as PinePanel from './components/PinePanel.js';
 import * as CompetitorPanel from './components/CompetitorPanel.js';
 import * as BotPanel from './components/BotPanel.js';
+import * as LiveTicker from './components/LiveTicker.js';
+import * as MetalsIntelPanel from './components/MetalsIntelPanel.js';
+import * as CorrelationPanel from './components/CorrelationPanel.js';
+import * as SignalLogPanel from './components/SignalLogPanel.js';
+import * as GeoEventsPanel from './components/GeoEventsPanel.js';
 
 /* ── Error boundary ──────────────────────────────────────── */
 
@@ -82,6 +87,9 @@ function safeAsync(name, fn) {
 function buildShell() {
   const app = document.getElementById('app');
 
+  // LiveTicker (sticky price bar — rendered first, above everything)
+  LiveTicker.render(app);
+
   // TopBar (header + nav)
   TopBar.render(app);
 
@@ -111,6 +119,18 @@ function buildShell() {
       </div>
       <div class="panel" id="panel-trading" role="tabpanel" aria-labelledby="tab-trading" aria-hidden="true">
         <div class="loading" role="status"><div class="spinner" aria-hidden="true"></div>Laster trading bot...</div>
+      </div>
+      <div class="panel" id="panel-metals-intel" role="tabpanel" aria-labelledby="tab-metals-intel" aria-hidden="true">
+        <div class="loading" role="status"><div class="spinner" aria-hidden="true"></div>Laster metals intel...</div>
+      </div>
+      <div class="panel" id="panel-correlations" role="tabpanel" aria-labelledby="tab-correlations" aria-hidden="true">
+        <div class="loading" role="status"><div class="spinner" aria-hidden="true"></div>Laster korrelasjoner...</div>
+      </div>
+      <div class="panel" id="panel-signal-log" role="tabpanel" aria-labelledby="tab-signal-log" aria-hidden="true">
+        <div class="loading" role="status"><div class="spinner" aria-hidden="true"></div>Laster signal-logg...</div>
+      </div>
+      <div class="panel" id="panel-geo-events" role="tabpanel" aria-labelledby="tab-geo-events" aria-hidden="true">
+        <div class="loading" role="status"><div class="spinner" aria-hidden="true"></div>Laster geo-signaler...</div>
       </div>
     </main>
     <footer role="contentinfo">
@@ -167,6 +187,22 @@ function initComponents() {
   // Trading bot panel
   const tradingPanel = document.getElementById('panel-trading');
   safeCall('BotPanel', () => BotPanel.render(tradingPanel), tradingPanel);
+
+  // Metals Intel panel
+  const miPanel = document.getElementById('panel-metals-intel');
+  safeCall('MetalsIntelPanel', () => MetalsIntelPanel.render(miPanel), miPanel);
+
+  // Correlation panel
+  const corrPanel = document.getElementById('panel-correlations');
+  safeCall('CorrelationPanel', () => CorrelationPanel.render(corrPanel), corrPanel);
+
+  // Signal Log panel
+  const slPanel = document.getElementById('panel-signal-log');
+  safeCall('SignalLogPanel', () => SignalLogPanel.render(slPanel), slPanel);
+
+  // Geo Events panel
+  const geoPanel = document.getElementById('panel-geo-events');
+  safeCall('GeoEventsPanel', () => GeoEventsPanel.render(geoPanel), geoPanel);
 }
 
 /* ── State subscriptions ──────────────────────────────────── */
@@ -217,7 +253,43 @@ function wireSubscriptions() {
       // Clean up charts when leaving trading tab
       safeCall('BotPanel.cleanup', () => BotPanel.cleanup());
     }
+    if (tab === 'metals-intel') {
+      safeAsync('MetalsIntelPanel.refreshAll', () => MetalsIntelPanel.refreshAll());
+    }
+    if (tab === 'correlations') {
+      safeAsync('CorrelationPanel.refreshAll', () => CorrelationPanel.refreshAll());
+    }
+    if (tab === 'signal-log') {
+      safeAsync('SignalLogPanel.refreshAll', () => SignalLogPanel.refreshAll());
+    }
+    if (tab === 'geo-events') {
+      safeAsync('GeoEventsPanel.refreshAll', () => GeoEventsPanel.refreshAll());
+    }
   });
+
+  // Geointel -> MetalsIntelPanel
+  subscribe('geointel', (data) => {
+    safeCall('MetalsIntelPanel.update', () => MetalsIntelPanel.update(data), document.getElementById('panel-metals-intel'));
+  });
+
+  // Correlations -> CorrelationPanel
+  subscribe('correlations', (data) => {
+    safeCall('CorrelationPanel.update', () => CorrelationPanel.update(data), document.getElementById('panel-correlations'));
+  });
+
+  // Signal Log -> SignalLogPanel
+  subscribe('signalLog', (data) => {
+    safeCall('SignalLogPanel.update', () => SignalLogPanel.update(data), document.getElementById('panel-signal-log'));
+  });
+
+  // Geo-events data -> GeoEventsPanel
+  const geoUpdateFn = () => {
+    const { regime, geoSignals, geoEvents } = state;
+    safeCall('GeoEventsPanel.update', () => GeoEventsPanel.update({ regime, geoSignals, geoEvents }), document.getElementById('panel-geo-events'));
+  };
+  subscribe('regime', geoUpdateFn);
+  subscribe('geoSignals', geoUpdateFn);
+  subscribe('geoEvents', geoUpdateFn);
 }
 
 /* ── Data fetching ────────────────────────────────────────── */

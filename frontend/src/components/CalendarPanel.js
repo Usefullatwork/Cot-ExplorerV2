@@ -4,6 +4,7 @@
  * Ports the renderCal function from v1 index.html.
  * Enhanced with impact filtering, country filter, countdown to next event, color-coded badges.
  */
+import { escapeHtml } from '../utils.js';
 
 /** @type {Array} Cached calendar data for re-filtering */
 let _calendarData = [];
@@ -109,8 +110,8 @@ function updateCountdown() {
       <div class="card" style="display:flex;align-items:center;gap:14px;padding:12px 16px">
         <div>
           <div style="font-size:10px;color:var(--m);text-transform:uppercase;letter-spacing:1px;margin-bottom:4px">Neste hendelse</div>
-          <div style="font-size:14px;font-weight:600">${next.title}</div>
-          <div style="font-size:11px;color:var(--m);margin-top:2px">${next.country} <span class="calimp ${next.impact}" style="margin-left:6px">${next.impact}</span></div>
+          <div style="font-size:14px;font-weight:600">${escapeHtml(next.title)}</div>
+          <div style="font-size:11px;color:var(--m);margin-top:2px">${escapeHtml(next.country)} <span class="calimp ${escapeHtml(next.impact)}" style="margin-left:6px">${escapeHtml(next.impact)}</span></div>
         </div>
         <div style="margin-left:auto;text-align:right">
           <div style="font-family:'DM Mono',monospace;font-size:22px;font-weight:600;color:var(--${impactCls})">${formatCountdown(nextDate)}</div>
@@ -139,10 +140,10 @@ function renderEvents(events) {
       const t = dt.toLocaleString('nb-NO', { weekday: 'short', hour: '2-digit', minute: '2-digit' });
       const isPast = dt.getTime() < Date.now();
       const opacity = isPast ? 'opacity:0.5' : '';
-      return `<div class="cali" style="${opacity}" role="listitem" aria-label="${e.title}, ${e.country}, ${e.impact} impact">
-        <div class="calt">${t}</div>
-        <div><div class="calti">${e.title}</div><div class="calcc">${e.country} - Forecast: ${e.forecast || '-'}${e.actual ? ' | Actual: ' + e.actual : ''}${e.previous ? ' | Prev: ' + e.previous : ''}</div></div>
-        <span class="calimp ${e.impact}" aria-label="${e.impact} impact">${e.impact}</span>
+      return `<div class="cali" style="${opacity}" role="listitem" aria-label="${escapeHtml(e.title)}, ${escapeHtml(e.country)}, ${escapeHtml(e.impact)} impact">
+        <div class="calt">${escapeHtml(t)}</div>
+        <div><div class="calti">${escapeHtml(e.title)}</div><div class="calcc">${escapeHtml(e.country)} - Forecast: ${escapeHtml(e.forecast || '-')}${e.actual ? ' | Actual: ' + escapeHtml(e.actual) : ''}${e.previous ? ' | Prev: ' + escapeHtml(e.previous) : ''}</div></div>
+        <span class="calimp ${escapeHtml(e.impact)}" aria-label="${escapeHtml(e.impact)} impact">${escapeHtml(e.impact)}</span>
       </div>`;
     })
     .join('');
@@ -198,7 +199,7 @@ export function update(macro) {
   if (countrySelect) {
     const current = countrySelect.value;
     countrySelect.innerHTML = '<option value="all">Alle land</option>' +
-      countries.map((c) => `<option value="${c}"${c === current ? ' selected' : ''}>${c}</option>`).join('');
+      countries.map((c) => `<option value="${escapeHtml(c)}"${c === current ? ' selected' : ''}>${escapeHtml(c)}</option>`).join('');
   }
 
   _renderFiltered();

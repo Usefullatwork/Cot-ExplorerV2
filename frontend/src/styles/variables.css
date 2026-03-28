@@ -15,6 +15,10 @@
   --wbg:  rgba(210, 153, 34, 0.12);
   --blue: #58a6ff;
   --blbg: rgba(88, 166, 255, 0.12);
+  /* Metal colors */
+  --gold:   #FFD700;
+  --silver: #C0C0C0;
+  --copper: #B87333;
   /* Focus ring for accessibility */
   --focus: #58a6ff;
   --focus-ring: 0 0 0 2px var(--bg), 0 0 0 4px var(--focus);

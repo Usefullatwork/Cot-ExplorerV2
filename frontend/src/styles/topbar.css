@@ -1,3 +1,52 @@
+/* ── LiveTicker — sticky scrolling price bar ──────────────── */
+.live-ticker {
+  background: var(--bg);
+  border-bottom: 1px solid var(--b);
+  padding: 0 20px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  position: sticky;
+  top: 0;
+  z-index: 101;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.live-ticker::-webkit-scrollbar { display: none; }
+
+.live-ticker__inner {
+  display: flex;
+  gap: 18px;
+  font-family: 'DM Mono', monospace;
+  font-size: 11px;
+  color: var(--m);
+  white-space: nowrap;
+}
+
+.live-ticker__item {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  flex-shrink: 0;
+}
+
+.live-ticker__label {
+  color: var(--m);
+  font-size: 10px;
+  font-weight: 600;
+}
+
+.live-ticker__price {
+  color: var(--t);
+}
+
+.live-ticker__chg--up { color: var(--bull); }
+.live-ticker__chg--dn { color: var(--bear); }
+
+@media (max-width: 768px) {
+  .live-ticker { padding: 0 12px; height: 28px; }
+}
+
 /* ── Top bar & navigation ─────────────────────────────────── */
 .topbar {
   background: var(--s);
@@ -8,7 +57,7 @@
   align-items: center;
   gap: 16px;
   position: sticky;
-  top: 0;
+  top: 32px;
   z-index: 100;
   box-shadow: 0 1px 4px rgba(0, 0, 0, 0.2);
 }
@@ -186,7 +235,7 @@
   .nav {
     display: none;
     position: fixed;
-    top: 50px;
+    top: 78px; /* 28px LiveTicker + 50px topbar */
     left: 0;
     right: 0;
     bottom: 0;

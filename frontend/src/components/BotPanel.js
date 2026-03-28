@@ -3,7 +3,7 @@
  * status, positions, signals, daily P&L, kill switch, config, trade log.
  * Follows MacroPanel.js pattern: render() builds skeleton, update() fills data.
  */
-import { formatPrice, timeAgo } from '../utils.js';
+import { formatPrice, timeAgo, escapeHtml } from '../utils.js';
 import { createPnlChart, destroyPnlChart } from '../charts/pnlChart.js';
 import {
   fetchBotStatus, fetchBotPositions, fetchBotSignals,
@@ -28,12 +28,12 @@ function fmtPips(v) {
 function statusBadge(status) {
   const c = { running: 'bull', stopped: 'bear', starting: 'warn' };
   const l = { running: 'Aktiv', stopped: 'Stoppet', starting: 'Starter' };
-  return `<span class="tgrade ${c[status] || 'warn'}">${l[status] || status}</span>`;
+  return `<span class="tgrade ${c[status] || 'warn'}">${escapeHtml(l[status] || status)}</span>`;
 }
 
 function modeBadge(mode) {
   const c = { paper: 'neutral', live: 'bear', demo: 'warn' };
-  return `<span class="tbias ${c[mode] || 'neutral'}">${(mode || 'paper').toUpperCase()}</span>`;
+  return `<span class="tbias ${c[mode] || 'neutral'}">${escapeHtml((mode || 'paper').toUpperCase())}</span>`;
 }
 
 const inputStyle = 'width:100%;padding:7px 10px;background:var(--s2);border:1px solid var(--b);color:var(--t);border-radius:6px;font-size:13px';
@@ -198,8 +198,8 @@ function updateStatus(s) {
     : '<button id="botStopBtn" class="fc" style="background:var(--rbg);border-color:var(--bear);color:var(--bear);padding:4px 12px;font-size:11px">Stopp</button>';
   el.innerHTML = `<div style="display:flex;gap:16px;align-items:center;flex-wrap:wrap">
     ${statusBadge(status)} ${modeBadge(s.broker_mode || 'paper')}
-    <span style="font-size:11px;color:var(--m)">Tilkoblet: ${since}</span>
-    <span style="font-size:11px;color:var(--m)">Posisjoner: <strong>${s.positions_count ?? 0}</strong></span>
+    <span style="font-size:11px;color:var(--m)">Tilkoblet: ${escapeHtml(since)}</span>
+    <span style="font-size:11px;color:var(--m)">Posisjoner: <strong>${escapeHtml(s.positions_count ?? 0)}</strong></span>
     ${toggleBtn}</div>`;
 }
 
@@ -213,14 +213,14 @@ function updatePositions(positions) {
   body.innerHTML = arr.map((p) => {
     const dirCol = p.direction === 'LONG' ? 'bull' : 'bear';
     return `<tr>
-      <td class="tdname">${p.instrument || '-'}</td>
-      <td><span class="tbias ${dirCol}" style="font-size:10px">${p.direction || '-'}</span></td>
-      <td class="tdr">${formatPrice(p.entry)}</td><td class="tdr">${formatPrice(p.current)}</td>
-      <td class="td${pnlColor(p.pnl_pips)}" style="text-align:right">${fmtPips(p.pnl_pips)}</td>
-      <td class="td${pnlColor(p.pnl_usd)}" style="text-align:right">${fmtPnl(p.pnl_usd)}</td>
-      <td class="tdr">${p.lots ?? '-'}</td><td class="tdr">${p.candles ?? '-'}</td>
+      <td class="tdname">${escapeHtml(p.instrument || '-')}</td>
+      <td><span class="tbias ${dirCol}" style="font-size:10px">${escapeHtml(p.direction || '-')}</span></td>
+      <td class="tdr">${escapeHtml(formatPrice(p.entry))}</td><td class="tdr">${escapeHtml(formatPrice(p.current))}</td>
+      <td class="td${pnlColor(p.pnl_pips)}" style="text-align:right">${escapeHtml(fmtPips(p.pnl_pips))}</td>
+      <td class="td${pnlColor(p.pnl_usd)}" style="text-align:right">${escapeHtml(fmtPnl(p.pnl_usd))}</td>
+      <td class="tdr">${escapeHtml(p.lots ?? '-')}</td><td class="tdr">${escapeHtml(p.candles ?? '-')}</td>
       <td>${p.t1_hit ? '<span style="color:var(--bull)">Ja</span>' : '<span style="color:var(--m)">Nei</span>'}</td>
-      <td><span class="tsess ${p.status === 'active' ? 'active' : 'inactive'}">${p.status || '-'}</span></td></tr>`;
+      <td><span class="tsess ${p.status === 'active' ? 'active' : 'inactive'}">${escapeHtml(p.status || '-')}</span></td></tr>`;
   }).join('');
 }
 
@@ -235,12 +235,12 @@ function updateSignals(signals) {
     const dirCol = s.direction === 'LONG' ? 'bull' : 'bear';
     const gradeCol = s.grade === 'A+' ? 'bull' : s.grade === 'B' ? 'warn' : s.grade === 'C' ? 'bear' : 'bull';
     return `<tr>
-      <td class="tdname">${s.instrument || '-'}</td>
-      <td><span class="tbias ${dirCol}" style="font-size:10px">${s.direction || '-'}</span></td>
-      <td><span class="tgrade ${gradeCol}">${s.grade || '-'}</span></td>
-      <td class="tdr">${s.score ?? '-'}</td><td class="tdr">${s.entry_zone || '-'}</td>
-      <td><span class="tsess ${s.status === 'pending' ? 'active' : 'inactive'}">${s.status || '-'}</span></td>
-      <td style="font-size:11px;color:var(--m)">${s.received ? timeAgo(s.received) : '-'}</td></tr>`;
+      <td class="tdname">${escapeHtml(s.instrument || '-')}</td>
+      <td><span class="tbias ${dirCol}" style="font-size:10px">${escapeHtml(s.direction || '-')}</span></td>
+      <td><span class="tgrade ${gradeCol}">${escapeHtml(s.grade || '-')}</span></td>
+      <td class="tdr">${escapeHtml(s.score ?? '-')}</td><td class="tdr">${escapeHtml(s.entry_zone || '-')}</td>
+      <td><span class="tsess ${s.status === 'pending' ? 'active' : 'inactive'}">${escapeHtml(s.status || '-')}</span></td>
+      <td style="font-size:11px;color:var(--m)">${s.received ? escapeHtml(timeAgo(s.received)) : '-'}</td></tr>`;
   }).join('');
 }
 
@@ -275,10 +275,10 @@ function updateLog(history) {
   body.innerHTML = arr.slice(0, 50).map((e) => {
     const c = e.event === 'error' ? 'bear' : e.event === 'fill' ? 'bull' : 'm';
     return `<tr>
-      <td style="font-size:11px;color:var(--m);white-space:nowrap">${e.time || '-'}</td>
-      <td><span style="color:var(--${c});font-weight:500;text-transform:uppercase;font-size:11px">${e.event || '-'}</span></td>
-      <td class="tdname">${e.instrument || '-'}</td>
-      <td style="font-size:12px;color:var(--m)">${e.details || '-'}</td></tr>`;
+      <td style="font-size:11px;color:var(--m);white-space:nowrap">${escapeHtml(e.time || '-')}</td>
+      <td><span style="color:var(--${escapeHtml(c)});font-weight:500;text-transform:uppercase;font-size:11px">${escapeHtml(e.event || '-')}</span></td>
+      <td class="tdname">${escapeHtml(e.instrument || '-')}</td>
+      <td style="font-size:12px;color:var(--m)">${escapeHtml(e.details || '-')}</td></tr>`;
   }).join('');
 }
 

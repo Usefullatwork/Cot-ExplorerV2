@@ -23,6 +23,12 @@ export const state = {
   botSignals:         null,
   botConfig:          null,
   botHistory:         null,
+  geointel:           null,
+  geoSignals:         null,
+  geoEvents:          null,
+  regime:             null,
+  correlations:       null,
+  signalLog:          null,
 };
 
 /** @type {Map<string, Set<Function>>} */

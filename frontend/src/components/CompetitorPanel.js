@@ -4,6 +4,7 @@
  * Enhanced with Myfxbook sentiment data tables, TradingView ideas section,
  * refresh button, and comparison layout.
  */
+import { escapeHtml } from '../utils.js';
 
 /** @type {Array|null} Cached competitor data */
 let _competitorData = null;
@@ -93,16 +94,16 @@ function _renderSentiment() {
     const contrarian = majorityLong ? 'bear' : 'bull';
     return `<div class="card" style="margin-bottom:8px;padding:10px 14px">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
-        <div class="tname" style="font-size:13px">${s.pair}</div>
+        <div class="tname" style="font-size:13px">${escapeHtml(s.pair)}</div>
         <span class="tf-badge ${contrarian}" style="font-size:9px">Kontrarian: ${majorityLong ? 'SHORT' : 'LONG'}</span>
       </div>
       <div style="display:flex;height:6px;border-radius:3px;overflow:hidden;background:var(--b)">
-        <div style="width:${longWidth}%;background:var(--bull);border-radius:3px 0 0 3px"></div>
-        <div style="width:${shortWidth}%;background:var(--bear);border-radius:0 3px 3px 0"></div>
+        <div style="width:${escapeHtml(longWidth)}%;background:var(--bull);border-radius:3px 0 0 3px"></div>
+        <div style="width:${escapeHtml(shortWidth)}%;background:var(--bear);border-radius:0 3px 3px 0"></div>
       </div>
       <div style="display:flex;justify-content:space-between;margin-top:4px;font-size:10px">
-        <span style="color:var(--bull)">Long ${s.longPct}%</span>
-        <span style="color:var(--bear)">Short ${s.shortPct}%</span>
+        <span style="color:var(--bull)">Long ${escapeHtml(s.longPct)}%</span>
+        <span style="color:var(--bear)">Short ${escapeHtml(s.shortPct)}%</span>
       </div>
     </div>`;
   }).join('');
@@ -122,12 +123,12 @@ function _renderIdeas() {
     return `<div class="card" style="margin-bottom:8px;padding:10px 14px">
       <div style="display:flex;justify-content:space-between;align-items:flex-start">
         <div>
-          <div class="tname" style="font-size:13px">${idea.title}</div>
-          <div class="tsub" style="margin-top:2px">@${idea.author}</div>
+          <div class="tname" style="font-size:13px">${escapeHtml(idea.title)}</div>
+          <div class="tsub" style="margin-top:2px">@${escapeHtml(idea.author)}</div>
         </div>
         <div style="text-align:right;flex-shrink:0">
-          <span class="tbias ${dirCol}" style="font-size:10px;padding:2px 8px">${idea.direction}</span>
-          <div style="font-size:10px;color:var(--m);margin-top:4px">${idea.timeframe} | ${idea.likes} likes</div>
+          <span class="tbias ${dirCol}" style="font-size:10px;padding:2px 8px">${escapeHtml(idea.direction)}</span>
+          <div style="font-size:10px;color:var(--m);margin-top:4px">${escapeHtml(idea.timeframe)} | ${escapeHtml(idea.likes)} likes</div>
         </div>
       </div>
     </div>`;
@@ -173,11 +174,11 @@ export function update(data) {
         const isBestRR = d.avgRR === bestRR;
         const wrClass = d.winRate >= 55 ? 'tdbull' : d.winRate >= 45 ? '' : 'tdbear';
         return `<tr>
-          <td><div class="tdname">${d.source}${isBestWR ? ' <span class="tf-badge bull" style="margin-left:4px">BEST</span>' : ''}</div></td>
-          <td class="${wrClass}" style="text-align:right">${d.winRate.toFixed(1)}%</td>
-          <td class="tdr" style="${isBestRR ? 'color:var(--bull);font-weight:600' : ''}">${d.avgRR.toFixed(2)}</td>
-          <td class="tdr">${d.totalSignals}</td>
-          <td class="tdr">${(d.winRate / 100 * d.avgRR).toFixed(2)}</td>
+          <td><div class="tdname">${escapeHtml(d.source)}${isBestWR ? ' <span class="tf-badge bull" style="margin-left:4px">BEST</span>' : ''}</div></td>
+          <td class="${wrClass}" style="text-align:right">${escapeHtml(d.winRate.toFixed(1))}%</td>
+          <td class="tdr" style="${isBestRR ? 'color:var(--bull);font-weight:600' : ''}">${escapeHtml(d.avgRR.toFixed(2))}</td>
+          <td class="tdr">${escapeHtml(d.totalSignals)}</td>
+          <td class="tdr">${escapeHtml((d.winRate / 100 * d.avgRR).toFixed(2))}</td>
         </tr>`;
       }
     )
