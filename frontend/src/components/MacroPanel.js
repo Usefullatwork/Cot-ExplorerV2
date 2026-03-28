@@ -7,9 +7,10 @@
  * 1d/5d/20d change bars, sentiment card, and conflicts section.
  */
 
-import { formatPct } from '../utils.js';
+import { formatPct, escapeHtml, formatPrice } from '../utils.js';
 import { createSparkline } from '../charts/miniSparkline.js';
 import { createPriceChart } from '../charts/priceLineChart.js';
+import { fetchVixTerm, fetchADR } from '../api.js';
 import {
   Chart,
   LineController,
@@ -117,6 +118,10 @@ export function render(container) {
     <div class="g2" id="macroStats" role="group" aria-label="Makro noekkeltall"></div>
     <div class="sh" style="margin-top:16px"><h2 class="sh-t">Rente &amp; Kreditt</h2><div class="sh-b">Realrenter, spreader, vekst</div></div>
     <div class="g4" id="macroRente" role="group" aria-label="Rente og kreditt indikatorer"></div>
+    <div class="sh" style="margin-top:16px"><h2 class="sh-t">VIX Termstruktur</h2><div class="sh-b">Spot, 9D, 3M — contango/backwardation</div></div>
+    <div id="vixTermGrid" class="g4" role="group" aria-label="VIX termstruktur"></div>
+    <div class="sh" style="margin-top:16px"><h2 class="sh-t">Sesjonsrekkevidde (ADR)</h2><div class="sh-b">20-dagers gjennomsnittlig daglig rekkevidde</div></div>
+    <div id="adrTable" role="region" aria-label="ADR tabell"></div>
     <div id="macroConflicts" style="display:none;margin-top:16px" role="alert" aria-label="Konflikter"></div>
     <div id="macroDrilldown" style="display:none;margin-top:16px" role="region" aria-label="Detaljer">
       <div class="card">
@@ -448,6 +453,36 @@ export function update(m) {
       }
     });
   }
+
+  // ── VIX Term Structure (async fetch) ─────────────────────
+  fetchVixTerm()
+    .then((vt) => {
+      const termEl = document.getElementById('vixTermGrid');
+      if (!termEl || !vt) return;
+      const regimeColor = vt.regime === 'backwardation' ? 'bear' : vt.regime === 'contango' ? 'bull' : 'warn';
+      const regimeLabel = vt.regime === 'backwardation' ? 'Backwardation' : vt.regime === 'contango' ? 'Contango' : 'Flat';
+      termEl.innerHTML = [
+        { name: 'VIX Spot', val: vt.spot.toFixed(1), col: vt.spot > 25 ? 'bear' : vt.spot > 20 ? 'warn' : 'bull' },
+        { name: 'VIX 9D', val: vt.vix_9d.toFixed(1), col: vt.vix_9d > 25 ? 'bear' : vt.vix_9d > 20 ? 'warn' : 'bull' },
+        { name: 'VIX 3M', val: vt.vix_3m.toFixed(1), col: vt.vix_3m > 25 ? 'bear' : vt.vix_3m > 20 ? 'warn' : 'bull' },
+        { name: 'Regime', val: escapeHtml(regimeLabel), col: regimeColor },
+      ]
+        .map((x) => `<div class="card"><div class="ct">${escapeHtml(x.name)}</div><div class="snum" style="font-size:20px;font-family:'DM Mono',monospace">${x.val}</div><div class="slabel" style="margin-top:4px;color:var(--${x.col})">${x.col.toUpperCase()}</div></div>`)
+        .join('');
+    })
+    .catch(() => {});
+
+  // ── ADR Table (async fetch) ────────────────────────────
+  fetchADR()
+    .then((data) => {
+      const adrEl = document.getElementById('adrTable');
+      if (!adrEl || !data || !data.items || !data.items.length) return;
+      const rows = data.items
+        .map((r) => `<tr><td>${escapeHtml(r.instrument)}</td><td style="font-family:'DM Mono',monospace;text-align:right">${formatPrice(r.current_price)}</td><td style="font-family:'DM Mono',monospace;text-align:right">${r.adr > 10 ? r.adr.toFixed(1) : r.adr.toFixed(5)}</td><td style="font-family:'DM Mono',monospace;text-align:right;color:var(--${r.adr_pct > 2 ? 'bear' : r.adr_pct > 1 ? 'warn' : 'bull'})">${r.adr_pct.toFixed(2)}%</td><td style="text-align:right;color:var(--m)">${r.days_used}d</td></tr>`)
+        .join('');
+      adrEl.innerHTML = `<div class="cotw"><table class="cott" aria-label="ADR tabell"><thead><tr><th scope="col">Instrument</th><th scope="col" style="text-align:right">Pris</th><th scope="col" style="text-align:right">ADR</th><th scope="col" style="text-align:right">ADR%</th><th scope="col" style="text-align:right">Dager</th></tr></thead><tbody>${rows}</tbody></table></div>`;
+    })
+    .catch(() => {});
 
   // ── Conflicts section ──────────────────────────────────────
   const conflictsEl = document.getElementById('macroConflicts');

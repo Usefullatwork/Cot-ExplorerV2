@@ -95,6 +95,14 @@ export function fetchMacroIndicators() {
   return get('/api/v1/macro/indicators');
 }
 
+export function fetchVixTerm() {
+  return get('/api/v1/macro/vix-term');
+}
+
+export function fetchADR() {
+  return get('/api/v1/macro/adr');
+}
+
 // ── Health / Metrics ────────────────────────────────────────
 
 export function fetchHealth() {
