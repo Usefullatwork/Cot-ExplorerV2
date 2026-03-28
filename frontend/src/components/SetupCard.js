@@ -6,6 +6,7 @@
  */
 
 import { formatNumber, formatPct, colorClass, formatPrice } from '../utils.js';
+import { renderSparkline } from '../charts/svgSparkline.js';
 
 // ── Helpers ─────────────────────────────────────────────────
 
@@ -139,6 +140,7 @@ export function renderCard(lv, idx) {
             <span>OI: <strong style="font-family:monospace">${(cot.pct || 0).toFixed(1)}%</strong></span>
           </div>
           <div class="cbt"><div class="cbf" style="width:${pct}%;background:${specNet > 0 ? 'var(--bull)' : 'var(--bear)'}"></div></div>
+          ${cot.history && cot.history.length > 1 ? '<div style="margin-top:8px;text-align:center" aria-label="COT historikk sparkline">' + renderSparkline(cot.history, { width: 120, height: 24 }) + '</div>' : ''}
         </div>
       </div>
     </div>`;
