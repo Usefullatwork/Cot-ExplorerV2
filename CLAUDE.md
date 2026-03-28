@@ -8,8 +8,8 @@ Python 3.11+, FastAPI, SQLAlchemy/SQLite, Pydantic v2, Vite + vanilla JS fronten
 
 | Module | Files | Lines | Purpose |
 |--------|-------|-------|---------|
-| `src/analysis/` | 13 | 2,200+ | Scoring (19pt), SMC, levels, sentiment, setup builder, COT analyzer, technical, geo_classifier, geo_signals, impact_mapper, regime_detector, correlation, signal_tracker |
-| `src/api/` | 14 | 1,100+ | FastAPI app, 10 route files, 3 middleware (auth, cache, rate_limit) |
+| `src/analysis/` | 14 | 2,400+ | Scoring (19pt), SMC, levels, sentiment, setup builder, COT analyzer, technical, geo_classifier, geo_signals, impact_mapper, regime_detector, correlation, signal_tracker, adr_calculator |
+| `src/api/` | 16 | 1,600+ | FastAPI app, 12 route files, 4 middleware (auth, cache, rate_limit, fetch_cache) |
 | `src/agents/` | 1+36 | 145+ | Agent registry + 36 YAML prompts across 8 categories |
 | `src/competitor/` | 3 | 309 | Competitor analyzer + scrapers (MyFxBook, TradingView) |
 | `src/core/` | 3 | 223 | Domain models, enums, error types |
@@ -20,13 +20,13 @@ Python 3.11+, FastAPI, SQLAlchemy/SQLite, Pydantic v2, Vite + vanilla JS fronten
 | `src/publishers/` | 3 | 211 | Telegram, Discord, JSON file signal publishers |
 | `src/security/` | 2 | 62 | Input validator, audit log |
 | `src/trading/core/` | 11 | 2,640 | Fetch scripts, SMC engine, signal push, build scripts |
-| `src/trading/scrapers/` | 11 | -- | Yahoo, Stooq, Twelvedata, Finnhub, FRED, Alpha Vantage, CNN, seismic (USGS), comex (CME), intel_feed (Google News), chokepoints |
+| `src/trading/scrapers/` | 12 | -- | Yahoo, Stooq, Twelvedata, Finnhub, FRED, Alpha Vantage, CNN, seismic (USGS), comex (CME), intel_feed (Google News), chokepoints, vix_futures (CBOE) |
 | `src/trading/backtesting/` | 9 | 1,998 | Engine, metrics, reports, data loader, models, 4 strategies |
 | **Total src/** | **83** | **13,000+** | |
-| `tests/unit/` | 28 | 8,700+ | 1,002 test functions |
+| `tests/unit/` | 31 | 10,000+ | 1,037 test functions |
 | `tests/integration/` | 14 | 2,768 | API, DB, pipeline, backtest, provider, signal, competitor tests |
-| `frontend/src/` | 25 | 4,100+ | 15 components (5 new), 4 charts, SPA router, state, API client, live ticker |
-| `frontend/src/__tests__/` | 10 | 1,500+ | 158 Vitest test cases |
+| `frontend/src/` | 28 | 5,500+ | 18 components, 8 charts, SPA router, state, API client, live ticker |
+| `frontend/src/__tests__/` | 15 | 2,200+ | 223 Vitest test cases |
 
 ## Commands
 
@@ -69,18 +69,19 @@ python smc.py                           # Run SMC analysis
 
 ## API Routes
 
-10 route groups registered in `src/api/app.py`:
+12 route groups registered in `src/api/app.py`:
 - `health` -- `/health` (GET)
 - `signals` -- `/api/signals` (GET)
 - `instruments` -- `/api/instruments` (GET)
 - `cot` -- `/api/cot` (GET)
-- `macro` -- `/api/macro` (GET)
+- `macro` -- `/api/v1/macro` (GET: panel, indicators, vix-term, adr, regime-history)
 - `webhook` -- `/api/webhook` (POST: push-alert, tv-alert)
-- `backtests` -- `/api/backtests` (GET, POST)
-- `trading` -- `/api/v1/trading/*` (GET, POST: bot control, positions, signals, config, kill switch)
+- `backtests` -- `/api/v1/backtests` (GET: summary, trades, stats)
+- `trading` -- `/api/v1/trading/*` (GET, POST: bot control, positions, signals, config, kill switch, calculate-size)
 - `geointel` -- `/api/v1/geointel/*` (GET: seismic, comex, intel, chokepoints, regime, signals, events)
 - `correlations` -- `/api/v1/correlations` (GET)
-- `signal-log` -- `/api/v1/signal-log` (GET, POST)
+- `signal-log` -- `/api/v1/signal-log` (GET, POST, analytics)
+- `prices` -- `/api/v1/prices/live` (GET: grouped live prices)
 
 Middleware stack: CORS -> RateLimitMiddleware -> APIKeyMiddleware
 
