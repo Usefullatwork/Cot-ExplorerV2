@@ -6,7 +6,7 @@ from typing import Any, Optional
 
 from fastapi import APIRouter, HTTPException, Query
 from pydantic import BaseModel, Field
-from sqlalchemy import func, select
+from sqlalchemy import case, func, select
 
 from src.db.engine import session_scope
 from src.db.models import BacktestResult
@@ -153,6 +153,173 @@ def backtest_trades(
         except StopIteration:
             pass
         return trades
+    except Exception:
+        try:
+            gen.throw(Exception)
+        except StopIteration:
+            pass
+        raise
+
+
+# ── Enhanced stats endpoint ──────────────────────────────────────────────
+
+
+class InstrumentBreakdown(BaseModel):
+    """Per-instrument backtest stats."""
+
+    instrument: str
+    trades: int
+    wins: int
+    win_rate: float
+    avg_pnl: float
+    total_pnl: float
+
+
+class GradeBreakdown(BaseModel):
+    """Per-grade backtest stats."""
+
+    grade: str
+    trades: int
+    wins: int
+    win_rate: float
+
+
+class BacktestStatsResponse(BaseModel):
+    """Full backtest statistics with breakdowns."""
+
+    total_trades: int
+    wins: int
+    losses: int
+    win_rate: float
+    avg_win_rr: float
+    avg_loss_rr: float
+    profit_factor: float
+    max_drawdown_rr: float
+    avg_rr: float
+    best_trade_rr: float
+    worst_trade_rr: float
+    avg_duration_hours: float
+    equity_curve: list[float]
+    by_instrument: list[InstrumentBreakdown]
+    by_grade: list[GradeBreakdown]
+
+
+@router.get(
+    "/stats",
+    response_model=BacktestStatsResponse,
+    summary="Full backtest statistics",
+    description="Returns 12 performance metrics, equity curve, per-instrument and per-grade breakdowns.",
+)
+def backtest_stats() -> dict:
+    """Full backtest stats with equity curve and breakdowns."""
+    gen = session_scope()
+    session = next(gen)
+    try:
+        rows = session.execute(
+            select(BacktestResult).order_by(BacktestResult.entry_date.asc())
+        ).scalars().all()
+
+        if not rows:
+            result = {
+                "total_trades": 0, "wins": 0, "losses": 0, "win_rate": 0.0,
+                "avg_win_rr": 0.0, "avg_loss_rr": 0.0, "profit_factor": 0.0,
+                "max_drawdown_rr": 0.0, "avg_rr": 0.0, "best_trade_rr": 0.0,
+                "worst_trade_rr": 0.0, "avg_duration_hours": 0.0,
+                "equity_curve": [], "by_instrument": [], "by_grade": [],
+            }
+            try:
+                gen.send(None)
+            except StopIteration:
+                pass
+            return result
+
+        # Core stats
+        pnls = [r.pnl_rr or 0.0 for r in rows]
+        win_pnls = [p for p in pnls if p > 0]
+        loss_pnls = [p for p in pnls if p <= 0]
+        total = len(rows)
+        wins = len(win_pnls)
+        losses = total - wins
+
+        # Equity curve (cumulative PnL)
+        equity = []
+        cumulative = 0.0
+        for p in pnls:
+            cumulative += p
+            equity.append(round(cumulative, 2))
+
+        # Max drawdown
+        peak = 0.0
+        max_dd = 0.0
+        for eq in equity:
+            if eq > peak:
+                peak = eq
+            dd = peak - eq
+            if dd > max_dd:
+                max_dd = dd
+
+        # Profit factor
+        gross_profit = sum(win_pnls) if win_pnls else 0.0
+        gross_loss = abs(sum(loss_pnls)) if loss_pnls else 0.001
+
+        # Per-instrument breakdown
+        inst_map: dict[str, list] = {}
+        for r in rows:
+            inst_map.setdefault(r.instrument, []).append(r)
+
+        by_instrument = []
+        for inst, trades in sorted(inst_map.items()):
+            inst_pnls = [t.pnl_rr or 0.0 for t in trades]
+            inst_wins = sum(1 for p in inst_pnls if p > 0)
+            by_instrument.append({
+                "instrument": inst,
+                "trades": len(trades),
+                "wins": inst_wins,
+                "win_rate": round(inst_wins / len(trades) * 100, 1) if trades else 0,
+                "avg_pnl": round(sum(inst_pnls) / len(inst_pnls), 2) if inst_pnls else 0,
+                "total_pnl": round(sum(inst_pnls), 2),
+            })
+
+        # Per-grade breakdown
+        grade_map: dict[str, list] = {}
+        for r in rows:
+            grade_map.setdefault(r.grade or "?", []).append(r)
+
+        by_grade = []
+        for grade, trades in sorted(grade_map.items()):
+            grade_wins = sum(1 for t in trades if (t.pnl_rr or 0) > 0)
+            by_grade.append({
+                "grade": grade,
+                "trades": len(trades),
+                "wins": grade_wins,
+                "win_rate": round(grade_wins / len(trades) * 100, 1) if trades else 0,
+            })
+
+        durations = [r.duration_hours or 0.0 for r in rows if r.duration_hours]
+
+        result = {
+            "total_trades": total,
+            "wins": wins,
+            "losses": losses,
+            "win_rate": round(wins / total * 100, 1) if total else 0,
+            "avg_win_rr": round(sum(win_pnls) / len(win_pnls), 2) if win_pnls else 0,
+            "avg_loss_rr": round(sum(loss_pnls) / len(loss_pnls), 2) if loss_pnls else 0,
+            "profit_factor": round(gross_profit / gross_loss, 2),
+            "max_drawdown_rr": round(max_dd, 2),
+            "avg_rr": round(sum(pnls) / len(pnls), 2) if pnls else 0,
+            "best_trade_rr": round(max(pnls), 2) if pnls else 0,
+            "worst_trade_rr": round(min(pnls), 2) if pnls else 0,
+            "avg_duration_hours": round(sum(durations) / len(durations), 1) if durations else 0,
+            "equity_curve": equity,
+            "by_instrument": by_instrument,
+            "by_grade": by_grade,
+        }
+
+        try:
+            gen.send(None)
+        except StopIteration:
+            pass
+        return result
     except Exception:
         try:
             gen.throw(Exception)

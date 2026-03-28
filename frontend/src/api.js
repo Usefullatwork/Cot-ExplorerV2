@@ -109,6 +109,12 @@ export function fetchPricesLive() {
   return get('/api/v1/prices/live');
 }
 
+// ── Backtests ──────────────────────────────────────────────
+
+export function fetchBacktestStats() {
+  return get('/api/v1/backtests/stats');
+}
+
 // ── Health / Metrics ────────────────────────────────────────
 
 export function fetchHealth() {

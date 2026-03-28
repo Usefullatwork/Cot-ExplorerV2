@@ -40,6 +40,7 @@ import * as CorrelationPanel from './components/CorrelationPanel.js';
 import * as SignalLogPanel from './components/SignalLogPanel.js';
 import * as GeoEventsPanel from './components/GeoEventsPanel.js';
 import * as PricesPanel from './components/PricesPanel.js';
+import * as BacktestDashboard from './components/BacktestDashboard.js';
 
 /* ── Error boundary ──────────────────────────────────────── */
 
@@ -180,6 +181,10 @@ function initComponents() {
   const calPanel = document.getElementById('panel-calendar');
   safeCall('CalendarPanel', () => CalendarPanel.render(calPanel), calPanel);
 
+  // Backtest dashboard
+  const backtestPanel = document.getElementById('panel-backtest');
+  safeCall('BacktestDashboard', () => BacktestDashboard.render(backtestPanel), backtestPanel);
+
   // Pine panel
   const pinePanel = document.getElementById('panel-pine');
   safeCall('PinePanel', () => PinePanel.render(pinePanel), pinePanel);
@@ -266,6 +271,9 @@ function wireSubscriptions() {
     }
     if (tab === 'correlations') {
       safeAsync('CorrelationPanel.refreshAll', () => CorrelationPanel.refreshAll());
+    }
+    if (tab === 'backtest') {
+      safeAsync('BacktestDashboard.refreshAll', () => BacktestDashboard.refreshAll());
     }
     if (tab === 'signal-log') {
       safeAsync('SignalLogPanel.refreshAll', () => SignalLogPanel.refreshAll());
