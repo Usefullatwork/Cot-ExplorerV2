@@ -188,6 +188,14 @@ function _renderFiltered() {
  * Update the calendar panel with fresh event data.
  * @param {Object} macro  Full macro payload (uses macro.calendar)
  */
+/** Stop countdown timer when leaving the tab. */
+export function cleanup() {
+  if (_countdownInterval) {
+    clearInterval(_countdownInterval);
+    _countdownInterval = null;
+  }
+}
+
 export function update(macro) {
   if (!macro) return;
 

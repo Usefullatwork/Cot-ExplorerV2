@@ -595,6 +595,7 @@ class SignalPerformance(Base):
     result = Column(String(16), nullable=False, default="PENDING")  # HIT/MISS/PENDING/NEUTRAL
     closed_at = Column(DateTime, nullable=True)
     pnl_pips = Column(Float, nullable=True)
+    risk_reward = Column(Float, nullable=True)
     created_at = Column(DateTime, nullable=False, default=lambda: datetime.now(timezone.utc))
 
     signal_rel = relationship("Signal")
