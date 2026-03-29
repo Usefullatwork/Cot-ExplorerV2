@@ -35,8 +35,9 @@ class PricesResponse(BaseModel):
 # Instrument groups for the Prices panel
 _PRICE_GROUPS = {
     "Indekser": ["SPX", "NAS100", "VIX"],
-    "Valuta": ["EURUSD", "USDJPY", "GBPUSD", "AUDUSD", "USDCHF", "DXY"],
+    "Valuta": ["EURUSD", "USDJPY", "GBPUSD", "AUDUSD", "USDCHF", "DXY", "USDNOK"],
     "Ravarer": ["Gold", "Silver", "Brent", "WTI", "NATGAS"],
+    "Rente/Kreditt": ["HYG", "TIP"],
 }
 
 # Instrument key -> display name
@@ -44,8 +45,10 @@ _DISPLAY_NAMES = {
     "SPX": "S&P 500", "NAS100": "Nasdaq 100", "VIX": "VIX",
     "EURUSD": "EUR/USD", "USDJPY": "USD/JPY", "GBPUSD": "GBP/USD",
     "AUDUSD": "AUD/USD", "USDCHF": "USD/CHF", "DXY": "Dollar Index",
+    "USDNOK": "USD/NOK",
     "Gold": "Gull", "Silver": "Solv", "Brent": "Brent",
     "WTI": "WTI", "NATGAS": "Naturgass",
+    "HYG": "High Yield", "TIP": "TIPS ETF",
 }
 
 
