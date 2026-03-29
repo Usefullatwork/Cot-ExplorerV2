@@ -63,7 +63,7 @@ def build_timeseries(base_dir: str | Path | None = None) -> dict:
         base_dir = Path(__file__).resolve().parents[3] / "data"
     base_dir = Path(base_dir)
 
-    hist_dir = base_dir / "history"
+    hist_dir = base_dir / "cot" / "history"
     ts_dir = base_dir / "timeseries"
     ts_dir.mkdir(parents=True, exist_ok=True)
 
@@ -91,7 +91,7 @@ def build_timeseries(base_dir: str | Path | None = None) -> dict:
 
     # -- ingest latest.json for each report --
     for report in REPORTS:
-        latest = base_dir / report / "latest.json"
+        latest = base_dir / "cot" / report / "latest.json"
         if not latest.exists():
             continue
         try:

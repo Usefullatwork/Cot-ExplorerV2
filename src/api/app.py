@@ -3,9 +3,11 @@
 from __future__ import annotations
 
 import os
+from pathlib import Path
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 
 from src.api.middleware.auth import APIKeyMiddleware
 from src.api.middleware.rate_limit import RateLimitMiddleware
@@ -52,6 +54,11 @@ def create_app() -> FastAPI:
     app.include_router(signal_log.router)
     app.include_router(prices.router)
     app.include_router(crypto.router)
+
+    # Serve built frontend (must be LAST — after all API routes)
+    frontend_dist = Path(__file__).resolve().parents[2] / "frontend" / "dist"
+    if frontend_dist.is_dir():
+        app.mount("/", StaticFiles(directory=str(frontend_dist), html=True), name="frontend")
 
     return app
 

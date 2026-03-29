@@ -38,7 +38,7 @@ def build_combined(base_dir: str | Path | None = None) -> list[dict]:
     seen: dict[str, dict] = {}  # market.lower() -> entry
 
     for rep in REPORTS:
-        fpath = base_dir / rep / "latest.json"
+        fpath = base_dir / "cot" / rep / "latest.json"
         if not fpath.exists():
             log.warning("  Missing: %s", fpath)
             continue

@@ -244,8 +244,8 @@ function wireSubscriptions() {
     safeCall('CalendarPanel.update', () => CalendarPanel.update(data), document.getElementById('panel-calendar'));
   });
 
-  // Signals -> SetupGrid
-  subscribe('signals', (data) => {
+  // Macro -> SetupGrid (needs trading_levels, vix_regime, cot_date from macro payload)
+  subscribe('macro', (data) => {
     safeCall('SetupGrid.update', () => SetupGrid.update(data), document.getElementById('panel-setups'));
   });
 

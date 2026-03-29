@@ -67,7 +67,7 @@ class CotPositionResponse(BaseModel):
     date: str = Field(..., description="Report date (YYYY-MM-DD)", examples=["2026-03-21"])
     symbol: str = Field(..., description="CFTC contract code", examples=["099741"])
     market: str = Field(..., description="Market name", examples=["Euro Fx"])
-    report_type: str = Field(..., description="Report type", examples=["tff"])
+    report_type: str = Field("", description="Report type", examples=["tff"])
     open_interest: int = Field(0, description="Total open interest")
     change_oi: int = Field(0, description="Change in open interest")
     spec_long: int = Field(0, description="Speculator long positions")
@@ -128,17 +128,24 @@ def cot_latest() -> list[dict]:
     """
     combined_path = _DATA_DIR / "combined" / "latest.json"
     if not combined_path.exists():
+        combined_path = _DATA_DIR / "cot" / "combined" / "latest.json"
+    if not combined_path.exists():
         return []
 
     with open(combined_path, encoding="utf-8") as f:
         markets: list[dict] = json.load(f)
+
+    # Map "report" → "report_type" for Pydantic response model
+    for m in markets:
+        if "report_type" not in m and "report" in m:
+            m["report_type"] = m["report"]
 
     # Inject sparkline data from timeseries cache
     ts = _get_sparkline_cache()
     if ts:
         for m in markets:
             sym = (m.get("symbol") or "").lower()
-            report = m.get("report", "")
+            report = m.get("report_type", m.get("report", ""))
             key = f"{sym}_{report}"
             history = ts.get(key)
             if history:
@@ -177,30 +184,49 @@ def cot_history(
         end=end,
         report_type=report_type,
     )
-    if not rows:
-        raise HTTPException(status_code=404, detail=f"No COT data for symbol {symbol}")
-    return [
-        {
-            "date": r.date,
-            "symbol": r.symbol,
-            "market": r.market,
-            "report_type": r.report_type,
-            "open_interest": r.open_interest,
-            "change_oi": r.change_oi,
-            "spec_long": r.spec_long,
-            "spec_short": r.spec_short,
-            "spec_net": r.spec_net,
-            "comm_long": r.comm_long,
-            "comm_short": r.comm_short,
-            "comm_net": r.comm_net,
-            "nonrept_long": r.nonrept_long,
-            "nonrept_short": r.nonrept_short,
-            "nonrept_net": r.nonrept_net,
-            "change_spec_net": r.change_spec_net,
-            "category": r.category,
-        }
-        for r in rows
-    ]
+    if rows:
+        return [
+            {
+                "date": r.date,
+                "symbol": r.symbol,
+                "market": r.market,
+                "report_type": r.report_type,
+                "open_interest": r.open_interest,
+                "change_oi": r.change_oi,
+                "spec_long": r.spec_long,
+                "spec_short": r.spec_short,
+                "spec_net": r.spec_net,
+                "comm_long": r.comm_long,
+                "comm_short": r.comm_short,
+                "comm_net": r.comm_net,
+                "nonrept_long": r.nonrept_long,
+                "nonrept_short": r.nonrept_short,
+                "nonrept_net": r.nonrept_net,
+                "change_spec_net": r.change_spec_net,
+                "category": r.category,
+            }
+            for r in rows
+        ]
+
+    # Fallback: read from combined JSON and filter by symbol
+    for path in [_DATA_DIR / "combined" / "latest.json", _DATA_DIR / "cot" / "combined" / "latest.json"]:
+        if not path.exists():
+            continue
+        try:
+            with open(path, encoding="utf-8") as f:
+                all_markets: list[dict] = json.load(f)
+        except (json.JSONDecodeError, OSError):
+            continue
+        matches = [m for m in all_markets if m.get("symbol") == symbol]
+        if report_type:
+            matches = [m for m in matches if m.get("report") == report_type]
+        if matches:
+            for m in matches:
+                if "report_type" not in m and "report" in m:
+                    m["report_type"] = m["report"]
+            return matches
+
+    raise HTTPException(status_code=404, detail=f"No COT data for symbol {symbol}")
 
 
 @router.get(
@@ -212,6 +238,8 @@ def cot_history(
 def cot_summary() -> dict:
     """Top movers and positioning extremes from latest combined data."""
     combined_path = _DATA_DIR / "combined" / "latest.json"
+    if not combined_path.exists():
+        combined_path = _DATA_DIR / "cot" / "combined" / "latest.json"
     if not combined_path.exists():
         return {"top_movers": [], "extremes": []}
 
