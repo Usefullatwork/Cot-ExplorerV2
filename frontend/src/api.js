@@ -109,6 +109,23 @@ export function fetchPricesLive() {
   return get('/api/v1/prices/live');
 }
 
+/**
+ * @param {string} instrument  Instrument key (e.g. 'EURUSD', 'Gold')
+ */
+export function fetchPriceHistory(instrument) {
+  return get(`/api/v1/prices/${encodeURIComponent(instrument)}/history`);
+}
+
+// ── Crypto ─────────────────────────────────────────────────
+
+export function fetchCryptoMarket() {
+  return get('/api/v1/crypto/market');
+}
+
+export function fetchCryptoFearGreed() {
+  return get('/api/v1/crypto/fear-greed');
+}
+
 // ── Backtests ──────────────────────────────────────────────
 
 export function fetchBacktestStats() {

@@ -9,7 +9,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from src.api.middleware.auth import APIKeyMiddleware
 from src.api.middleware.rate_limit import RateLimitMiddleware
-from src.api.routes import backtests, correlations, cot, geointel, health, instruments, macro, prices, signal_log, signals, trading, webhook
+from src.api.routes import backtests, correlations, cot, crypto, geointel, health, instruments, macro, prices, signal_log, signals, trading, webhook
 
 CORS_ORIGINS = os.environ.get("CORS_ORIGINS", "http://localhost:3000").split(",")
 
@@ -51,6 +51,7 @@ def create_app() -> FastAPI:
     app.include_router(correlations.router)
     app.include_router(signal_log.router)
     app.include_router(prices.router)
+    app.include_router(crypto.router)
 
     return app
 

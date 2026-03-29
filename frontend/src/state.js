@@ -29,6 +29,7 @@ export const state = {
   regime:             null,
   correlations:       null,
   signalLog:          null,
+  cryptoIntel:        null,
 };
 
 /** @type {Map<string, Set<Function>>} */

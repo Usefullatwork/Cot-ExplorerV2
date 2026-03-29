@@ -22,6 +22,7 @@ const TABS = [
   { key: 'signal-log',   label: '\uD83D\uDCCB Signal-logg' },
   { key: 'geo-events',   label: '\uD83C\uDF0D Geo-Signaler' },
   { key: 'prices',       label: '\uD83D\uDCB0 Priser' },
+  { key: 'krypto-intel', label: '\u20BF Krypto' },
 ];
 
 // ── Ticker display names ────────────────────────────────────

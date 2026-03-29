@@ -6,10 +6,32 @@
  */
 
 import { createCotBarChart } from '../charts/cotBarChart.js';
+import { createPriceChart } from '../charts/priceLineChart.js';
 import { formatNumber, colorClass } from '../utils.js';
-import { fetchCotHistory } from '../api.js';
+import { fetchCotHistory, fetchPriceHistory } from '../api.js';
 
 let chartInstance = null;
+let priceChartInstance = null;
+
+/**
+ * Map CFTC contract codes to price instrument keys.
+ * Only the 12 main instruments have price data.
+ */
+const COT_SYMBOL_MAP = {
+  '099741': 'EURUSD',
+  '097741': 'USDJPY',
+  '096742': 'GBPUSD',
+  '232741': 'AUDUSD',
+  '092741': 'USDCHF',
+  '098662': 'DXY',
+  '088691': 'Gold',
+  '084691': 'Silver',
+  '06765T': 'Brent',
+  '067411': 'WTI',
+  '13874+': 'SPX',
+  '209742': 'NAS100',
+  '1170E1': 'VIX',
+};
 
 /**
  * Build the modal DOM and append it to the document body.
@@ -31,6 +53,7 @@ export function render() {
         </div>
         <div class="cot-chart-wrap" role="img" aria-label="COT historikk diagram"><canvas id="cotChart"></canvas></div>
         <div id="cotBarDetail" class="cot-bar-detail" style="display:none"></div>
+        <div id="cotPriceChart" style="height:200px;margin-top:12px;display:none" role="img" aria-label="Prishistorikk"></div>
         <div class="cot-stat-row" id="cotModalStats" role="group" aria-label="COT statistikk"></div>
       </div>
     </div>`
@@ -80,6 +103,13 @@ function close() {
   }
   const detail = document.getElementById('cotBarDetail');
   if (detail) detail.style.display = 'none';
+  // Clean up price chart
+  const priceEl = document.getElementById('cotPriceChart');
+  if (priceEl) priceEl.style.display = 'none';
+  if (priceChartInstance) {
+    priceChartInstance.chart.remove();
+    priceChartInstance = null;
+  }
   // Restore focus to the element that opened the modal
   if (previousFocus && previousFocus.focus) {
     previousFocus.focus();
@@ -164,6 +194,34 @@ export async function open(symbol, report, name) {
       `<div class="cot-stat"><div class="cot-stat-label">Historisk maks</div><div class="cot-stat-val bull">${formatNumber(max)}</div></div>` +
       `<div class="cot-stat"><div class="cot-stat-label">Historisk min</div><div class="cot-stat-val bear">${formatNumber(min)}</div></div>` +
       `<div class="cot-stat"><div class="cot-stat-label">Datapunkter</div><div class="cot-stat-val">${data.length}</div></div>`;
+    // Price overlay chart (if this COT symbol maps to a price instrument)
+    const priceContainer = document.getElementById('cotPriceChart');
+    if (priceContainer) {
+      const instrument = COT_SYMBOL_MAP[symbol];
+      if (instrument) {
+        try {
+          const priceData = await fetchPriceHistory(instrument);
+          const priceItems = (priceData.items || []).map((p) => ({
+            time: p.time,
+            value: p.value,
+          }));
+          if (priceItems.length > 1) {
+            if (priceChartInstance) {
+              priceChartInstance.chart.remove();
+              priceChartInstance = null;
+            }
+            priceContainer.style.display = 'block';
+            priceChartInstance = createPriceChart(priceContainer, priceItems);
+          } else {
+            priceContainer.style.display = 'none';
+          }
+        } catch {
+          priceContainer.style.display = 'none';
+        }
+      } else {
+        priceContainer.style.display = 'none';
+      }
+    }
   } catch (e) {
     document.getElementById('cotModalStats').innerHTML =
       '<div class="empty-state"><div class="empty-state-icon">\u26A0</div><div class="empty-state-text">Ingen historikk tilgjengelig for dette markedet</div></div>';

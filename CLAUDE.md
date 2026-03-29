@@ -9,7 +9,7 @@ Python 3.11+, FastAPI, SQLAlchemy/SQLite, Pydantic v2, Vite + vanilla JS fronten
 | Module | Files | Lines | Purpose |
 |--------|-------|-------|---------|
 | `src/analysis/` | 14 | 2,400+ | Scoring (19pt), SMC, levels, sentiment, setup builder, COT analyzer, technical, geo_classifier, geo_signals, impact_mapper, regime_detector, correlation, signal_tracker, adr_calculator |
-| `src/api/` | 16 | 1,600+ | FastAPI app, 12 route files, 4 middleware (auth, cache, rate_limit, fetch_cache) |
+| `src/api/` | 17 | 1,800+ | FastAPI app, 13 route files, 4 middleware (auth, cache, rate_limit, fetch_cache) |
 | `src/agents/` | 1+36 | 145+ | Agent registry + 36 YAML prompts across 8 categories |
 | `src/competitor/` | 3 | 309 | Competitor analyzer + scrapers (MyFxBook, TradingView) |
 | `src/core/` | 3 | 223 | Domain models, enums, error types |
@@ -20,19 +20,19 @@ Python 3.11+, FastAPI, SQLAlchemy/SQLite, Pydantic v2, Vite + vanilla JS fronten
 | `src/publishers/` | 3 | 211 | Telegram, Discord, JSON file signal publishers |
 | `src/security/` | 2 | 62 | Input validator, audit log |
 | `src/trading/core/` | 11 | 2,640 | Fetch scripts, SMC engine, signal push, build scripts |
-| `src/trading/scrapers/` | 12 | -- | Yahoo, Stooq, Twelvedata, Finnhub, FRED, Alpha Vantage, CNN, seismic (USGS), comex (CME), intel_feed (Google News), chokepoints, vix_futures (CBOE) |
+| `src/trading/scrapers/` | 13 | -- | Yahoo, Stooq, Twelvedata, Finnhub, FRED, Alpha Vantage, CNN, seismic (USGS), comex (CME), intel_feed (Google News), chokepoints, vix_futures (CBOE), crypto (CoinGecko) |
 | `src/trading/backtesting/` | 9 | 1,998 | Engine, metrics, reports, data loader, models, 4 strategies |
 | **Total src/** | **83** | **13,000+** | |
-| `tests/unit/` | 31 | 10,000+ | 1,037 test functions |
+| `tests/unit/` | 32 | 10,500+ | 1,047 test functions |
 | `tests/integration/` | 14 | 2,768 | API, DB, pipeline, backtest, provider, signal, competitor tests |
-| `frontend/src/` | 28 | 5,500+ | 18 components, 8 charts, SPA router, state, API client, live ticker |
-| `frontend/src/__tests__/` | 15 | 2,200+ | 223 Vitest test cases |
+| `frontend/src/` | 29 | 5,800+ | 19 components, 8 charts, SPA router, state, API client, live ticker |
+| `frontend/src/__tests__/` | 16 | 2,400+ | 232 Vitest test cases |
 
 ## Commands
 
 ### Python
 ```bash
-pytest                                  # Run all 1,002+ tests
+pytest                                  # Run all 1,190+ tests
 pytest tests/unit/                      # Unit tests only
 pytest tests/integration/               # Integration tests only
 pytest --cov=src --cov-report=term      # Coverage report
@@ -46,7 +46,7 @@ python scripts/validate_pine.py         # Validate Pine Scripts
 
 ### Frontend
 ```bash
-cd frontend && npm test                 # Run 158 Vitest tests
+cd frontend && npm test                 # Run 232 Vitest tests
 cd frontend && npm run dev              # Dev server (port 5173)
 cd frontend && npm run build            # Production build -> dist/
 ```
@@ -69,7 +69,7 @@ python smc.py                           # Run SMC analysis
 
 ## API Routes
 
-12 route groups registered in `src/api/app.py`:
+13 route groups registered in `src/api/app.py`:
 - `health` -- `/health` (GET)
 - `signals` -- `/api/signals` (GET)
 - `instruments` -- `/api/instruments` (GET)
@@ -81,7 +81,8 @@ python smc.py                           # Run SMC analysis
 - `geointel` -- `/api/v1/geointel/*` (GET: seismic, comex, intel, chokepoints, regime, signals, events)
 - `correlations` -- `/api/v1/correlations` (GET)
 - `signal-log` -- `/api/v1/signal-log` (GET, POST, analytics)
-- `prices` -- `/api/v1/prices/live` (GET: grouped live prices)
+- `prices` -- `/api/v1/prices/live` (GET: grouped live prices), `/api/v1/prices/{instrument}/history` (GET: daily close prices)
+- `crypto` -- `/api/v1/crypto/market` (GET: 8-coin market overview), `/api/v1/crypto/fear-greed` (GET: Fear & Greed index)
 
 Middleware stack: CORS -> RateLimitMiddleware -> APIKeyMiddleware
 
@@ -107,6 +108,8 @@ Middleware stack: CORS -> RateLimitMiddleware -> APIKeyMiddleware
 - USGS Earthquake Feed (public domain, no key)
 - CME COMEX Warehouse Reports (public, no key)
 - Google News RSS (public, no key, rate-limited 2s between categories)
+- CoinGecko (free tier, no key, rate-limited)
+- Alternative.me Fear & Greed (free, no key)
 
 ## Security
 - API key auth: `SCALP_API_KEY` env var, constant-time comparison (hmac.compare_digest)
