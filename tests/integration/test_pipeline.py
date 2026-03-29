@@ -7,10 +7,10 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-# Mock src.security.audit_log before importing runner, since the module
-# may not exist on disk yet.
+# Pre-load src.security so its audit_log sub-module can be mocked safely
+# without replacing the real package (which would break later imports).
+import src.security  # noqa: E402
 _mock_audit_mod = MagicMock()
-sys.modules.setdefault("src.security", MagicMock())
 sys.modules.setdefault("src.security.audit_log", _mock_audit_mod)
 
 from src.pipeline.runner import run_full_pipeline  # noqa: E402

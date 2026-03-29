@@ -12,18 +12,22 @@ from src.db import repository as repo
 
 _SAMPLE_LATEST = [
     {
+        "date": "2026-03-17",
         "symbol": "GOLD",
         "market": "Gold Futures",
         "navn_no": "Gull",
         "report": "tff",
+        "report_type": "tff",
         "change_spec_net": 5000,
         "spekulanter": {"long": 200000, "short": 100000},
     },
     {
+        "date": "2026-03-17",
         "symbol": "EUROFX",
         "market": "Euro FX",
         "navn_no": "Euro",
         "report": "tff",
+        "report_type": "tff",
         "change_spec_net": -3000,
         "spekulanter": {"long": 50000, "short": 150000},
     },

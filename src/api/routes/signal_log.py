@@ -7,7 +7,7 @@ from typing import Any, Optional
 
 from fastapi import APIRouter, HTTPException, Query
 from pydantic import BaseModel, Field
-from sqlalchemy import case, func, select
+from sqlalchemy import func, select
 
 from src.db.engine import session_scope
 from src.db.models import SignalPerformance
