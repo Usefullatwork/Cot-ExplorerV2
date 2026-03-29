@@ -41,6 +41,7 @@ import * as SignalLogPanel from './components/SignalLogPanel.js';
 import * as GeoEventsPanel from './components/GeoEventsPanel.js';
 import * as PricesPanel from './components/PricesPanel.js';
 import * as BacktestDashboard from './components/BacktestDashboard.js';
+import * as CryptoPanel from './components/CryptoPanel.js';
 
 /* ── Error boundary ──────────────────────────────────────── */
 
@@ -137,6 +138,9 @@ function buildShell() {
       <div class="panel" id="panel-prices" role="tabpanel" aria-labelledby="tab-prices" aria-hidden="true">
         <div class="loading" role="status"><div class="spinner" aria-hidden="true"></div>Laster priser...</div>
       </div>
+      <div class="panel" id="panel-krypto-intel" role="tabpanel" aria-labelledby="tab-krypto-intel" aria-hidden="true">
+        <div class="loading" role="status"><div class="spinner" aria-hidden="true"></div>Laster krypto...</div>
+      </div>
     </main>
     <footer role="contentinfo">
       <span>Kilde: <a href="https://cftc.gov" target="_blank" rel="noopener noreferrer">CFTC.gov</a> &middot; Yahoo Finance &middot; ForexFactory</span>
@@ -216,6 +220,10 @@ function initComponents() {
   // Prices panel
   const pricesPanel = document.getElementById('panel-prices');
   safeCall('PricesPanel', () => PricesPanel.render(pricesPanel), pricesPanel);
+
+  // Krypto Intel panel
+  const kryptoPanel = document.getElementById('panel-krypto-intel');
+  safeCall('CryptoPanel', () => CryptoPanel.render(kryptoPanel), kryptoPanel);
 }
 
 /* ── State subscriptions ──────────────────────────────────── */
@@ -285,6 +293,11 @@ function wireSubscriptions() {
       safeAsync('PricesPanel.refreshAll', () => PricesPanel.refreshAll());
     } else {
       safeCall('PricesPanel.stopPolling', () => PricesPanel.stopPolling());
+    }
+    if (tab === 'krypto-intel') {
+      safeAsync('CryptoPanel.refreshAll', () => CryptoPanel.refreshAll());
+    } else {
+      safeCall('CryptoPanel.stopPolling', () => CryptoPanel.stopPolling());
     }
   });
 
