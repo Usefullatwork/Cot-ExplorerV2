@@ -17,6 +17,10 @@ const TABS = [
   { key: 'pine',       label: 'Pine' },
   { key: 'competitor', label: 'Konkurrent' },
   { key: 'trading',    label: 'Trading' },
+  { key: 'metals-intel', label: '\u26CF Metals Intel' },
+  { key: 'correlations', label: '\uD83D\uDD17 Korrelasjoner' },
+  { key: 'signal-log',   label: '\uD83D\uDCCB Signal-logg' },
+  { key: 'geo-events',   label: '\uD83C\uDF0D Geo-Signaler' },
 ];
 
 // ── Ticker display names ────────────────────────────────────

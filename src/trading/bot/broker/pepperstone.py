@@ -25,6 +25,7 @@ from src.trading.bot.broker.base import (
 logger = logging.getLogger(__name__)
 _DEMO = "https://demo.ctraderapi.com/v2"
 _LIVE = "https://live.ctraderapi.com/v2"
+_ENDPOINTS_VERIFIED = False
 
 
 class PepperstoneAdapter(BrokerAdapter):
@@ -38,6 +39,8 @@ class PepperstoneAdapter(BrokerAdapter):
         self._base_url = _DEMO if demo else _LIVE
         self._client: httpx.AsyncClient | None = None
         self._connected: bool = False
+        if not demo:
+            logger.warning("Pepperstone adapter not production-ready — cTrader endpoints unverified")
 
     def _headers(self) -> dict[str, str]:
         return {"Authorization": f"Bearer {self._api_key}", "Content-Type": "application/json"}
@@ -62,6 +65,10 @@ class PepperstoneAdapter(BrokerAdapter):
 
     async def connect(self) -> bool:
         """Open an httpx session and verify connectivity."""
+        if not _ENDPOINTS_VERIFIED:
+            raise NotImplementedError(
+                "Pepperstone cTrader endpoints not yet verified. Use PaperAdapter for testing."
+            )
         self._client = httpx.AsyncClient()
         self._connected = True  # allow _request to work
         try:
@@ -101,6 +108,10 @@ class PepperstoneAdapter(BrokerAdapter):
         sl: float | None = None, tp: float | None = None,
     ) -> OrderResult:
         """Place a market order via cTrader REST API."""
+        if not _ENDPOINTS_VERIFIED:
+            raise NotImplementedError(
+                "Pepperstone cTrader endpoints not yet verified. Use PaperAdapter for testing."
+            )
         payload: dict[str, Any] = {
             "accountId": self._account_id, "symbolName": symbol,
             "tradeSide": "BUY" if direction == "bull" else "SELL",

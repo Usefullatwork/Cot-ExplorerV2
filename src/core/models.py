@@ -57,11 +57,12 @@ class ScoreDetail(BaseModel):
 
 
 class ScoringInput(BaseModel):
-    """All inputs for 16-point confluence scoring.
+    """All inputs for 19-point confluence scoring.
 
     The first 12 boolean fields are the original criteria.
     Fields 13-16 use richer types and are resolved by helper functions
     in ``src.analysis.scoring``.
+    Fields 17-19 are macro/geopolitical risk factors added in session 6.
     """
 
     # --- Original 12 boolean criteria ---
@@ -78,7 +79,7 @@ class ScoringInput(BaseModel):
     bos_confirms: bool
     smc_struct_confirms: bool
 
-    # --- New institutional-grade factors (13-16) ---
+    # --- Institutional-grade factors (13-16) ---
     direction: str = "bull"
     current_price: float = 0.0
     atr: float = 0.0
@@ -88,6 +89,11 @@ class ScoringInput(BaseModel):
     instrument_class: str = "A"
     instrument: str = ""
     open_signals: list[dict] = Field(default_factory=list)
+
+    # --- Macro/geopolitical risk factors (17-19) ---
+    comex_stress: Optional[dict[str, float]] = None  # metal -> stress index (0-100)
+    seismic_clear: Optional[bool] = None  # True if no M6+ quake in mining regions
+    chokepoint_clear: Optional[bool] = None  # True if no maritime chokepoint disruption
 
 
 class ScoringResult(BaseModel):

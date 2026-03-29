@@ -49,6 +49,7 @@ class OptimizationResult:
         test_results: All out-of-sample window results.
         best_combo: Dict with best strategy, timeframe, params, and avg test score.
         ranking: List of combo dicts sorted by average out-of-sample score.
+        overfit_warnings: List of overfitting warning strings detected post-optimization.
     """
 
     instrument: str
@@ -59,3 +60,4 @@ class OptimizationResult:
     test_results: list[WindowResult] = field(default_factory=list)
     best_combo: dict[str, Any] = field(default_factory=dict)
     ranking: list[dict[str, Any]] = field(default_factory=list)
+    overfit_warnings: list[str] = field(default_factory=list)

@@ -12,6 +12,7 @@ from src.trading.bot.position_manager import (
     check_session_exit,
     check_t1_hit,
     check_triple_tp,
+    get_pip_size,
     manage_position,
 )
 
@@ -642,3 +643,55 @@ class TestAntiWhipsaw:
     def test_zero_cooldown(self):
         """Zero cooldown -> always allowed."""
         assert check_anti_whipsaw("USDJPY", last_loss_bar=10, current_bar=10, cooldown_bars=0) is True
+
+
+# ===== JPY / Gold pip size in breakeven =======================================
+
+
+class TestBreakevenPipSizeLookup:
+    """Breakeven buffer uses correct pip_size from LOT_PARAMS for JPY/Gold."""
+
+    def test_breakeven_long_jpy_pip_size(self):
+        """USDJPY pip_size=0.01 produces buffer of 0.02 (2 pips * 0.01)."""
+        pos = {
+            "direction": "bull", "entry_price": 150.000,
+            "target_1": 151.000, "stop_loss": 149.500,
+            "instrument": "USDJPY",
+        }
+        # halfway = 0.5, price - entry = 0.6 >= 0.5 -> triggers
+        action = check_breakeven(pos, current_price=150.600)
+        assert action is not None
+        assert action.action == "modify_sl"
+        assert action.reason == "breakeven"
+        expected_buffer = 2.0 * 0.01  # BREAKEVEN_BUFFER_PIPS * pip_size
+        assert action.new_sl == 150.000 + expected_buffer  # 150.02
+
+    def test_breakeven_short_jpy_pip_size(self):
+        """USDJPY short: pip_size=0.01 produces buffer of 0.02."""
+        pos = {
+            "direction": "bear", "entry_price": 150.000,
+            "target_1": 149.000, "stop_loss": 150.500,
+            "instrument": "USDJPY",
+        }
+        # halfway = 0.5, entry - price = 0.6 >= 0.5 -> triggers
+        action = check_breakeven(pos, current_price=149.400)
+        assert action is not None
+        assert action.action == "modify_sl"
+        assert action.reason == "breakeven"
+        expected_buffer = 2.0 * 0.01
+        assert action.new_sl == 150.000 - expected_buffer  # 149.98
+
+    def test_breakeven_gold_pip_size(self):
+        """Gold pip_size=0.01 produces correct buffer."""
+        pos = {
+            "direction": "bull", "entry_price": 2000.00,
+            "target_1": 2020.00, "stop_loss": 1990.00,
+            "instrument": "Gold",
+        }
+        # halfway = 10, price - entry = 12 >= 10 -> triggers
+        action = check_breakeven(pos, current_price=2012.00)
+        assert action is not None
+        assert action.action == "modify_sl"
+        assert action.reason == "breakeven"
+        expected_buffer = 2.0 * 0.01  # Gold pip_size from LOT_PARAMS
+        assert action.new_sl == 2000.00 + expected_buffer  # 2000.02

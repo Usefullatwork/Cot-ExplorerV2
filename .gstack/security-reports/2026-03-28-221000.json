@@ -1,0 +1,111 @@
+{
+  "version": "2.0.0",
+  "date": "2026-03-28T22:10:00Z",
+  "mode": "daily",
+  "scope": "full",
+  "diff_mode": false,
+  "phases_run": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14],
+  "attack_surface": {
+    "code": {
+      "public_endpoints": 1,
+      "authenticated": 43,
+      "admin": 0,
+      "api": 44,
+      "uploads": 0,
+      "integrations": 6,
+      "background_jobs": 1,
+      "websockets": 0
+    },
+    "infrastructure": {
+      "ci_workflows": 5,
+      "webhook_receivers": 2,
+      "container_configs": 2,
+      "iac_configs": 0,
+      "deploy_targets": 1,
+      "secret_management": "env_vars"
+    }
+  },
+  "findings": [
+    {
+      "id": 1,
+      "severity": "HIGH",
+      "confidence": 9,
+      "status": "VERIFIED",
+      "phase": 6,
+      "phase_name": "Webhook & Integration Audit",
+      "category": "Integrations",
+      "fingerprint": "webhook-tv-alert-no-secret-validation",
+      "title": "TradingView webhook lacks payload secret validation",
+      "file": "src/api/routes/trading.py",
+      "line": 277,
+      "description": "The /webhook/tv-alert endpoint accepts any JSON with valid structure. No TradingView-specific secret is verified in the payload body. In public mode (SCALP_API_KEY unset), anyone can inject fake trading signals that the bot evaluates and may execute as real trades.",
+      "exploit_scenario": "1. Attacker discovers the API URL (e.g., from exposed Docker port or leaked config). 2. Sends POST /api/v1/webhook/tv-alert with crafted JSON: instrument=EURUSD, direction=bull, grade=A+, score=19. 3. Signal persists as pending BotSignal. 4. If bot is active, evaluate_entry() passes all checks. 5. Bot places real money trade on attacker-chosen instrument/direction.",
+      "impact": "Financial loss via manipulated trade execution. Attacker controls instrument, direction, and entry parameters.",
+      "recommendation": "Add a TV_WEBHOOK_SECRET env var. Include it as a field in the TradingView alert JSON body. Validate it server-side before persisting the signal: if body.secret != os.environ.get('TV_WEBHOOK_SECRET'): raise HTTPException(403)."
+    },
+    {
+      "id": 2,
+      "severity": "HIGH",
+      "confidence": 9,
+      "status": "VERIFIED",
+      "phase": 4,
+      "phase_name": "CI/CD Pipeline Security",
+      "category": "CI/CD",
+      "fingerprint": "ci-trufflehog-branch-pinned-main",
+      "title": "trufflehog action pinned to @main branch, not SHA",
+      "file": ".github/workflows/security.yml",
+      "line": 26,
+      "description": "trufflesecurity/trufflehog@main tracks the latest commit on the main branch. If the trufflehog repo is compromised, malicious code runs in your CI with full repo access on next workflow run.",
+      "exploit_scenario": "1. Attacker compromises trufflehog GitHub repo (or maintainer account). 2. Pushes malicious commit to main. 3. Next security.yml run pulls compromised code. 4. Attacker exfiltrates repo secrets or injects code.",
+      "impact": "Full CI/CD compromise. Attacker gains access to all GitHub secrets configured for the workflow.",
+      "recommendation": "Pin to a specific SHA: trufflesecurity/trufflehog@<sha256>. Use Dependabot or Renovate to auto-update the pin."
+    },
+    {
+      "id": 3,
+      "severity": "HIGH",
+      "confidence": 8,
+      "status": "VERIFIED",
+      "phase": 4,
+      "phase_name": "CI/CD Pipeline Security",
+      "category": "CI/CD",
+      "fingerprint": "ci-codecov-not-sha-pinned",
+      "title": "codecov action not SHA-pinned (prior supply chain attack target)",
+      "file": ".github/workflows/tests.yml",
+      "line": 37,
+      "description": "codecov/codecov-action@v4 is tag-pinned but not SHA-pinned. Codecov was the target of a real supply chain attack in April 2021 that exfiltrated CI secrets from thousands of repos.",
+      "exploit_scenario": "1. Attacker compromises codecov GitHub org (happened before in 2021). 2. Overwrites the v4 tag to point to malicious commit. 3. Next tests.yml run pulls compromised code. 4. Coverage upload step exfiltrates secrets.",
+      "impact": "CI secret exfiltration. Codecov specifically has been compromised before.",
+      "recommendation": "Pin to SHA: codecov/codecov-action@<sha256>. Add Dependabot config to auto-update."
+    }
+  ],
+  "supply_chain_summary": {
+    "direct_deps": 12,
+    "transitive_deps": 0,
+    "critical_cves": 0,
+    "high_cves": 0,
+    "install_scripts": 0,
+    "lockfile_present": true,
+    "lockfile_tracked": true,
+    "tools_skipped": ["pip-audit"]
+  },
+  "filter_stats": {
+    "candidates_scanned": 22,
+    "hard_exclusion_filtered": 11,
+    "confidence_gate_filtered": 8,
+    "verification_filtered": 0,
+    "reported": 3
+  },
+  "totals": {
+    "critical": 0,
+    "high": 3,
+    "medium": 0,
+    "tentative": 0
+  },
+  "trend": {
+    "prior_report_date": null,
+    "resolved": 0,
+    "persistent": 0,
+    "new": 3,
+    "direction": "first_run"
+  }
+}

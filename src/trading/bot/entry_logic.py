@@ -9,6 +9,10 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any
 
+from src.analysis.regime_detector import (
+    SAFE_HAVENS,
+    MarketRegime,
+)
 from src.trading.bot.config import (
     CORRELATED_PAIRS,
     DEFAULT_SPREADS,
@@ -267,11 +271,37 @@ def check_rsi_filter(
     Returns:
         True if RSI confirms the direction, False if at an extreme.
     """
-    if direction == "bull" and rsi_14 > overbought:
+    if direction == "bull" and rsi_14 >= overbought:
         return False
-    if direction == "bear" and rsi_14 < oversold:
+    if direction == "bear" and rsi_14 <= oversold:
         return False
     return True
+
+
+def check_regime_filter(
+    instrument: str,
+    regime: MarketRegime,
+    adjustments: dict,
+) -> tuple[bool, str]:
+    """Check if instrument is allowed under the current market regime.
+
+    In CRISIS or WAR_FOOTING regimes with ``safe_haven_only`` set, only
+    safe-haven instruments (Gold, Silver, USDJPY, USDCHF) may be traded.
+
+    Args:
+        instrument: Instrument key (e.g. ``"EURUSD"``).
+        regime: Current ``MarketRegime``.
+        adjustments: Dict from ``get_regime_adjustments``.
+
+    Returns:
+        Tuple of (allowed, reason).  ``(True, "")`` if instrument is
+        allowed, ``(False, "regime_filter_<regime>_safe_havens_only")``
+        if blocked.
+    """
+    if adjustments.get("safe_haven_only", False):
+        if instrument not in SAFE_HAVENS:
+            return False, f"regime_filter_{regime.value}_safe_havens_only"
+    return True, ""
 
 
 # ---------------------------------------------------------------------------
@@ -289,6 +319,8 @@ def evaluate_entry(
     current_spread: float | None = None,
     open_position_instruments: list[str] | None = None,
     rsi_14: float | None = None,
+    regime: MarketRegime | None = None,
+    regime_adjustments: dict | None = None,
 ) -> EntryResult:
     """Orchestrate all entry checks for a candidate signal.
 
@@ -304,6 +336,7 @@ def evaluate_entry(
       9.  Candle confirmation (5m candle in direction)
       10. EMA9 filter (price on correct side of 15m EMA9)
       11. RSI filter (reject entries at RSI extremes)
+      12. Regime filter (safe-havens only during crisis/war)
 
     Args:
         signal: Dict with keys ``entry_price``, ``direction``, ``grade``,
@@ -319,6 +352,9 @@ def evaluate_entry(
         open_position_instruments: List of instrument keys currently held,
             for correlation check.  Skipped if None.
         rsi_14: Current 14-period RSI value.  Skipped if None.
+        regime: Current market regime.  Skipped if None.
+        regime_adjustments: Dict from ``get_regime_adjustments``.
+            Skipped if None.
 
     Returns:
         EntryResult with ``passed`` and ``reason``.
@@ -394,5 +430,13 @@ def evaluate_entry(
     if rsi_14 is not None:
         if not check_rsi_filter(rsi_14, direction):
             return EntryResult(passed=False, reason="rsi_extreme")
+
+    # 12. Regime filter
+    if regime is not None and regime_adjustments is not None:
+        clear, regime_reason = check_regime_filter(
+            instrument, regime, regime_adjustments
+        )
+        if not clear:
+            return EntryResult(passed=False, reason=regime_reason)
 
     return EntryResult(passed=True, reason="all_checks_passed")

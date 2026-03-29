@@ -23,6 +23,6 @@ jobs:
         run: pip-audit --strict --desc
 
       - name: trufflehog — scan for secrets
-        uses: trufflesecurity/trufflehog@main
+        uses: trufflesecurity/trufflehog@6171fa9f6676edf21e15bba41f049b18399d7372  # main 2026-03-28
         with:
           extra_args: --only-verified --fail

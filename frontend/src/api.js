@@ -151,3 +151,45 @@ export function startBot() {
 export function stopBot() {
   return post('/api/v1/trading/stop');
 }
+
+// ── Geo-Intel ───────────────────────────────────────────────
+
+/**
+ * Fetch all geo-intelligence data in parallel (seismic, comex, intel, chokepoints).
+ * @returns {Promise<{seismic: Object, comex: Object, intel: Object, chokepoints: Object}>}
+ */
+export async function fetchGeoIntel() {
+  const [seismic, comex, intel, chokepoints] = await Promise.all([
+    get('/api/v1/geointel/seismic'),
+    get('/api/v1/geointel/comex'),
+    get('/api/v1/geointel/intel'),
+    get('/api/v1/geointel/chokepoints'),
+  ]);
+  return { seismic, comex, intel, chokepoints };
+}
+
+// ── Geo-Signals / Events / Regime ───────────────────────
+
+export function fetchGeoSignals() {
+  return get('/api/v1/geointel/signals');
+}
+
+export function fetchGeoEvents() {
+  return get('/api/v1/geointel/events');
+}
+
+export function fetchRegime() {
+  return get('/api/v1/geointel/regime');
+}
+
+// ── Correlations ────────────────────────────────────────────
+
+export function fetchCorrelations() {
+  return get('/api/v1/correlations');
+}
+
+// ── Signal Log ──────────────────────────────────────────────
+
+export function fetchSignalLog() {
+  return get('/api/v1/signal-log');
+}

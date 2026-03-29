@@ -1,15 +1,15 @@
 # Cot-ExplorerV2
 
 ## Overview
-Modular trading signal platform: COT + SMC + 12-point confluence scoring.
+Modular trading signal platform: COT + SMC + 19-point confluence scoring.
 Python 3.11+, FastAPI, SQLAlchemy/SQLite, Pydantic v2, Vite + vanilla JS frontend.
 
 ## Module Map
 
 | Module | Files | Lines | Purpose |
 |--------|-------|-------|---------|
-| `src/analysis/` | 7 | 1,145 | Scoring, SMC, levels, sentiment, setup builder, COT analyzer, technical |
-| `src/api/` | 11 | 665 | FastAPI app, 7 route files, 3 middleware (auth, cache, rate_limit) |
+| `src/analysis/` | 13 | 2,200+ | Scoring (19pt), SMC, levels, sentiment, setup builder, COT analyzer, technical, geo_classifier, geo_signals, impact_mapper, regime_detector, correlation, signal_tracker |
+| `src/api/` | 14 | 1,100+ | FastAPI app, 10 route files, 3 middleware (auth, cache, rate_limit) |
 | `src/agents/` | 1+36 | 145+ | Agent registry + 36 YAML prompts across 8 categories |
 | `src/competitor/` | 3 | 309 | Competitor analyzer + scrapers (MyFxBook, TradingView) |
 | `src/core/` | 3 | 223 | Domain models, enums, error types |
@@ -20,19 +20,19 @@ Python 3.11+, FastAPI, SQLAlchemy/SQLite, Pydantic v2, Vite + vanilla JS fronten
 | `src/publishers/` | 3 | 211 | Telegram, Discord, JSON file signal publishers |
 | `src/security/` | 2 | 62 | Input validator, audit log |
 | `src/trading/core/` | 11 | 2,640 | Fetch scripts, SMC engine, signal push, build scripts |
-| `src/trading/scrapers/` | 7 | -- | Yahoo, Stooq, Twelvedata, Finnhub, FRED, Alpha Vantage, CNN |
+| `src/trading/scrapers/` | 11 | -- | Yahoo, Stooq, Twelvedata, Finnhub, FRED, Alpha Vantage, CNN, seismic (USGS), comex (CME), intel_feed (Google News), chokepoints |
 | `src/trading/backtesting/` | 9 | 1,998 | Engine, metrics, reports, data loader, models, 4 strategies |
-| **Total src/** | **67** | **10,371** | |
-| `tests/unit/` | 18 | 5,288 | 603 test functions |
+| **Total src/** | **83** | **13,000+** | |
+| `tests/unit/` | 28 | 8,700+ | 1,002 test functions |
 | `tests/integration/` | 14 | 2,768 | API, DB, pipeline, backtest, provider, signal, competitor tests |
-| `frontend/src/` | 20 | 3,082 | 10 components, 4 charts, SPA router, state, API client |
-| `frontend/src/__tests__/` | 5 | 759 | 88 Vitest test cases |
+| `frontend/src/` | 25 | 4,100+ | 15 components (5 new), 4 charts, SPA router, state, API client, live ticker |
+| `frontend/src/__tests__/` | 10 | 1,500+ | 158 Vitest test cases |
 
 ## Commands
 
 ### Python
 ```bash
-pytest                                  # Run all 603+ tests
+pytest                                  # Run all 1,002+ tests
 pytest tests/unit/                      # Unit tests only
 pytest tests/integration/               # Integration tests only
 pytest --cov=src --cov-report=term      # Coverage report
@@ -46,7 +46,7 @@ python scripts/validate_pine.py         # Validate Pine Scripts
 
 ### Frontend
 ```bash
-cd frontend && npm test                 # Run 88 Vitest tests
+cd frontend && npm test                 # Run 158 Vitest tests
 cd frontend && npm run dev              # Dev server (port 5173)
 cd frontend && npm run build            # Production build -> dist/
 ```
@@ -69,20 +69,24 @@ python smc.py                           # Run SMC analysis
 
 ## API Routes
 
-7 route groups registered in `src/api/app.py`:
+10 route groups registered in `src/api/app.py`:
 - `health` -- `/health` (GET)
 - `signals` -- `/api/signals` (GET)
 - `instruments` -- `/api/instruments` (GET)
 - `cot` -- `/api/cot` (GET)
 - `macro` -- `/api/macro` (GET)
-- `webhook` -- `/api/webhook` (POST)
+- `webhook` -- `/api/webhook` (POST: push-alert, tv-alert)
 - `backtests` -- `/api/backtests` (GET, POST)
+- `trading` -- `/api/v1/trading/*` (GET, POST: bot control, positions, signals, config, kill switch)
+- `geointel` -- `/api/v1/geointel/*` (GET: seismic, comex, intel, chokepoints, regime, signals, events)
+- `correlations` -- `/api/v1/correlations` (GET)
+- `signal-log` -- `/api/v1/signal-log` (GET, POST)
 
 Middleware stack: CORS -> RateLimitMiddleware -> APIKeyMiddleware
 
 ## Architecture Decisions (Sprint 3)
 
-1. **Thin wrappers** -- 8 root-level scripts delegate to `src/trading/core/` for backward compat. Each is <20 lines.
+1. **Thin wrappers** -- 11 root-level scripts delegate to `src/trading/core/` and scrapers for backward compat. Each is <20 lines.
 2. **Extracted analysis modules** -- `fetch_all.py` (was 800+ lines) now delegates to `src/analysis/` (scoring, levels, sentiment, setup_builder, technical, smc, cot_analyzer).
 3. **Backtesting extracted** -- Engine split from 761 -> 278 lines. Metrics, reports, data_loader, models, and 4 strategy files pulled out.
 4. **Provider pattern** -- `src/data/providers/base.py` defines abstract base; CFTC, Stooq, Yahoo implement it. `price_router.py` handles failover.
@@ -99,6 +103,24 @@ Middleware stack: CORS -> RateLimitMiddleware -> APIKeyMiddleware
 - Twelvedata (800/day free)
 - Finnhub (60/min free)
 - Alpha Vantage (25/day free)
+- USGS Earthquake Feed (public domain, no key)
+- CME COMEX Warehouse Reports (public, no key)
+- Google News RSS (public, no key, rate-limited 2s between categories)
+
+## Security
+- API key auth: `SCALP_API_KEY` env var, constant-time comparison (hmac.compare_digest)
+- TradingView webhook: `TV_WEBHOOK_SECRET` env var for payload verification
+- Rate limiting: per-IP sliding window (60/min default), 10K IP memory cap
+- XSS: escapeHtml() on all frontend API data rendering
+- CI: SHA-pinned third-party GitHub Actions (codecov, trufflehog)
+- CSO audit report: `.gstack/security-reports/`
+
+## Trading Bot (19 instruments)
+- 17 instruments in SYMBOL_MAP (forex, commodities, indices)
+- 6 crisis instruments: NATGAS, WHEAT, CORN, XPTUSD, XPDUSD, USDCHF
+- 6 market regimes: NORMAL, RISK_OFF, CRISIS, WAR_FOOTING, ENERGY_SHOCK, SANCTIONS
+- 12 entry filters + 8 exit rules (geo_spike, ATR trailing, triple TP, session exit)
+- Broker: Pepperstone cTrader (placeholder endpoints, not production-ready)
 
 ## Rules
 - Real data only -- no synthetic/placeholder data

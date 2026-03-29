@@ -1,4 +1,20 @@
 /**
+ * Escape a string for safe insertion into innerHTML templates.
+ * Prevents XSS by encoding HTML special characters.
+ * @param {*} str
+ * @returns {string}
+ */
+export function escapeHtml(str) {
+  if (str == null) return '';
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
+}
+
+/**
  * Format a large number with K/M suffix.
  * @param {number|null} n
  * @returns {string}
