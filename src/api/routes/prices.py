@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import logging
 
-from fastapi import APIRouter
+from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
 from src.api.middleware.cache import macro_cache
@@ -95,3 +95,40 @@ def live_prices() -> dict:
     result = {"items": items}
     macro_cache.set("prices_live", result, ttl=60)
     return result
+
+
+class PriceHistoryItem(BaseModel):
+    """Single price bar for time series."""
+
+    time: str
+    value: float
+
+
+class PriceHistoryResponse(BaseModel):
+    """Response for price history endpoint."""
+
+    instrument: str
+    items: list[PriceHistoryItem]
+
+
+# All known instrument keys (union of groups)
+_ALL_INSTRUMENTS = {key for keys in _PRICE_GROUPS.values() for key in keys}
+
+
+@router.get(
+    "/prices/{instrument}/history",
+    summary="Price history for an instrument",
+    description="Returns daily close prices as time/value pairs for chart rendering.",
+    response_model=PriceHistoryResponse,
+)
+def price_history(instrument: str) -> dict:
+    """Daily close prices for a single instrument."""
+    if instrument not in _ALL_INSTRUMENTS:
+        raise HTTPException(status_code=404, detail=f"Unknown instrument: {instrument}")
+
+    prices = repo.get_price_history(instrument=instrument)
+    if not prices:
+        return {"instrument": instrument, "items": []}
+
+    items = [{"time": p.date, "value": round(p.close, 5)} for p in prices]
+    return {"instrument": instrument, "items": items}
