@@ -1,6 +1,30 @@
 version: "3.9"
 
 services:
+  init:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: cot-explorer-init
+    volumes:
+      - cot-data:/app/data
+    environment:
+      - DATABASE_URL=sqlite:///data/cot-explorer.db
+    env_file:
+      - .env
+    command: >
+      sh -c "
+        python -c 'from src.db.engine import init_db; init_db()' &&
+        python fetch_cot.py &&
+        python build_combined.py &&
+        python fetch_calendar.py &&
+        python fetch_fundamentals.py &&
+        python fetch_prices.py &&
+        python fetch_all.py &&
+        echo 'Pipeline complete'
+      "
+    restart: "no"
+
   api:
     build:
       context: .
@@ -16,6 +40,9 @@ services:
     env_file:
       - .env
     restart: unless-stopped
+    depends_on:
+      init:
+        condition: service_completed_successfully
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
       interval: 30s

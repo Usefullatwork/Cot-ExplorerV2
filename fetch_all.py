@@ -95,17 +95,18 @@ def _load_json(path):
 
 
 def main():
-    fund_data = _load_json(os.path.join(BASE, "fundamentals", "latest.json")) or {}
+    fund_data = _load_json(os.path.join(BASE, "prices", "fundamentals_latest.json")) or {}
     if fund_data:
         log.info(f"Fundamentals: {len(fund_data.get('indicators',{}))} indikatorer lastet ({fund_data.get('usd_fundamental',{}).get('bias','?')} USD)")
 
-    cal_data = _load_json(os.path.join(BASE, 'calendar', 'latest.json')) or {}
+    cal_data = _load_json(os.path.join(BASE, 'prices', 'calendar_latest.json')) or {}
     calendar_events = cal_data.get('events', [])
     if calendar_events:
         log.info(f'Kalender: {len(calendar_events)} events lastet')
 
     cot_data = {}
-    cot_raw = _load_json(os.path.join(BASE, "combined", "latest.json"))
+    cot_raw = _load_json(os.path.join(BASE, "combined", "latest.json")) or \
+              _load_json(os.path.join(BASE, "cot", "combined", "latest.json"))
     if cot_raw:
         for d in cot_raw:
             cot_data[d["market"].lower()] = d

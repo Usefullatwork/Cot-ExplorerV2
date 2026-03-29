@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+from pathlib import Path
 from typing import Any, Optional
 
 from fastapi import APIRouter, HTTPException, Query
@@ -10,6 +11,8 @@ from pydantic import BaseModel, Field
 
 from src.db import repository as repo
 from src.security.input_validator import sanitize_string, validate_symbol
+
+_DATA_DIR = Path(__file__).resolve().parents[3] / "data"
 
 router = APIRouter(prefix="/api/v1", tags=["signals"])
 
@@ -92,6 +95,19 @@ def list_signals(
         if active_only and not row.get("at_level_now"):
             continue
         results.append(row)
+
+    # Fallback: if DB is empty, synthesize signals from macro JSON
+    if not results:
+        results = _signals_from_macro_json(
+            instrument=instrument,
+            min_score=min_score,
+            grade=grade,
+            direction=direction,
+            timeframe=timeframe,
+            active_only=active_only,
+            limit=limit,
+        )
+
     return results
 
 
@@ -111,6 +127,84 @@ def signal_detail(key: str) -> dict:
     if not signals:
         raise HTTPException(status_code=404, detail=f"No signals found for {key}")
     return _signal_to_dict(signals[0])
+
+
+def _signals_from_macro_json(
+    instrument: str | None = None,
+    min_score: int | None = None,
+    grade: str | None = None,
+    direction: str | None = None,
+    timeframe: str | None = None,
+    active_only: bool = False,
+    limit: int = 100,
+) -> list[dict]:
+    """Synthesize signal-like entries from data/macro/latest.json trading_levels."""
+    macro_path = _DATA_DIR / "macro" / "latest.json"
+    if not macro_path.exists():
+        return []
+    try:
+        with open(macro_path, encoding="utf-8") as f:
+            macro = json.load(f)
+    except (json.JSONDecodeError, OSError):
+        return []
+
+    levels = macro.get("trading_levels", {})
+    results = []
+    idx = 1
+
+    for key, lv in levels.items():
+        if instrument and key != instrument:
+            continue
+
+        score = lv.get("score", 0)
+        gr = lv.get("grade", "C")
+        dir_color = lv.get("dir_color", "bull")
+        tf_bias = lv.get("timeframe_bias", "WATCHLIST")
+        at_level = lv.get("at_level_now", False)
+
+        if min_score is not None and score < min_score:
+            continue
+        if grade and gr != grade:
+            continue
+        if direction and dir_color != direction:
+            continue
+        if timeframe and tf_bias != timeframe:
+            continue
+        if active_only and not at_level:
+            continue
+
+        active_setup = lv.get("setup_long") if dir_color == "bull" else lv.get("setup_short")
+
+        row = {
+            "id": idx,
+            "instrument": key,
+            "generated_at": macro.get("date"),
+            "direction": dir_color,
+            "grade": gr,
+            "score": score,
+            "timeframe_bias": tf_bias,
+            "entry_price": active_setup.get("entry") if active_setup else lv.get("current"),
+            "stop_loss": active_setup.get("sl") if active_setup else None,
+            "target_1": active_setup.get("t1") if active_setup else None,
+            "target_2": active_setup.get("t2") if active_setup else None,
+            "rr_t1": active_setup.get("rr_t1") if active_setup else None,
+            "rr_t2": active_setup.get("rr_t2") if active_setup else None,
+            "entry_weight": None,
+            "t1_weight": None,
+            "sl_type": active_setup.get("sl_type") if active_setup else None,
+            "at_level_now": at_level,
+            "vix_regime": lv.get("session_now", {}).get("label"),
+            "pos_size": lv.get("pos_size"),
+            "score_details": lv.get("score_details"),
+            "metadata": None,
+        }
+        results.append(row)
+        idx += 1
+
+        if len(results) >= limit:
+            break
+
+    return results
 
 
 def _signal_to_dict(sig: object) -> dict:

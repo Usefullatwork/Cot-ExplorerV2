@@ -2,11 +2,7 @@
 
 ## Phase 0 Prerequisites
 
-### Fix 58 failing integration tests
-- **What:** Resolve `src.security` package resolution that breaks 58 integration tests
-- **Why:** Broken test suite erodes trust in results. Can't tell if Phase 1a changes break something new when 58 tests are already red. Security middleware is critical for multi-tenant.
-- **Context:** Pre-existing issue, not from deep review sprint. The `src.security` module imports fail in integration test context. Likely a `__init__.py` or `sys.path` issue.
-- **Depends on:** Nothing. Can fix independently.
+### ~~Fix 58 failing integration tests~~ ✅ DONE (Session 8)
 
 ### Verify cTrader API type (REST vs gRPC)
 - **What:** Research whether Pepperstone's cTrader Open API is REST (httpx) or gRPC/protobuf (grpcio)
@@ -27,3 +23,20 @@
 - **Why:** When sentiment cache expires (15-min TTL), the next request triggers a fresh fetch. If 10 users' bots check simultaneously, only the first should fetch; rest should wait on lock.
 - **Context:** Redis (already planned) provides SETNX-based distributed locks. Pattern: `if not cached: acquire lock → fetch → cache → release lock`.
 - **Depends on:** Redis integration in Phase 1a.
+
+## Session 9 Findings (2026-03-29)
+
+### Timeseries sparklines require historical data
+- **What:** `build_timeseries.py` requires MIN_WEEKS=10 data points. With only 1 weekly snapshot, no sparklines are generated.
+- **Fix:** Run `python fetch_cot.py --history` once to download historical COT data (2006-present). This populates `data/cot/history/` which `build_timeseries.py` reads.
+- **Impact:** COT table sparklines will be empty until history is fetched.
+
+### FRED API key not configured
+- **What:** `fetch_fundamentals.py` skips all indicators without a FRED API key.
+- **Fix:** Get a free key from https://fred.stlouisfed.org/docs/api/api_key.html and set `FRED_API_KEY` in `.env`.
+- **Impact:** Fundamental scores are neutral (0.0) without the key. Scoring still works but misses macro data.
+
+### DB tables largely unused
+- **What:** 19 SQLite tables defined but only used by trading bot routes. All data flows through JSON files.
+- **Context:** Session 9 added JSON fallbacks for signals and prices routes. DB persistence can be added in Phase 1a when migrating to Postgres.
+- **Not a bug:** Designed this way — JSON is the primary data store, DB is for bot state.

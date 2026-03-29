@@ -2,13 +2,17 @@
 
 from __future__ import annotations
 
+import json
 import logging
+from pathlib import Path
 
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
 from src.api.middleware.cache import macro_cache
 from src.db import repository as repo
+
+_DATA_DIR = Path(__file__).resolve().parents[3] / "data"
 
 log = logging.getLogger(__name__)
 
@@ -50,6 +54,36 @@ _DISPLAY_NAMES = {
     "WTI": "WTI", "NATGAS": "Naturgass",
     "HYG": "High Yield", "TIP": "TIPS ETF",
 }
+
+
+def _prices_from_macro_json() -> list[dict]:
+    """Read live prices from data/macro/latest.json as fallback when DB is empty."""
+    macro_path = _DATA_DIR / "macro" / "latest.json"
+    if not macro_path.exists():
+        return []
+    try:
+        with open(macro_path, encoding="utf-8") as f:
+            macro = json.load(f)
+    except (json.JSONDecodeError, OSError):
+        return []
+
+    prices_data = macro.get("prices", {})
+    items = []
+    for group_name, keys in _PRICE_GROUPS.items():
+        for key in keys:
+            p = prices_data.get(key)
+            if not p:
+                continue
+            price = p.get("price", 0)
+            items.append({
+                "instrument": key,
+                "name": _DISPLAY_NAMES.get(key, key),
+                "group": group_name,
+                "price": price,
+                "chg_1d": p.get("chg1d"),
+                "chg_5d": p.get("chg5d"),
+            })
+    return items
 
 
 def _pct_change(prices: list, offset: int) -> float | None:
@@ -94,6 +128,10 @@ def live_prices() -> dict:
                 "chg_1d": chg_1d,
                 "chg_5d": chg_5d,
             })
+
+    # Fallback: if DB has no prices, read from macro JSON
+    if not items:
+        items = _prices_from_macro_json()
 
     result = {"items": items}
     macro_cache.set("prices_live", result, ttl=60)
