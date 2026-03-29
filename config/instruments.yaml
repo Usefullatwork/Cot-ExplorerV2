@@ -1,5 +1,5 @@
 # Cot-ExplorerV2 Instrument Configuration
-# 12 tracked instruments with all provider symbol mappings
+# 14 tracked instruments with all provider symbol mappings
 
 instruments:
   - key: EURUSD
@@ -166,6 +166,34 @@ instruments:
     cot_market: "usd index"
     stooq: dxy.f
     twelvedata: null
+    finnhub: null
+    news_risk_on_dir: bear
+    news_risk_off_dir: bull
+
+  - key: USDCHF
+    name: USD/CHF
+    symbol: CHF=X
+    label: Valuta
+    category: valuta
+    class: A
+    session: "London 08:00-12:00 CET"
+    cot_market: "swiss franc"
+    stooq: usdchf
+    twelvedata: USD/CHF
+    finnhub: null
+    news_risk_on_dir: bear
+    news_risk_off_dir: bull
+
+  - key: USDNOK
+    name: USD/NOK
+    symbol: NOK=X
+    label: Valuta
+    category: valuta
+    class: A
+    session: "London 08:00-12:00 CET"
+    cot_market: null
+    stooq: usdnok
+    twelvedata: USD/NOK
     finnhub: null
     news_risk_on_dir: bear
     news_risk_off_dir: bull

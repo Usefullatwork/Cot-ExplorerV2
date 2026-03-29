@@ -21,12 +21,12 @@ def _clear_instruments_cache():
 
 
 async def test_list_instruments(app_client):
-    """GET /api/v1/instruments returns a list of 12 instruments."""
+    """GET /api/v1/instruments returns a list of 14 instruments."""
     r = await app_client.get("/api/v1/instruments")
     assert r.status_code == 200
     data = r.json()
     assert isinstance(data, list)
-    assert len(data) == 12
+    assert len(data) == 14
     await app_client.aclose()
 
 

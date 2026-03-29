@@ -39,6 +39,8 @@ const TICKER_ITEMS = [
   ['Gull',    'Gold'],
   ['Solv',    'Silver'],
   ['WTI',     'WTI'],
+  ['CHF',     'USDCHF'],
+  ['NOK',     'USDNOK'],
 ];
 
 /**
