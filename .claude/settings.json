@@ -1,0 +1,38 @@
+{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "if [ -f .planning/task_plan.md ]; then head -30 .planning/task_plan.md 2>/dev/null | sed 's/\"/\\\\\"/g' | { CONTENT=$(cat); echo \"{\\\"systemMessage\\\":\\\"ACTIVE PLAN: $CONTENT\\\"}\"; }; fi",
+            "timeout": 3
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": ".*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "CF=/tmp/claude_tc; C=$(cat $CF 2>/dev/null||echo 0); C=$((C+1)); echo $C>$CF; [ $C -eq 40 ] && echo '{\"systemMessage\":\"40 tool calls. Consider /save-state then /compact at next logical boundary.\"}'; [ $C -eq 60 ] && echo '{\"systemMessage\":\"60 tool calls. Context degradation likely. Run /save-state NOW.\"}'",
+            "timeout": 2
+          }
+        ]
+      },
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "if [ \"$CLAUDE_TOOL_USE_EXIT_CODE\" != \"0\" ] && echo \"$CLAUDE_TOOL_INPUT\" | grep -qE '(pytest|vitest|npm test|npm run build|ruff check|mypy)'; then echo '{\"systemMessage\":\"VERIFICATION FAILED. Do NOT proceed. Diagnose first. After 3 failures on same issue, stop and ask user.\"}'; fi",
+            "timeout": 3
+          }
+        ]
+      }
+    ]
+  }
+}
