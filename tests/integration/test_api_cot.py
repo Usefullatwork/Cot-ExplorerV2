@@ -44,6 +44,7 @@ async def test_cot_latest_no_file(app_client, tmp_path, monkeypatch):
     from src.api.routes import cot as cot_mod
 
     monkeypatch.setattr(cot_mod, "_DATA_DIR", tmp_path)
+    monkeypatch.setattr(cot_mod, "_ts_cache", None)
     r = await app_client.get("/api/v1/cot")
     assert r.status_code == 200
     assert r.json() == []
@@ -58,11 +59,49 @@ async def test_cot_latest_with_file(app_client, tmp_path, monkeypatch):
     combined_dir.mkdir()
     (combined_dir / "latest.json").write_text(json.dumps(_SAMPLE_LATEST))
     monkeypatch.setattr(cot_mod, "_DATA_DIR", tmp_path)
+    monkeypatch.setattr(cot_mod, "_ts_cache", None)
 
     r = await app_client.get("/api/v1/cot")
     data = r.json()
     assert len(data) == 2
     assert data[0]["symbol"] == "GOLD"
+    await app_client.aclose()
+
+
+async def test_cot_latest_with_sparklines(app_client, tmp_path, monkeypatch):
+    """GET /api/v1/cot injects cot_history from timeseries data."""
+    from src.api.routes import cot as cot_mod
+
+    # Set up combined/latest.json
+    combined_dir = tmp_path / "combined"
+    combined_dir.mkdir()
+    (combined_dir / "latest.json").write_text(json.dumps(_SAMPLE_LATEST))
+
+    # Set up timeseries file for GOLD
+    ts_dir = tmp_path / "timeseries"
+    ts_dir.mkdir()
+    ts_data = {
+        "symbol": "GOLD",
+        "report": "tff",
+        "data": [{"spec_net": i * 1000} for i in range(25)],
+    }
+    (ts_dir / "gold_tff.json").write_text(json.dumps(ts_data))
+
+    monkeypatch.setattr(cot_mod, "_DATA_DIR", tmp_path)
+    monkeypatch.setattr(cot_mod, "_ts_cache", None)
+
+    r = await app_client.get("/api/v1/cot")
+    data = r.json()
+
+    # GOLD should have cot_history (last 20 values)
+    gold = next(d for d in data if d["symbol"] == "GOLD")
+    assert "cot_history" in gold
+    assert len(gold["cot_history"]) == 20
+    assert gold["cot_history"][-1] == 24000
+
+    # EUROFX has no timeseries → no cot_history key
+    euro = next(d for d in data if d["symbol"] == "EUROFX")
+    assert "cot_history" not in euro
     await app_client.aclose()
 
 

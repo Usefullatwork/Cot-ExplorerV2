@@ -16,6 +16,47 @@ router = APIRouter(prefix="/api/v1", tags=["cot"])
 
 _DATA_DIR = Path(__file__).resolve().parents[3] / "data"
 
+# ── Sparkline cache (timeseries → last N spec_net values) ───────────────────
+
+_SPARKLINE_WEEKS = 20
+_ts_cache: dict[str, list[int]] | None = None
+
+
+def _load_timeseries_cache() -> dict[str, list[int]]:
+    """Load timeseries JSON files into a lookup of symbol_report → spec_net values.
+
+    Returns an empty dict if the timeseries directory doesn't exist yet.
+    """
+    ts_dir = _DATA_DIR / "timeseries"
+    cache: dict[str, list[int]] = {}
+    if not ts_dir.is_dir():
+        return cache
+
+    for fpath in ts_dir.glob("*.json"):
+        if fpath.name == "index.json":
+            continue
+        try:
+            with open(fpath, encoding="utf-8") as f:
+                ts = json.load(f)
+            data = ts.get("data", [])
+            if len(data) < 2:
+                continue
+            values = [d["spec_net"] for d in data[-_SPARKLINE_WEEKS:]]
+            key = f"{ts['symbol'].lower()}_{ts['report']}"
+            cache[key] = values
+        except (KeyError, ValueError, TypeError):
+            continue
+
+    return cache
+
+
+def _get_sparkline_cache() -> dict[str, list[int]]:
+    """Return the cached timeseries data, loading on first call."""
+    global _ts_cache  # noqa: PLW0603
+    if _ts_cache is None:
+        _ts_cache = _load_timeseries_cache()
+    return _ts_cache
+
 
 # ── Response models ──────────────────────────────────────────────────────────
 
@@ -86,10 +127,24 @@ def cot_latest() -> list[dict]:
     database has not been populated yet.
     """
     combined_path = _DATA_DIR / "combined" / "latest.json"
-    if combined_path.exists():
-        with open(combined_path, encoding="utf-8") as f:
-            return json.load(f)
-    return []
+    if not combined_path.exists():
+        return []
+
+    with open(combined_path, encoding="utf-8") as f:
+        markets: list[dict] = json.load(f)
+
+    # Inject sparkline data from timeseries cache
+    ts = _get_sparkline_cache()
+    if ts:
+        for m in markets:
+            sym = (m.get("symbol") or "").lower()
+            report = m.get("report", "")
+            key = f"{sym}_{report}"
+            history = ts.get(key)
+            if history:
+                m["cot_history"] = history
+
+    return markets
 
 
 @router.get(
