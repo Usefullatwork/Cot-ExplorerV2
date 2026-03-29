@@ -10,6 +10,7 @@
 import { formatPct, escapeHtml, formatPrice } from '../utils.js';
 import { createSparkline } from '../charts/miniSparkline.js';
 import { createPriceChart } from '../charts/priceLineChart.js';
+import { createVixTermChart, destroyVixTermChart } from '../charts/vixTermChart.js';
 import { fetchVixTerm, fetchADR, fetchRegimeHistory } from '../api.js';
 import {
   Chart,
@@ -120,6 +121,11 @@ export function render(container) {
     <div class="g4" id="macroRente" role="group" aria-label="Rente og kreditt indikatorer"></div>
     <div class="sh" style="margin-top:16px"><h2 class="sh-t">VIX Termstruktur</h2><div class="sh-b">Spot, 9D, 3M — contango/backwardation</div></div>
     <div id="vixTermGrid" class="g4" role="group" aria-label="VIX termstruktur"></div>
+    <div class="card" style="margin-top:12px;padding:12px">
+      <div style="height:200px;position:relative">
+        <canvas id="vixTermChart" aria-label="VIX termstruktur diagram"></canvas>
+      </div>
+    </div>
     <div class="sh" style="margin-top:16px"><h2 class="sh-t">Regime-tidslinje</h2><div class="sh-b">Siste 30 dager</div></div>
     <div id="regimeTimeline" role="img" aria-label="Regime tidslinje" style="padding:8px 0"></div>
     <div class="sh" style="margin-top:16px"><h2 class="sh-t">Sesjonsrekkevidde (ADR)</h2><div class="sh-b">20-dagers gjennomsnittlig daglig rekkevidde</div></div>
@@ -346,6 +352,7 @@ export function update(m) {
   ];
 
   // Clean up old chart instances
+  destroyVixTermChart();
   chartInstances.forEach((inst) => {
     try {
       if (inst.chart && inst.chart.remove) inst.chart.remove();
@@ -471,6 +478,18 @@ export function update(m) {
       ]
         .map((x) => `<div class="card"><div class="ct">${escapeHtml(x.name)}</div><div class="snum" style="font-size:20px;font-family:'DM Mono',monospace">${x.val}</div><div class="slabel" style="margin-top:4px;color:var(--${x.col})">${x.col.toUpperCase()}</div></div>`)
         .join('');
+
+      // Render VIX term structure chart
+      const termCanvas = document.getElementById('vixTermChart');
+      if (termCanvas) {
+        createVixTermChart(termCanvas, {
+          vix_9d: vt.vix_9d,
+          spot: vt.spot,
+          vix_3m: vt.vix_3m,
+          regime: vt.regime,
+          spread: vt.spread || (vt.vix_3m - vt.spot),
+        });
+      }
     })
     .catch(() => {});
 

@@ -43,6 +43,57 @@ def publish_static_json(
     return target
 
 
+def export_signal_log(output_dir: str | Path | None = None) -> Path:
+    """Export signal performance log to ``data/signal_log.json``.
+
+    Returns
+    -------
+    Path
+        Full path to the written file.
+    """
+    from src.db.engine import session_scope
+    from src.db.models import SignalPerformance
+    from sqlalchemy import select
+
+    out = Path(output_dir) if output_dir else Path("data")
+    out.mkdir(parents=True, exist_ok=True)
+    target = out / "signal_log.json"
+
+    gen = session_scope()
+    session = next(gen)
+    try:
+        rows = session.execute(
+            select(SignalPerformance).order_by(SignalPerformance.created_at.desc()).limit(500)
+        ).scalars().all()
+
+        records = []
+        for r in rows:
+            records.append({
+                "id": r.id, "signal_id": r.signal_id, "instrument": r.instrument,
+                "direction": r.direction, "grade": r.grade, "score": r.score,
+                "entry_price": r.entry_price, "result": r.result,
+                "pnl_pips": r.pnl_pips, "risk_reward": r.risk_reward,
+                "closed_at": r.closed_at.isoformat() if r.closed_at else None,
+                "created_at": r.created_at.isoformat() if r.created_at else None,
+            })
+
+        with open(target, "w", encoding="utf-8") as f:
+            json.dump({"signals": records, "count": len(records)}, f, ensure_ascii=False, indent=2)
+
+        logger.info("Exported signal log: %s (%d records)", target, len(records))
+        try:
+            gen.send(None)
+        except StopIteration:
+            pass
+        return target
+    except Exception:
+        try:
+            gen.throw(Exception)
+        except StopIteration:
+            pass
+        raise
+
+
 if __name__ == "__main__":
     # CLI entry-point: read from DB or fallback and write latest.json
     from src.db import repository as repo
