@@ -30,6 +30,8 @@ export const state = {
   correlations:       null,
   signalLog:          null,
   cryptoIntel:        null,
+  energyInfra:        null,
+  mineLocations:      null,
 };
 
 /** @type {Map<string, Set<Function>>} */
