@@ -59,7 +59,7 @@ export function update(data) {
         const col5d = chg5d != null ? colorClass(chg5d) : 'neutral';
         return `<div class="card">
           <div class="ct">${escapeHtml(p.name)}</div>
-          <div class="snum" style="font-family:'DM Mono',monospace">${fmtPrice(p.price)}</div>
+          <div class="snum data-value">${fmtPrice(p.price)}</div>
           <div style="display:flex;gap:12px;margin-top:8px;font-size:11px">
             <span class="${col1d}">1d: ${chg1d != null ? formatPct(chg1d) : '--'}</span>
             <span class="${col5d}">5d: ${chg5d != null ? formatPct(chg5d) : '--'}</span>

@@ -16,7 +16,7 @@ const PINE_SCRIPTS = [
   { name: 'Confluence Score', file: 'indicators/confluence_score.pine', category: 'Indicators', description: '12-punkts konfluensvurdering for handelssetups.' },
   { name: 'SMC Zones', file: 'indicators/smc_zones.pine', category: 'Indicators', description: 'Supply/Demand-soner med BOS-linjer og strukturklassifisering.' },
   { name: 'L2L Levels', file: 'indicators/l2l_levels.pine', category: 'Indicators', description: 'Level-to-Level setup overlay med entry, SL, T1, T2 og R:R-beregning.' },
-  { name: 'VIX Regime', file: 'indicators/vix_regime.pine', category: 'Indicators', description: 'Bakgrunnsfarge og posisjonsstorrelse basert pa VIX-niva.' },
+  { name: 'VIX Regime', file: 'indicators/vix_regime.pine', category: 'Indicators', description: 'Bakgrunnsfarge og posisjonsstørrelse basert på VIX-nivå.' },
   { name: 'Macro Dashboard', file: 'indicators/macro_dashboard.pine', category: 'Indicators', description: 'Tabell med makroindikatorer og Dollar Smile.' },
   { name: 'Dollar Smile', file: 'indicators/dollar_smile.pine', category: 'Indicators', description: 'USD-styrkeindikator med regimeklassifisering.' },
 
@@ -107,7 +107,7 @@ export function render(container) {
           <div class="ct" style="margin-bottom:0" id="pinePreviewTitle">Forhåndsvisning</div>
           <button class="fc" id="pinePreviewCopy" style="font-size:10px" aria-label="Kopier forhåndsvist kode">Kopier kode</button>
         </div>
-        <pre id="pinePreviewCode" style="background:var(--bg);border:1px solid var(--b);border-radius:6px;padding:12px;font-family:'DM Mono',monospace;font-size:11px;color:var(--t);overflow-x:auto;max-height:300px;overflow-y:auto;white-space:pre;margin:0"></pre>
+        <pre id="pinePreviewCode" class="mono" style="background:var(--bg);border:1px solid var(--b);border-radius:6px;padding:12px;font-size:11px;color:var(--t);overflow-x:auto;max-height:300px;overflow-y:auto;white-space:pre;margin:0"></pre>
       </div>
     </div>
     ${sections}`;
