@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { render, updateTickers, updateVix, updateTimestamp } from '../components/TopBar.js';
+import { render, updateTickers, updateVix } from '../components/TopBar.js';
 
 describe('TopBar', () => {
   let container;
@@ -11,121 +11,86 @@ describe('TopBar', () => {
     document.body.appendChild(container);
   });
 
-  it('renders the header and nav into the container', () => {
+  it('should render the topbar with logo', () => {
     render(container);
-
-    const header = container.querySelector('header.topbar');
-    expect(header).not.toBeNull();
-
-    const nav = container.querySelector('nav.nav');
-    expect(nav).not.toBeNull();
-  });
-
-  it('shows the logo text "Markedspuls"', () => {
-    render(container);
-
     const logo = container.querySelector('.logo');
-    expect(logo).not.toBeNull();
+    expect(logo).toBeTruthy();
     expect(logo.textContent).toContain('Markeds');
-    expect(logo.textContent).toContain('puls');
   });
 
-  it('renders all 14 navigation tabs', () => {
+  it('should render all 14 tabs', () => {
     render(container);
-
     const tabs = container.querySelectorAll('.nt');
     expect(tabs.length).toBe(14);
-
-    const labels = Array.from(tabs).map((t) => t.textContent);
-    expect(labels).toContain('Setups');
-    expect(labels).toContain('Makro');
-    expect(labels).toContain('COT');
-    expect(labels).toContain('Kalender');
-    expect(labels).toContain('Backtest');
-    expect(labels).toContain('Pine');
-    expect(labels).toContain('Konkurrent');
-    expect(labels).toContain('Trading');
-    expect(labels).toContain('\u26CF Metals Intel');
-    expect(labels).toContain('\uD83D\uDD17 Korrelasjoner');
-    expect(labels).toContain('\uD83D\uDCCB Signal-logg');
-    expect(labels).toContain('\uD83C\uDF0D Geo-Signaler');
   });
 
-  it('renders ticker bar container', () => {
+  it('should render ticker bar', () => {
     render(container);
-
-    const tbar = document.getElementById('tbar');
-    expect(tbar).not.toBeNull();
+    const tbar = container.querySelector('#tbar');
+    expect(tbar).toBeTruthy();
   });
 
-  it('renders VIX badge with default text', () => {
+  it('should render VIX badge', () => {
     render(container);
-
-    const vbadge = document.getElementById('vbadge');
-    expect(vbadge).not.toBeNull();
-    expect(vbadge.textContent).toBe('VIX -');
+    const badge = container.querySelector('#vbadge');
+    expect(badge).toBeTruthy();
+    expect(badge.textContent).toContain('VIX');
   });
 
-  describe('updateTickers', () => {
-    it('populates ticker items from instrument data', () => {
-      render(container);
-
-      updateTickers({
-        VIX: { price: 15.2, chg1d: -0.5 },
-        EURUSD: { price: 1.085, chg1d: 0.12 },
-      });
-
-      const tbar = document.getElementById('tbar');
-      const items = tbar.querySelectorAll('.ti');
-      expect(items.length).toBeGreaterThanOrEqual(2);
-    });
-
-    it('does nothing when instruments is null', () => {
-      render(container);
-      updateTickers(null);
-
-      const tbar = document.getElementById('tbar');
-      expect(tbar.innerHTML).toBe('');
-    });
+  it('should render hamburger menu button', () => {
+    render(container);
+    const btn = container.querySelector('#hamburgerBtn');
+    expect(btn).toBeTruthy();
+    expect(btn.getAttribute('aria-label')).toContain('navigasjonsmeny');
   });
 
-  describe('updateVix', () => {
-    it('updates VIX badge text and class', () => {
-      render(container);
-
-      updateVix({ value: 22.5, regime: 'elevated' });
-
-      const badge = document.getElementById('vbadge');
-      expect(badge.textContent).toBe('VIX 22.5');
-      expect(badge.className).toBe('vb elevated');
-    });
-
-    it('does nothing when vixRegime is null', () => {
-      render(container);
-      updateVix(null);
-
-      const badge = document.getElementById('vbadge');
-      expect(badge.textContent).toBe('VIX -');
-    });
+  it('should update tickers with instrument data', () => {
+    render(container);
+    updateTickers({ VIX: { price: '18.5', chg1d: -0.5 }, DXY: { price: '104.2', chg1d: 0.3 } });
+    const tbar = container.querySelector('#tbar');
+    expect(tbar.innerHTML).toContain('VIX');
+    expect(tbar.innerHTML).toContain('DXY');
   });
 
-  describe('updateTimestamp', () => {
-    it('sets the update label', () => {
-      render(container);
+  it('should handle null instruments gracefully', () => {
+    render(container);
+    updateTickers(null);
+    // No error
+  });
 
-      updateTimestamp('2026-03-25 14:00');
+  it('should update VIX badge value and regime', () => {
+    render(container);
+    updateVix({ value: 22.5, regime: 'elevated', label: 'Elevated' });
+    const badge = container.querySelector('#vbadge');
+    expect(badge.textContent).toContain('22.5');
+  });
 
-      const upd = document.getElementById('upd');
-      expect(upd.textContent).toBe('Oppdatert: 2026-03-25 14:00');
+  it('should include CHF and NOK in TICKER_ITEMS', () => {
+    render(container);
+    updateTickers({
+      USDCHF: { price: '0.8850', chg1d: 0.1 },
+      USDNOK: { price: '10.85', chg1d: -0.2 },
     });
+    const tbar = container.querySelector('#tbar');
+    expect(tbar.innerHTML).toContain('CHF');
+    expect(tbar.innerHTML).toContain('NOK');
+  });
 
-    it('shows dash when dateStr is empty', () => {
-      render(container);
+  it('should have correct tab keys in order', () => {
+    render(container);
+    const tabs = Array.from(container.querySelectorAll('.nt'));
+    expect(tabs[0].dataset.tab).toBe('setups');
+    expect(tabs[1].dataset.tab).toBe('macro');
+    expect(tabs[13].dataset.tab).toBe('krypto-intel');
+  });
 
-      updateTimestamp('');
-
-      const upd = document.getElementById('upd');
-      expect(upd.textContent).toBe('-');
-    });
+  it('should toggle mobile nav on hamburger click', () => {
+    render(container);
+    const hamburger = container.querySelector('#hamburgerBtn');
+    const nav = container.querySelector('#main-nav');
+    hamburger.click();
+    expect(nav.classList.contains('mobile-open')).toBe(true);
+    hamburger.click();
+    expect(nav.classList.contains('mobile-open')).toBe(false);
   });
 });

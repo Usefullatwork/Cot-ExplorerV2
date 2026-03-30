@@ -23,7 +23,7 @@ from src.analysis.regime_detector import (
 )
 from src.db.engine import session_scope
 from src.db.models import ComexInventory, GeoIntelArticle, SeismicEvent
-from src.trading.scrapers import chokepoints, comex, intel_feed, seismic
+from src.trading.scrapers import chokepoints, comex, energy_infra, intel_feed, seismic
 
 router = APIRouter(prefix="/api/v1/geointel", tags=["geointel"])
 
@@ -143,6 +143,22 @@ def get_chokepoints_route(
         rows = s.execute(select(GeoIntelArticle).order_by(GeoIntelArticle.fetched_at.desc()).limit(50)).scalars().all()
         return chokepoints.assess_risk([{"title": r.title} for r in rows])
     return _run_query(_q)
+
+
+@router.get("/energy-infra", summary="Energy infrastructure map data")
+def get_energy_infra() -> dict:
+    """Return pipelines, LNG terminals, and shipping lanes for map overlay."""
+    return {
+        "pipelines": energy_infra.PIPELINES,
+        "lng_terminals": energy_infra.LNG_TERMINALS,
+        "shipping_lanes": energy_infra.SHIPPING_LANES,
+    }
+
+
+@router.get("/mine-locations", summary="Mining operation locations")
+def get_mine_locations() -> dict:
+    """Return global mining operation locations with commodity metadata."""
+    return {"mines": energy_infra.MINES}
 
 
 # ── DB persistence helpers ───────────────────────────────────────────────────

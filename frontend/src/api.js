@@ -240,3 +240,13 @@ export function fetchSignalLog() {
 export function fetchSignalAnalytics() {
   return get('/api/v1/signal-log/analytics');
 }
+
+// ── Geo Map Data ───────────────────────────────────────────
+
+export function fetchEnergyInfra() {
+  return get('/api/v1/geointel/energy-infra');
+}
+
+export function fetchMineLocations() {
+  return get('/api/v1/geointel/mine-locations');
+}

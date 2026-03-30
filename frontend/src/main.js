@@ -288,6 +288,8 @@ function wireSubscriptions() {
     }
     if (tab === 'geo-events') {
       safeAsync('GeoEventsPanel.refreshAll', () => GeoEventsPanel.refreshAll());
+    } else {
+      safeCall('GeoEventsPanel.cleanup', () => GeoEventsPanel.cleanup());
     }
     if (tab === 'prices') {
       safeAsync('PricesPanel.refreshAll', () => PricesPanel.refreshAll());

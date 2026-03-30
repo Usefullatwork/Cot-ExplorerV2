@@ -86,7 +86,7 @@ def macro_indicators() -> dict:
             return {}
 
     indicator_keys = ["HYG", "TIP", "TNX", "IRX", "Copper", "EEM"]
-    result = {k: prices[k] for k in indicator_keys if k in prices}
+    result = {k: prices.get(k, None) for k in indicator_keys}
     macro_cache.set("macro_indicators", result)
     return result
 
@@ -118,8 +118,13 @@ def vix_term_structure() -> dict:
     if cached is not None:
         return cached
 
-    ts = fetch_vix_term_structure()
-    result = vix_to_dict(ts)
+    try:
+        ts = fetch_vix_term_structure()
+        result = vix_to_dict(ts)
+    except Exception:
+        log.warning("VIX term structure fetch failed, returning defaults")
+        result = {"spot": 0.0, "vix_9d": 0.0, "vix_3m": 0.0, "regime": "unknown", "spread": 0.0}
+
     macro_cache.set("vix_term", result, ttl=60)
     return result
 
@@ -245,6 +250,21 @@ def regime_history(days: int = 30) -> dict:
             .limit(days)
         )
         snapshots = session.execute(stmt).scalars().all()
+
+        if not snapshots:
+            from datetime import datetime as _dt, timedelta
+
+            try:
+                gen.send(None)
+            except StopIteration:
+                pass
+            result = {"days": [{
+                "date": (_dt.now() - timedelta(days=i)).strftime("%Y-%m-%d"),
+                "regime": "normal",
+                "color": "green",
+            } for i in range(days, 0, -1)]}
+            macro_cache.set(f"regime_history_{days}", result, ttl=600)
+            return result
 
         result_days = []
         for snap in reversed(snapshots):

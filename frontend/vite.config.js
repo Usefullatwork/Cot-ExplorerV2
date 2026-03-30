@@ -38,6 +38,7 @@ export default defineConfig({
         manualChunks: {
           chart: ['chart.js'],
           lwc: ['lightweight-charts'],
+          leaflet: ['leaflet'],
         },
       },
     },

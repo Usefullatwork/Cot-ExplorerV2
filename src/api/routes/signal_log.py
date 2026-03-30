@@ -20,7 +20,8 @@ router = APIRouter(prefix="/api/v1/signal-log", tags=["signal-log"])
 class SignalPerfResponse(BaseModel):
     id: int; signal_id: int; instrument: str; direction: str; grade: str; score: int
     entry_price: float; result: str; closed_at: Optional[str] = None
-    pnl_pips: Optional[float] = None; created_at: Optional[str] = None
+    pnl_pips: Optional[float] = None; risk_reward: Optional[float] = None
+    created_at: Optional[str] = None
 
 class SignalPerfStatsResponse(BaseModel):
     total: int; hits: int; misses: int; pending: int; neutral: int
@@ -40,6 +41,7 @@ def _perf_to_dict(r: Any) -> dict:
             "entry_price": r.entry_price, "result": r.result,
             "closed_at": r.closed_at.isoformat() if r.closed_at else None,
             "pnl_pips": r.pnl_pips,
+            "risk_reward": r.risk_reward,
             "created_at": r.created_at.isoformat() if r.created_at else None}
 
 

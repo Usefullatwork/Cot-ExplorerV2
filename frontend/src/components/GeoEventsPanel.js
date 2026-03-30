@@ -1,7 +1,8 @@
 /** GeoEventsPanel — geopolitical pre-trading system. */
 import { escapeHtml, timeAgo } from '../utils.js';
-import { fetchGeoSignals, fetchGeoEvents, fetchRegime } from '../api.js';
+import { fetchGeoSignals, fetchGeoEvents, fetchRegime, fetchEnergyInfra, fetchMineLocations } from '../api.js';
 import { setState } from '../state.js';
+import * as GeoMapPanel from './GeoMapPanel.js';
 
 const REGIME_COLORS = {
   NORMAL:       { bg: 'var(--bull)',  label: 'NORMAL',        icon: '\u2705' },
@@ -36,6 +37,8 @@ export function render(container) {
       <div id="geo-timeline-filters" style="display:flex;gap:6px;margin-bottom:12px;flex-wrap:wrap"></div>
       <div id="geo-timeline-list" style="max-height:420px;overflow-y:auto"></div>
     </div>
+    <div class="sh" style="margin-top:18px"><h2 class="sh-t">Geopolitisk kart</h2><div class="sh-b">Gruver, rorledninger, chokepoints og energi-infrastruktur</div></div>
+    <div class="card" id="geo-map-container" style="height:500px;padding:0"></div>
     <div class="sh" style="margin-top:18px"><h2 class="sh-t">Impact-kart</h2><div class="sh-b">Instrumenter pavirket av aktive hendelser</div></div>
     <div class="card" id="geo-impact-map" role="region" aria-label="Impact-kart" style="overflow-x:auto"></div>`;
 }
@@ -50,15 +53,33 @@ export function update({ regime, geoSignals, geoEvents } = {}) {
 
 /** Fetch all geo data and push to state. */
 export async function refreshAll() {
-  try {
-    const [regime, geoSignals, geoEvents] = await Promise.all([
-      fetchRegime(), fetchGeoSignals(), fetchGeoEvents(),
-    ]);
-    setState('regime', regime);
-    setState('geoSignals', geoSignals);
-    setState('geoEvents', geoEvents);
-  } catch (e) {
-    console.warn('[GeoEventsPanel] fetch error:', e.message);
+  const results = await Promise.allSettled([
+    fetchRegime(), fetchGeoSignals(), fetchGeoEvents(),
+  ]);
+  if (results[0].status === 'fulfilled') setState('regime', results[0].value);
+  if (results[1].status === 'fulfilled') setState('geoSignals', results[1].value);
+  if (results[2].status === 'fulfilled') setState('geoEvents', results[2].value);
+  const failed = results.filter((r) => r.status === 'rejected');
+  if (failed.length) console.warn('[GeoEventsPanel] partial fetch errors:', failed.length);
+
+  // Fetch map data and render Leaflet map
+  const mapResults = await Promise.allSettled([
+    fetchEnergyInfra(), fetchMineLocations(),
+  ]);
+  const mapContainer = document.getElementById('geo-map-container');
+  if (mapContainer) {
+    GeoMapPanel.render(mapContainer);
+    const mapData = {};
+    if (mapResults[0].status === 'fulfilled') {
+      const ei = mapResults[0].value;
+      mapData.pipelines = ei.pipelines;
+      mapData.lngTerminals = ei.lng_terminals;
+      mapData.shippingLanes = ei.shipping_lanes;
+    }
+    if (mapResults[1].status === 'fulfilled') {
+      mapData.mines = mapResults[1].value.mines;
+    }
+    GeoMapPanel.update(mapData);
   }
 }
 
@@ -183,4 +204,9 @@ function updateImpactMap(signals) {
     return `<div style="font-size:11px;color:var(--t);display:flex;align-items:center">${typeBadge(t)}</div>${cells}`;
   }).join('');
   el.innerHTML = `<div style="display:grid;grid-template-columns:100px repeat(${IMPACT_INSTRUMENTS.length},1fr);gap:6px;align-items:center">${header}${rows}</div>`;
+}
+
+/** Clean up Leaflet map to prevent memory leaks. */
+export function cleanup() {
+  GeoMapPanel.destroy();
 }

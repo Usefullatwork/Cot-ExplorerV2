@@ -61,6 +61,7 @@ export function render(container) {
             <th>Grad</th>
             <th>Score</th>
             <th>Entry</th>
+            <th>R:R</th>
             <th>Resultat</th>
           </tr>
         </thead>
@@ -182,7 +183,7 @@ function updateTable(data) {
 
   const signals = data.signals || data || [];
   if (!Array.isArray(signals) || signals.length === 0) {
-    tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--m)">Ingen signaler</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;color:var(--m)">Ingen signaler</td></tr>';
     return;
   }
 
@@ -196,6 +197,7 @@ function updateTable(data) {
     <td>${gradeBadge(s.grade)}</td>
     <td style="font-family:'DM Mono',monospace">${escapeHtml(s.score != null ? String(s.score) : '-')}</td>
     <td style="font-family:'DM Mono',monospace">${escapeHtml(s.entry != null ? formatPrice(s.entry) : '-')}</td>
+    <td style="font-family:'DM Mono',monospace;color:${s.risk_reward != null && s.risk_reward >= 1.5 ? 'var(--bull)' : 'var(--m)'}">${escapeHtml(s.risk_reward != null ? s.risk_reward.toFixed(1) + ':1' : '-')}</td>
     <td>${resultBadge(s.result)}</td>
   </tr>`).join('');
 }
