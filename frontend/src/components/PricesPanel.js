@@ -65,8 +65,8 @@ export function update(data) {
           <div class="ct">${escapeHtml(p.name)}</div>
           <div class="snum data-value">${fmtPrice(p.price)}</div>
           <div style="display:flex;gap:12px;margin-top:8px;font-size:11px">
-            <span class="${col1d}">1d: ${chg1d != null ? formatPct(chg1d) : '--'}</span>
-            <span class="${col5d}">5d: ${chg5d != null ? formatPct(chg5d) : '--'}</span>
+            <span class="${col1d}">1d: ${chg1d != null ? (chg1d >= 0 ? '\u25B2 ' : '\u25BC ') + formatPct(chg1d) : '--'}</span>
+            <span class="${col5d}">5d: ${chg5d != null ? (chg5d >= 0 ? '\u25B2 ' : '\u25BC ') + formatPct(chg5d) : '--'}</span>
           </div>
         </div>`;
       }).join('')}</div>`)
