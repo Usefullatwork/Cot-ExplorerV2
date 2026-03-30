@@ -6,11 +6,13 @@ vi.mock('chart.js', () => {
     constructor() {
       this.destroy = vi.fn();
       this.update = vi.fn();
+      this.data = { datasets: [] };
     }
   }
   MockChart.register = vi.fn();
   return {
     Chart: MockChart,
+    registerables: [],
     LineController: {},
     LineElement: {},
     PointElement: {},
