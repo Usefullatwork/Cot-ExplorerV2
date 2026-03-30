@@ -218,7 +218,10 @@ def signal_queue() -> list[dict[str, Any]]:
 @router.post("/invalidate", response_model=StatusMessageResponse, summary="Activate kill switch")
 def activate_kill_switch(body: KillSwitchRequest) -> dict[str, str]:
     """Emergency kill switch: sets kill_switch_active=True in BotConfig."""
-    reason = sanitize_string(body.reason, max_length=500)
+    try:
+        reason = sanitize_string(body.reason, max_length=500)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
     repo.update_bot_config(
         kill_switch_active=True, kill_switch_reason=reason,
         kill_switch_at=datetime.now(timezone.utc),

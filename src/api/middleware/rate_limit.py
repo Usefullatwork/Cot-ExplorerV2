@@ -6,6 +6,7 @@ Returns HTTP 429 when the limit is exceeded.
 
 from __future__ import annotations
 
+import logging
 import os
 import time
 from collections import defaultdict
@@ -16,6 +17,8 @@ from starlette.responses import JSONResponse, Response
 
 # Sliding-window token bucket per IP
 _WINDOW = 60  # seconds
+
+logger = logging.getLogger(__name__)
 
 
 class RateLimitMiddleware(BaseHTTPMiddleware):
@@ -28,6 +31,11 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
             self.trust_proxy = trust_proxy
         else:
             self.trust_proxy = os.environ.get("RATE_LIMIT_TRUST_PROXY", "").lower() in ("1", "true")
+        if self.trust_proxy:
+            logger.warning(
+                "Rate limiter trusting X-Forwarded-For header — "
+                "only enable behind a known reverse proxy"
+            )
         # ip -> list of request timestamps (within current window)
         self._hits: dict[str, list[float]] = defaultdict(list)
 

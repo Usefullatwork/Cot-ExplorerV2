@@ -171,12 +171,15 @@ def cot_history(
         symbol = validate_symbol(symbol)
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc))
-    if start:
-        start = sanitize_string(start, max_length=10)
-    if end:
-        end = sanitize_string(end, max_length=10)
-    if report_type:
-        report_type = sanitize_string(report_type, max_length=50)
+    try:
+        if start:
+            start = sanitize_string(start, max_length=10)
+        if end:
+            end = sanitize_string(end, max_length=10)
+        if report_type:
+            report_type = sanitize_string(report_type, max_length=50)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
 
     rows = repo.get_cot_history(
         symbol=symbol,
