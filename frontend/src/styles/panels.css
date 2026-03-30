@@ -39,8 +39,8 @@
 .sii {
   background: var(--s2);
   border: 1px solid var(--b);
-  border-radius: 6px;
-  padding: 7px 10px;
+  border-radius: var(--radius-md);
+  padding: 7px var(--sp-sm);
   flex: 1;
   min-width: 80px;
 }
@@ -73,14 +73,14 @@
 .score-bar {
   height: 6px;
   background: var(--b);
-  border-radius: 3px;
+  border-radius: var(--radius-sm);
   overflow: hidden;
 }
 
 .score-fill {
   height: 100%;
-  border-radius: 3px;
-  transition: width 0.5s;
+  border-radius: var(--radius-sm);
+  transition: width var(--ease-slow);
 }
 
 .score-items {
@@ -226,15 +226,15 @@
 .pcg {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
-  gap: 8px;
-  margin-bottom: 18px;
+  gap: var(--sp-sm);
+  margin-bottom: var(--sp-lg);
 }
 
 .pc2 {
   background: var(--s);
   border: 1px solid var(--b);
-  border-radius: 6px;
-  padding: 10px 12px;
+  border-radius: var(--radius-md);
+  padding: var(--sp-sm) var(--sp-md);
 }
 
 .pcn {

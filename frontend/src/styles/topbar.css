@@ -166,14 +166,14 @@
   background: none;
   border: none;
   border-bottom: 2px solid transparent;
-  padding: 11px 16px;
+  padding: 11px var(--sp-lg);
   font-family: 'DM Sans', sans-serif;
-  font-size: 13px;
+  font-size: var(--fs-md);
   font-weight: 500;
   color: var(--m);
   cursor: pointer;
   white-space: nowrap;
-  transition: all 0.15s;
+  transition: all var(--ease);
 }
 
 .nt:hover {
