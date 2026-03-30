@@ -7,7 +7,7 @@
 
 import { createCotBarChart } from '../charts/cotBarChart.js';
 import { createPriceChart } from '../charts/priceLineChart.js';
-import { formatNumber, colorClass } from '../utils.js';
+import { formatNumber, colorClass, escapeHtml } from '../utils.js';
 import { fetchCotHistory, fetchPriceHistory } from '../api.js';
 
 let chartInstance = null;
@@ -167,7 +167,7 @@ export async function open(symbol, report, name) {
         const weekChg = value - prevNet;
         const pctOi = oi ? ((value / oi) * 100).toFixed(1) : '-';
         detail.innerHTML =
-          `<div class="cot-bar-detail-title">Uke: ${label}</div>` +
+          `<div class="cot-bar-detail-title">Uke: ${escapeHtml(label)}</div>` +
           `<div class="cot-bar-detail-grid">` +
           `<div><span class="cot-bar-detail-label">Netto</span><span class="${colorClass(value)}" style="font-family:'DM Mono',monospace;font-weight:600">${value > 0 ? '+' : ''}${formatNumber(value)}</span></div>` +
           `<div><span class="cot-bar-detail-label">Uke-endring</span><span class="${colorClass(weekChg)}" style="font-family:'DM Mono',monospace;font-weight:600">${weekChg > 0 ? '+' : ''}${formatNumber(weekChg)}</span></div>` +
