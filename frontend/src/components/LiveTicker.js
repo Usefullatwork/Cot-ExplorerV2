@@ -33,6 +33,8 @@ function applyRegimeStyle(regime) {
   bar.setAttribute('style', style);
 }
 
+const previousPrices = new Map();
+
 const TICKER_KEYS = [
   ['VIX', 'VIX'],
   ['DXY', 'DXY'],
@@ -78,9 +80,15 @@ export function update(instruments) {
     if (!d) return '';
     const up = (d.chg1d || 0) >= 0;
     const cls = up ? 'live-ticker__chg--up' : 'live-ticker__chg--dn';
+    const prev = previousPrices.get(key);
+    let flashCls = '';
+    if (prev != null && d.price != null && d.price !== prev) {
+      flashCls = d.price > prev ? 'value-flash-up' : 'value-flash-down';
+    }
+    if (d.price != null) previousPrices.set(key, d.price);
     return `<div class="live-ticker__item">
       <span class="live-ticker__label">${escapeHtml(label)}</span>
-      <span class="live-ticker__price">${escapeHtml(formatPrice(d.price))}</span>
+      <span class="live-ticker__price ${flashCls}">${escapeHtml(formatPrice(d.price))}</span>
       <span class="live-ticker__chg ${cls}">${escapeHtml(formatPct(d.chg1d || 0))}</span>
     </div>`;
   }).join('');

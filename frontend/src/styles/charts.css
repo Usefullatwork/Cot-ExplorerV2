@@ -13,12 +13,25 @@
 }
 .cot-modal.open {
   display: flex;
+  animation: modalOverlayIn 0.2s ease;
+}
+.cot-modal.open .cot-modal-inner {
+  animation: modalScaleIn 0.2s ease;
+}
+
+@keyframes modalOverlayIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+@keyframes modalScaleIn {
+  from { transform: scale(0.96); opacity: 0; }
+  to   { transform: scale(1);    opacity: 1; }
 }
 
 .cot-modal-inner {
   background: var(--s);
   border: 1px solid var(--b);
-  border-radius: 12px;
+  border-radius: var(--radius-lg);
   padding: 24px;
   width: 90%;
   max-width: 800px;
@@ -47,7 +60,7 @@
   border-radius: 6px;
   border: 1px solid var(--b);
   background: var(--s2);
-  transition: all 0.15s;
+  transition: all var(--ease);
   line-height: 1;
 }
 .cot-modal-close:hover {
@@ -81,7 +94,7 @@ canvas.cot-chart {
 .cot-stat {
   background: var(--s2);
   border: 1px solid var(--b);
-  border-radius: 8px;
+  border-radius: var(--radius-md);
   padding: 10px 14px;
   flex: 1;
   min-width: 100px;
@@ -123,14 +136,14 @@ canvas.cot-chart {
   position: absolute;
   top: 0;
   left: 0;
-  transition: width 0.4s ease;
+  transition: width var(--ease-slow);
 }
 
 /* ── Bar click detail panel ──────────────────────────────── */
 .cot-bar-detail {
   background: var(--s2);
   border: 1px solid var(--b);
-  border-radius: 8px;
+  border-radius: var(--radius-md);
   padding: 12px 16px;
   margin-top: 12px;
   animation: fadeSlideIn 0.2s ease;
