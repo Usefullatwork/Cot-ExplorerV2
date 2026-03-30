@@ -156,7 +156,11 @@ export function render(container) {
  * @param {Object} m  Full macro data payload
  */
 export function update(m) {
-  if (!m) return;
+  if (!m) {
+    const msEl = document.getElementById('macroStats');
+    if (msEl) msEl.innerHTML = `<div class="empty-state" style="grid-column:1/-1"><div class="empty-state-icon">\uD83D\uDCC9</div><div class="empty-state-title">Ingen makrodata tilgjengelig</div><div class="empty-state-text">Kjør <code>python fetch_fundamentals.py</code> for å hente VIX, DXY, Brent og gullpriser fra FRED og Yahoo Finance.</div></div>`;
+    return;
+  }
 
   const sm = m.dollar_smile || {};
   const vx = m.vix_regime || {};

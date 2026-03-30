@@ -35,7 +35,7 @@ export function render(container) {
   container.innerHTML = `
     <div class="sh"><h2 class="sh-t">Korrelasjonsmatrise</h2><div class="sh-b">12 instrumenter, daglig korrelasjon</div></div>
     <div class="card" id="corr-matrix-wrap" role="region" aria-label="Korrelasjonsmatrise" style="overflow-x:auto">
-      <div style="color:var(--m);font-size:13px">Laster korrelasjoner...</div>
+      <div class="loading" role="status"><div class="spinner" aria-hidden="true"></div>Laster korrelasjoner...</div>
     </div>`;
 }
 
@@ -48,7 +48,7 @@ export function update(data) {
   const matrix = data.matrix || [];
 
   if (instruments.length === 0) {
-    wrap.innerHTML = '<div style="color:var(--m);font-size:13px">Ingen korrelasjonsdata</div>';
+    wrap.innerHTML = '<div class="empty-state"><div class="empty-state-icon">\uD83D\uDD17</div><div class="empty-state-title">Ingen korrelasjonsdata</div><div class="empty-state-text">Korrelasjonsmatrisen beregnes fra daglige prisdata. Kjør <code>python fetch_prices.py</code> for å hente historiske priser.</div></div>';
     return;
   }
 

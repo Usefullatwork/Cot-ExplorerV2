@@ -49,7 +49,7 @@ export function render(container) {
     <div class="g4" id="sl-stats" role="group" aria-label="Signalstatistikk"></div>
     <div class="sh" style="margin-top:16px"><h2 class="sh-t">Analytikk</h2><div class="sh-b">Per instrument &amp; klasse</div></div>
     <div id="sl-analytics" class="sl-analytics-grid" role="region" aria-label="Signal-analytikk">
-      <div style="color:var(--m);font-size:12px">Laster analytikk...</div>
+      <div class="loading" role="status"><div class="spinner" aria-hidden="true"></div>Laster analytikk...</div>
     </div>
     <div class="card" style="margin-top:12px;overflow-x:auto" role="region" aria-label="Signaltabell">
       <table class="tt" id="sl-table" style="width:100%">
@@ -66,7 +66,7 @@ export function render(container) {
           </tr>
         </thead>
         <tbody id="sl-tbody">
-          <tr><td colspan="7" style="text-align:center;color:var(--m)">Laster signaler...</td></tr>
+          <tr><td colspan="8" style="text-align:center"><div class="loading" role="status"><div class="spinner" aria-hidden="true"></div>Laster signaler...</div></td></tr>
         </tbody>
       </table>
     </div>`;
@@ -183,7 +183,7 @@ function updateTable(data) {
 
   const signals = data.signals || data || [];
   if (!Array.isArray(signals) || signals.length === 0) {
-    tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;color:var(--m)">Ingen signaler</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="8"><div class="empty-state" style="padding:20px 12px"><div class="empty-state-icon">\uD83D\uDCCA</div><div class="empty-state-title">Ingen signaler logget</div><div class="empty-state-text">Signal-loggen oppdateres automatisk når nye handelssignaler genereres av analysemotoren.</div></div></td></tr>';
     return;
   }
 

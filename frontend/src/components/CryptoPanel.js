@@ -95,7 +95,11 @@ export function updateFng(data) {
  */
 export function update(data) {
   const el = document.getElementById('kryptoContent');
-  if (!el || !data) return;
+  if (!el) return;
+  if (!data || !data.coins || !data.coins.length) {
+    el.innerHTML = `<div class="empty-state"><div class="empty-state-icon">\u20BF</div><div class="empty-state-title">Ingen kryptodata tilgjengelig</div><div class="empty-state-text">Markedsdata hentes fra CoinGecko. Sjekk nettverkstilkobling eller prøv å laste siden på nytt.</div></div>`;
+    return;
+  }
 
   const coins = data.coins || [];
   const cap = data.total_market_cap || 0;

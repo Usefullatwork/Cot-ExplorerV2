@@ -64,8 +64,8 @@ describe('CryptoPanel', () => {
   it('handles null data gracefully', () => {
     render(container);
     update(null);
-    // Should not crash, content unchanged
-    expect(document.getElementById('kryptoContent').textContent).toContain('Laster');
+    // Should not crash, shows empty state
+    expect(document.getElementById('kryptoContent').textContent).toContain('Ingen kryptodata');
   });
 
   it('updates Fear & Greed gauge', () => {

@@ -155,7 +155,7 @@ describe('BotPanel', () => {
     update({ positions: [] });
 
     const body = document.getElementById('positionsBody');
-    expect(body.textContent).toContain('Ingen posisjoner');
+    expect(body.textContent).toContain('Ingen åpne posisjoner');
 
     const posCount = document.getElementById('posCount');
     expect(posCount.textContent).toBe('0');

@@ -222,7 +222,7 @@ function updatePositions(positions) {
   if (!body) return;
   const arr = Array.isArray(positions) ? positions : [];
   if (count) count.textContent = String(arr.length);
-  if (!arr.length) { body.innerHTML = '<tr><td colspan="10" style="color:var(--m);text-align:center">Ingen posisjoner</td></tr>'; return; }
+  if (!arr.length) { body.innerHTML = '<tr><td colspan="10"><div class="empty-state" style="padding:20px 12px"><div class="empty-state-icon">\uD83D\uDCC2</div><div class="empty-state-title">Ingen åpne posisjoner</div><div class="empty-state-text">Boten har ingen aktive trades. Nye posisjoner åpnes når signaler oppfyller filtrene.</div></div></td></tr>'; return; }
   body.innerHTML = arr.map((p) => {
     const dirCol = p.direction === 'LONG' ? 'bull' : 'bear';
     return `<tr>
@@ -243,7 +243,7 @@ function updateSignals(signals) {
   if (!body) return;
   const arr = Array.isArray(signals) ? signals : [];
   if (count) count.textContent = String(arr.length);
-  if (!arr.length) { body.innerHTML = '<tr><td colspan="7" style="color:var(--m);text-align:center">Ingen signaler</td></tr>'; return; }
+  if (!arr.length) { body.innerHTML = '<tr><td colspan="7"><div class="empty-state" style="padding:20px 12px"><div class="empty-state-icon">\uD83D\uDCE1</div><div class="empty-state-title">Ingen signaler i køen</div><div class="empty-state-text">Signaler genereres av analysemotoren. Kjør <code>python fetch_all.py</code> for å oppdatere.</div></div></td></tr>'; return; }
   body.innerHTML = arr.map((s) => {
     const dirCol = s.direction === 'LONG' ? 'bull' : 'bear';
     const gradeCol = s.grade === 'A+' ? 'bull' : s.grade === 'B' ? 'warn' : s.grade === 'C' ? 'bear' : 'bull';
@@ -284,7 +284,7 @@ function updateLog(history) {
   const body = document.getElementById('tradeLogBody');
   if (!body) return;
   const arr = Array.isArray(history) ? history : [];
-  if (!arr.length) { body.innerHTML = '<tr><td colspan="4" style="color:var(--m);text-align:center">Ingen hendelser</td></tr>'; return; }
+  if (!arr.length) { body.innerHTML = '<tr><td colspan="4"><div class="empty-state" style="padding:20px 12px"><div class="empty-state-icon">\uD83D\uDCDD</div><div class="empty-state-title">Ingen hendelser logget</div><div class="empty-state-text">Handelsloggen fylles når boten åpner, lukker eller justerer posisjoner.</div></div></td></tr>'; return; }
   body.innerHTML = arr.slice(0, 50).map((e) => {
     const c = e.event === 'error' ? 'bear' : e.event === 'fill' ? 'bull' : 'm';
     return `<tr>
