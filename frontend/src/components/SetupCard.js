@@ -115,10 +115,10 @@ export function renderCard(lv, idx) {
         <div class="levels-section">
           <div><div class="lgt">Motstand</div>${resH}</div>
           <div>
-            <div class="pline"><span class="pcurr">${formatPrice(curr)}</span><span class="pm">Napris</span><span class="psma ${smaPos ? 'above' : 'below'}">SMA200 ${smaPos ? 'Over' : 'Under'}</span></div>
-            <div style="margin-top:8px"><div class="lgt">Stotte</div>${supH}</div>
+            <div class="pline"><span class="pcurr">${formatPrice(curr)}</span><span class="pm">Nåpris</span><span class="psma ${smaPos ? 'above' : 'below'}">SMA200 ${smaPos ? 'Over' : 'Under'}</span></div>
+            <div style="margin-top:8px"><div class="lgt">Støtte</div>${supH}</div>
           </div>
-          <div><div class="lgt">Nokkeltall</div>
+          <div><div class="lgt">Nøkkeltall</div>
             <div class="lr"><span class="ln">SMA200</span><span class="lv">${smaFmt}</span></div>
             <div class="lr"><span class="ln">ATR14</span><span class="lv">${atrFmt}</span></div>
             <div class="lr"><span class="ln">5d</span><span class="lv ${colorClass(lv.chg5d || 0)}">${formatPct(lv.chg5d || 0)}</span></div>

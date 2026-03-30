@@ -150,10 +150,10 @@ export function update(data) {
     el.innerHTML = `
       <div class="card">
         <div style="text-align:center;padding:40px 20px">
-          <div style="font-size:15px;font-weight:600;margin-bottom:8px">Ingen data enna</div>
+          <div style="font-size:15px;font-weight:600;margin-bottom:8px">Ingen data ennå</div>
           <div style="font-size:12px;color:var(--m);line-height:1.6;max-width:400px;margin:0 auto">
-            Konkurrentanalyse sammenligner signalnoyaktighet fra ulike kilder.
-            Data fylles inn etter hvert som backtesting fullfortes.
+            Konkurrentanalyse sammenligner signalnøyaktighet fra ulike kilder.
+            Data fylles inn etter hvert som backtesting fullføres.
           </div>
         </div>
       </div>`;

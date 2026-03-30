@@ -53,7 +53,7 @@ describe('CalendarPanel', () => {
 
     const heading = container.querySelector('.sh-t');
     expect(heading).not.toBeNull();
-    expect(heading.textContent).toBe('Okonomisk kalender');
+    expect(heading.textContent).toBe('Økonomisk kalender');
   });
 
   it('renders impact filter buttons (Alle, High, Medium, Low)', () => {

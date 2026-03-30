@@ -48,7 +48,7 @@ export function render(container) {
     <div class="sh"><h2 class="sh-t">Signal-logg</h2><div class="sh-b">Ytelse og historikk</div></div>
     <div class="g4" id="sl-stats" role="group" aria-label="Signalstatistikk"></div>
     <div class="sh" style="margin-top:16px"><h2 class="sh-t">Analytikk</h2><div class="sh-b">Per instrument &amp; klasse</div></div>
-    <div id="sl-analytics" style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:16px" role="region" aria-label="Signal-analytikk">
+    <div id="sl-analytics" class="sl-analytics-grid" role="region" aria-label="Signal-analytikk">
       <div style="color:var(--m);font-size:12px">Laster analytikk...</div>
     </div>
     <div class="card" style="margin-top:12px;overflow-x:auto" role="region" aria-label="Signaltabell">
@@ -122,7 +122,7 @@ function renderAnalytics(data) {
     <div style="font-size:12px;line-height:2">
       <div>Lengste gevinst: <span class="bull" style="font-weight:600">${s.longest_win || 0}</span></div>
       <div>Lengste tap: <span class="bear" style="font-weight:600">${s.longest_loss || 0}</span></div>
-      <div>Naperende: <span class="${s.current_type === 'win' ? 'bull' : s.current_type === 'loss' ? 'bear' : ''}" style="font-weight:600">${s.current_streak || 0} ${s.current_type === 'win' ? 'gevinster' : s.current_type === 'loss' ? 'tap' : ''}</span></div>
+      <div>Nåværende: <span class="${s.current_type === 'win' ? 'bull' : s.current_type === 'loss' ? 'bear' : ''}" style="font-weight:600">${s.current_streak || 0} ${s.current_type === 'win' ? 'gevinster' : s.current_type === 'loss' ? 'tap' : ''}</span></div>
       <div>Totalt lukket: ${data.total_closed || 0} / ${data.total_signals || 0}</div>
     </div>
   </div>`;
@@ -195,9 +195,9 @@ function updateTable(data) {
     <td style="font-weight:600">${escapeHtml(s.instrument || '-')}</td>
     <td>${dirBadge(s.direction)}</td>
     <td>${gradeBadge(s.grade)}</td>
-    <td style="font-family:'DM Mono',monospace">${escapeHtml(s.score != null ? String(s.score) : '-')}</td>
-    <td style="font-family:'DM Mono',monospace">${escapeHtml(s.entry != null ? formatPrice(s.entry) : '-')}</td>
-    <td style="font-family:'DM Mono',monospace;color:${s.risk_reward != null && s.risk_reward >= 1.5 ? 'var(--bull)' : 'var(--m)'}">${escapeHtml(s.risk_reward != null ? s.risk_reward.toFixed(1) + ':1' : '-')}</td>
+    <td class="data-value">${escapeHtml(s.score != null ? String(s.score) : '-')}</td>
+    <td class="data-value">${escapeHtml(s.entry != null ? formatPrice(s.entry) : '-')}</td>
+    <td class="data-value" style="color:${s.risk_reward != null && s.risk_reward >= 1.5 ? 'var(--bull)' : 'var(--m)'}">${escapeHtml(s.risk_reward != null ? s.risk_reward.toFixed(1) + ':1' : '-')}</td>
     <td>${resultBadge(s.result)}</td>
   </tr>`).join('');
 }

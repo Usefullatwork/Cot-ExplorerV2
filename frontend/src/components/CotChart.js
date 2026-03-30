@@ -169,10 +169,10 @@ export async function open(symbol, report, name) {
         detail.innerHTML =
           `<div class="cot-bar-detail-title">Uke: ${escapeHtml(label)}</div>` +
           `<div class="cot-bar-detail-grid">` +
-          `<div><span class="cot-bar-detail-label">Netto</span><span class="${colorClass(value)}" style="font-family:'DM Mono',monospace;font-weight:600">${value > 0 ? '+' : ''}${formatNumber(value)}</span></div>` +
-          `<div><span class="cot-bar-detail-label">Uke-endring</span><span class="${colorClass(weekChg)}" style="font-family:'DM Mono',monospace;font-weight:600">${weekChg > 0 ? '+' : ''}${formatNumber(weekChg)}</span></div>` +
-          `<div><span class="cot-bar-detail-label">OI</span><span style="font-family:'DM Mono',monospace">${formatNumber(oi)}</span></div>` +
-          `<div><span class="cot-bar-detail-label">% av OI</span><span style="font-family:'DM Mono',monospace">${pctOi}%</span></div>` +
+          `<div><span class="cot-bar-detail-label">Netto</span><span class="${colorClass(value)} data-value" style="font-weight:600">${value > 0 ? '+' : ''}${formatNumber(value)}</span></div>` +
+          `<div><span class="cot-bar-detail-label">Uke-endring</span><span class="${colorClass(weekChg)} data-value" style="font-weight:600">${weekChg > 0 ? '+' : ''}${formatNumber(weekChg)}</span></div>` +
+          `<div><span class="cot-bar-detail-label">OI</span><span class="data-value">${formatNumber(oi)}</span></div>` +
+          `<div><span class="cot-bar-detail-label">% av OI</span><span class="data-value">${pctOi}%</span></div>` +
           `</div>`;
         detail.style.display = 'block';
       },

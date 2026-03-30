@@ -54,7 +54,7 @@ export function update(data) {
 
   const n = instruments.length;
 
-  let html = `<div class="corr-grid" style="display:grid;grid-template-columns:80px repeat(${n}, 1fr);gap:1px;font-family:'DM Mono',monospace;font-size:11px;min-width:${n * 56 + 80}px">`;
+  let html = `<div class="corr-grid mono" style="display:grid;grid-template-columns:80px repeat(${n}, 1fr);gap:1px;font-size:11px;min-width:${n * 56 + 80}px">`;
 
   // Header row: empty corner + instrument labels
   html += '<div style="background:var(--bg)"></div>';

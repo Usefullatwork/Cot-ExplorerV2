@@ -32,7 +32,7 @@ export function render(container) {
 function fngLabel(value) {
   if (value <= 20) return 'Ekstrem frykt';
   if (value <= 40) return 'Frykt';
-  if (value <= 60) return 'Noytral';
+  if (value <= 60) return 'Nøytral';
   if (value <= 80) return 'Gradighet';
   return 'Ekstrem gradighet';
 }
@@ -80,7 +80,7 @@ export function updateFng(data) {
     <div class="card" style="padding:16px">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
         <span style="font-size:13px;font-weight:600">Frykt & Gradighet</span>
-        <span style="font-family:'DM Mono',monospace;font-size:24px;font-weight:700;color:${col}">${v}</span>
+        <span class="mono" style="font-size:24px;font-weight:700;color:${col}">${v}</span>
       </div>
       <div style="height:8px;border-radius:4px;background:var(--bg3);overflow:hidden">
         <div style="width:${pct}%;height:100%;background:${col};border-radius:4px;transition:width 0.3s"></div>
@@ -122,8 +122,8 @@ export function update(data) {
         ${c.rank ? `<span style="font-size:10px;color:var(--m);margin-left:auto">#${c.rank}</span>` : ''}
       </div>
       <div style="display:flex;justify-content:space-between;align-items:baseline">
-        <span style="font-family:'DM Mono',monospace;font-size:14px;font-weight:600">\$${escapeHtml(fmtPrice(c.price))}</span>
-        <span class="${colorClass(chg)}" style="font-family:'DM Mono',monospace;font-size:12px">${chg != null ? (chg > 0 ? '+' : '') + chg.toFixed(1) + '%' : '-'}</span>
+        <span class="data-value" style="font-size:14px;font-weight:600">\$${escapeHtml(fmtPrice(c.price))}</span>
+        <span class="${colorClass(chg)} data-value" style="font-size:12px">${chg != null ? (chg > 0 ? '+' : '') + chg.toFixed(1) + '%' : '-'}</span>
       </div>
       <div style="font-size:10px;color:var(--m);margin-top:4px">Vol: \$${escapeHtml(fmtCap(c.volume_24h))}</div>
     </div>`;

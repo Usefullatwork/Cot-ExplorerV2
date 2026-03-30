@@ -37,9 +37,9 @@ export function render(container) {
       <div id="geo-timeline-filters" style="display:flex;gap:6px;margin-bottom:12px;flex-wrap:wrap"></div>
       <div id="geo-timeline-list" style="max-height:420px;overflow-y:auto"></div>
     </div>
-    <div class="sh" style="margin-top:18px"><h2 class="sh-t">Geopolitisk kart</h2><div class="sh-b">Gruver, rorledninger, chokepoints og energi-infrastruktur</div></div>
+    <div class="sh" style="margin-top:18px"><h2 class="sh-t">Geopolitisk kart</h2><div class="sh-b">Gruver, rørledninger, chokepoints og energi-infrastruktur</div></div>
     <div class="card" id="geo-map-container" style="height:500px;padding:0"></div>
-    <div class="sh" style="margin-top:18px"><h2 class="sh-t">Impact-kart</h2><div class="sh-b">Instrumenter pavirket av aktive hendelser</div></div>
+    <div class="sh" style="margin-top:18px"><h2 class="sh-t">Impact-kart</h2><div class="sh-b">Instrumenter påvirket av aktive hendelser</div></div>
     <div class="card" id="geo-impact-map" role="region" aria-label="Impact-kart" style="overflow-x:auto"></div>`;
 }
 
@@ -126,7 +126,7 @@ function updateSignals(signals) {
     const instruments = (s.instruments || []).map((i) => {
       const arrow = i.direction === 'bull' ? '\u2191' : i.direction === 'bear' ? '\u2193' : '\u2014';
       const color = i.direction === 'bull' ? 'var(--bull)' : i.direction === 'bear' ? 'var(--bear)' : 'var(--m)';
-      return `<span style="color:${color};font-family:'DM Mono',monospace;font-size:12px;margin-right:8px">${escapeHtml(i.symbol || '')} ${arrow}</span>`;
+      return `<span class="mono" style="color:${color};font-size:12px;margin-right:8px">${escapeHtml(i.symbol || '')} ${arrow}</span>`;
     }).join('');
     const sources = (s.sources || []).map((src) =>
       `<a href="${escapeHtml(src.url || '#')}" target="_blank" rel="noopener noreferrer" style="color:var(--blue);font-size:11px;text-decoration:none;margin-right:8px">${escapeHtml(src.title || 'Kilde')}</a>`
@@ -168,7 +168,7 @@ function updateTimeline(events) {
   listEl.innerHTML = sorted.map((ev) => {
     const href = ev.url ? ` href="${escapeHtml(ev.url)}" target="_blank" rel="noopener noreferrer"` : '';
     return `<div style="padding:8px 0;border-bottom:1px solid var(--b);display:flex;align-items:center;gap:10px">
-      <div style="min-width:70px;font-size:10px;color:var(--m);font-family:'DM Mono',monospace">${escapeHtml(ev.timestamp ? new Date(ev.timestamp).toLocaleDateString('nb-NO', { day: '2-digit', month: 'short' }) : '')}</div>
+      <div class="mono" style="min-width:70px;font-size:10px;color:var(--m)">${escapeHtml(ev.timestamp ? new Date(ev.timestamp).toLocaleDateString('nb-NO', { day: '2-digit', month: 'short' }) : '')}</div>
       ${typeBadge(ev.event_type)}
       <a${href} style="flex:1;color:var(--blue);font-size:13px;text-decoration:none">${escapeHtml(ev.title || 'Uten tittel')}</a>
       <span style="font-size:10px;color:var(--m)">${escapeHtml(ev.source || '')}</span>
@@ -199,7 +199,7 @@ function updateImpactMap(signals) {
       const dir = lookup[`${t}|${i}`];
       const sym = dir === 'bull' ? '\u2191' : dir === 'bear' ? '\u2193' : '\u2014';
       const color = dir === 'bull' ? 'var(--bull)' : dir === 'bear' ? 'var(--bear)' : 'var(--m)';
-      return `<div style="text-align:center;font-family:'DM Mono',monospace;font-size:14px;color:${color}">${sym}</div>`;
+      return `<div class="mono" style="text-align:center;font-size:14px;color:${color}">${sym}</div>`;
     }).join('');
     return `<div style="font-size:11px;color:var(--t);display:flex;align-items:center">${typeBadge(t)}</div>${cells}`;
   }).join('');

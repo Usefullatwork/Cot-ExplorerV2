@@ -53,12 +53,12 @@ describe('PricesPanel', () => {
     expect(labels.some((l) => l.includes('Indekser'))).toBe(true);
   });
 
-  it('shows price in DM Mono', () => {
+  it('shows price with data-value class', () => {
     render(container);
     update({ items: [makeItem({ price: 1.08800 })] });
 
     const num = container.querySelector('.snum');
-    expect(num.style.fontFamily).toContain('DM Mono');
+    expect(num.classList.contains('data-value')).toBe(true);
     expect(num.textContent).toBe('1.08800');
   });
 

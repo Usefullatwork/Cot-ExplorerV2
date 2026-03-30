@@ -21,7 +21,7 @@ let _countdownInterval = null;
  */
 export function render(container) {
   container.innerHTML = `
-    <div class="sh"><h2 class="sh-t">Okonomisk kalender</h2><div class="sh-b">Denne uken</div></div>
+    <div class="sh"><h2 class="sh-t">Økonomisk kalender</h2><div class="sh-b">Denne uken</div></div>
     <div id="calCountdown" style="margin-bottom:14px" role="timer" aria-label="Nedtelling til neste hendelse" aria-live="polite"></div>
     <div class="sbar2" style="margin-bottom:14px" role="toolbar" aria-label="Kalenderfiltre">
       <button class="fc cal-impact-filter on" data-impact="all" aria-pressed="true" aria-label="Vis alle hendelser">Alle</button>
@@ -71,7 +71,7 @@ export function render(container) {
  */
 function formatCountdown(target) {
   const diff = target.getTime() - Date.now();
-  if (diff <= 0) return 'Na';
+  if (diff <= 0) return 'Nå';
   const hours = Math.floor(diff / 3600000);
   const mins = Math.floor((diff % 3600000) / 60000);
   const secs = Math.floor((diff % 60000) / 1000);
@@ -114,7 +114,7 @@ function updateCountdown() {
           <div style="font-size:11px;color:var(--m);margin-top:2px">${escapeHtml(next.country)} <span class="calimp ${escapeHtml(next.impact)}" style="margin-left:6px">${escapeHtml(next.impact)}</span></div>
         </div>
         <div style="margin-left:auto;text-align:right">
-          <div style="font-family:'DM Mono',monospace;font-size:22px;font-weight:600;color:var(--${impactCls})">${formatCountdown(nextDate)}</div>
+          <div class="mono" style="font-size:22px;font-weight:600;color:var(--${impactCls})">${formatCountdown(nextDate)}</div>
           <div style="font-size:10px;color:var(--m);margin-top:2px">${nextDate.toLocaleString('nb-NO', { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}</div>
         </div>
       </div>`;

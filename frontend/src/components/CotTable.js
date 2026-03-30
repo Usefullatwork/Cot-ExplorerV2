@@ -28,9 +28,9 @@ const CATS = {
 
 /** Signal info map */
 const SI = {
-  'bull-strong': { i: 'B+', t: 'Kjoeper sterkt', cls: 'bull' },
+  'bull-strong': { i: 'B+', t: 'Kjøper sterkt',  cls: 'bull' },
   'bull-mild':   { i: 'B',  t: 'Svakt bullish',  cls: 'bull' },
-  'neutral':     { i: 'N',  t: 'Noytral',        cls: 'neutral' },
+  'neutral':     { i: 'N',  t: 'Nøytral',        cls: 'neutral' },
   'bear-mild':   { i: 'S',  t: 'Svakt bearish',  cls: 'bear' },
   'bear-strong': { i: 'S+', t: 'Selger sterkt',  cls: 'bear' },
 };
@@ -109,7 +109,7 @@ function renderMarketCard(d) {
         <div style="font-size:10px;color:var(--m)">${escapeHtml(d.forklaring || '')}</div>
       </div>
       <div style="text-align:right;min-width:50px">
-        <div class="${colorClass(net)}" style="font-family:'DM Mono',monospace;font-size:12px;font-weight:600">${pctOi}%</div>
+        <div class="${colorClass(net)} data-value" style="font-size:12px;font-weight:600">${pctOi}%</div>
         <div style="font-size:9px;color:var(--m)">${net > 0 ? '+' : ''}${escapeHtml(formatNumber(net))}</div>
       </div>
       ${spark ? '<div style="min-width:60px">' + spark + '</div>' : ''}

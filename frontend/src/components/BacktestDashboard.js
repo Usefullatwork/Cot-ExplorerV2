@@ -63,7 +63,7 @@ export function update(data) {
     ];
 
     statsEl.innerHTML = metrics
-      .map((m) => `<div class="card"><div class="ct">${escapeHtml(m.name)}</div><div class="snum ${m.col}" style="font-family:'DM Mono',monospace">${m.val}</div></div>`)
+      .map((m) => `<div class="card"><div class="ct">${escapeHtml(m.name)}</div><div class="snum ${m.col} mono">${m.val}</div></div>`)
       .join('');
   }
 
@@ -76,16 +76,16 @@ export function update(data) {
       strokeWidth: 2,
     });
     const lastVal = data.equity_curve[data.equity_curve.length - 1];
-    eqEl.innerHTML = svg + `<div style="margin-top:8px;font-family:'DM Mono',monospace;font-size:14px;color:var(--${lastVal >= 0 ? 'bull' : 'bear'})">Total: ${lastVal >= 0 ? '+' : ''}${lastVal.toFixed(2)}R</div>`;
+    eqEl.innerHTML = svg + `<div class="mono" style="margin-top:8px;font-size:14px;color:var(--${lastVal >= 0 ? 'bull' : 'bear'})">Total: ${lastVal >= 0 ? '+' : ''}${lastVal.toFixed(2)}R</div>`;
   } else if (eqEl) {
-    eqEl.innerHTML = '<div style="color:var(--m);font-size:13px">Ingen backtest-data enna. Kjor backtest for a generere kurven.</div>';
+    eqEl.innerHTML = '<div style="color:var(--m);font-size:13px">Ingen backtest-data ennå. Kjør backtest for å generere kurven.</div>';
   }
 
   // ── Per-instrument breakdown ───────────────────────────
   const instEl = document.getElementById('btInstruments');
   if (instEl && data.by_instrument && data.by_instrument.length > 0) {
     const rows = data.by_instrument
-      .map((r) => `<tr><td>${escapeHtml(r.instrument)}</td><td style="text-align:right">${r.trades}</td><td style="text-align:right;color:var(--${r.win_rate >= 50 ? 'bull' : 'bear'})">${r.win_rate.toFixed(0)}%</td><td style="text-align:right;font-family:'DM Mono',monospace;color:var(--${r.avg_pnl >= 0 ? 'bull' : 'bear'})">${r.avg_pnl >= 0 ? '+' : ''}${r.avg_pnl.toFixed(2)}R</td><td style="text-align:right;font-family:'DM Mono',monospace;color:var(--${r.total_pnl >= 0 ? 'bull' : 'bear'})">${r.total_pnl >= 0 ? '+' : ''}${r.total_pnl.toFixed(2)}R</td></tr>`)
+      .map((r) => `<tr><td>${escapeHtml(r.instrument)}</td><td style="text-align:right">${r.trades}</td><td style="text-align:right;color:var(--${r.win_rate >= 50 ? 'bull' : 'bear'})">${r.win_rate.toFixed(0)}%</td><td class="data-value" style="text-align:right;color:var(--${r.avg_pnl >= 0 ? 'bull' : 'bear'})">${r.avg_pnl >= 0 ? '+' : ''}${r.avg_pnl.toFixed(2)}R</td><td class="data-value" style="text-align:right;color:var(--${r.total_pnl >= 0 ? 'bull' : 'bear'})">${r.total_pnl >= 0 ? '+' : ''}${r.total_pnl.toFixed(2)}R</td></tr>`)
       .join('');
     instEl.innerHTML = `<div class="cotw"><table class="cott" aria-label="Instrument-fordeling"><thead><tr><th>Instrument</th><th style="text-align:right">Trades</th><th style="text-align:right">Win%</th><th style="text-align:right">Snitt</th><th style="text-align:right">Total</th></tr></thead><tbody>${rows}</tbody></table></div>`;
   } else if (instEl) {

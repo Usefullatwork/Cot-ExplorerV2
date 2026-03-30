@@ -64,7 +64,7 @@ let activeFilter = 'all';
 export function render(container) {
   container.innerHTML = `
     <div id="mi-regime-badge"></div>
-    <div class="sh"><h2 class="sh-t">COMEX Lager</h2><div class="sh-b">Gull, Solv, Kobber</div></div>
+    <div class="sh"><h2 class="sh-t">COMEX Lager</h2><div class="sh-b">Gull, Sølv, Kobber</div></div>
     <div class="g3" id="mi-comex" role="group" aria-label="COMEX lager"></div>
 
     <div class="sh" style="margin-top:18px"><h2 class="sh-t">Seismiske hendelser</h2><div class="sh-b">Jordskjelv naer gruveregioner</div></div>
@@ -106,7 +106,7 @@ function updateComex(comex) {
 
   const metals = [
     { key: 'gold', label: 'Gull', color: '#FFD700' },
-    { key: 'silver', label: 'Solv', color: '#C0C0C0' },
+    { key: 'silver', label: 'Sølv', color: '#C0C0C0' },
     { key: 'copper', label: 'Kobber', color: '#B87333' },
   ];
 
@@ -156,7 +156,7 @@ function updateSeismic(seismic) {
   el.innerHTML = sorted.map((ev) => {
     const mag = ev.magnitude || 0;
     return `<div style="display:flex;align-items:center;gap:12px;padding:8px 0;border-bottom:1px solid var(--b)">
-      <div style="min-width:44px;text-align:center;font-family:'DM Mono',monospace;font-size:18px;font-weight:600;color:${magColor(mag)}">${escapeHtml(mag.toFixed(1))}</div>
+      <div class="mono" style="min-width:44px;text-align:center;font-size:18px;font-weight:600;color:${magColor(mag)}">${escapeHtml(mag.toFixed(1))}</div>
       <div style="flex:1;font-size:13px">
         <div style="color:var(--t)">${escapeHtml(ev.place || 'Ukjent sted')}</div>
         <div style="color:var(--m);font-size:11px">${escapeHtml(ev.region || '')} &middot; ${escapeHtml(ev.time ? timeAgo(ev.time) : '')}</div>

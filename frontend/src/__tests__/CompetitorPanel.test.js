@@ -71,7 +71,7 @@ describe('CompetitorPanel', () => {
     render(container);
 
     const compTable = document.getElementById('compTable');
-    expect(compTable.textContent).toContain('Ingen data enna');
+    expect(compTable.textContent).toContain('Ingen data ennå');
   });
 
   it('shows empty state when update() receives empty array', () => {
@@ -79,7 +79,7 @@ describe('CompetitorPanel', () => {
     update([]);
 
     const compTable = document.getElementById('compTable');
-    expect(compTable.textContent).toContain('Ingen data enna');
+    expect(compTable.textContent).toContain('Ingen data ennå');
   });
 
   it('renders competitor table when data is provided', () => {

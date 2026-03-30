@@ -94,7 +94,7 @@ function openRadarModal() {
         <div style="font-size:13px;font-weight:500;color:var(--${cls})">${escapeHtml(d.kryss || d.label || 'Kriterium')}</div>
         <div style="font-size:11px;color:var(--m);margin-top:2px">${desc}</div>
       </div>
-      <span style="font-family:'DM Mono',monospace;font-size:12px;color:var(--${cls});flex-shrink:0">${pass ? 'PASS' : 'FAIL'}</span>
+      <span class="mono" style="font-size:12px;color:var(--${cls});flex-shrink:0">${pass ? 'PASS' : 'FAIL'}</span>
     </div>`;
   }).join('');
 
@@ -103,7 +103,7 @@ function openRadarModal() {
 
   body.innerHTML = `
     <div style="text-align:center;margin-bottom:16px">
-      <div style="font-family:'DM Mono',monospace;font-size:36px;font-weight:700;color:${scoreColor}">${scorePct}%</div>
+      <div class="mono" style="font-size:36px;font-weight:700;color:${scoreColor}">${scorePct}%</div>
       <div style="font-size:12px;color:var(--m);margin-top:4px">${passing} av ${details.length} kriterier oppfylt</div>
       <div class="score-bar-wrap" style="margin-top:10px"><div class="score-bar"><div class="score-fill" style="width:${scorePct}%;background:${scoreColor}"></div></div></div>
     </div>

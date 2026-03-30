@@ -76,7 +76,7 @@ function changeBar(chg1d, chg5d, chg20d) {
     const arrow = val > 0 ? '\u25B2' : val < 0 ? '\u25BC' : '';
     return `<span style="color:${color}">${label}: ${arrow} ${formatPct(val)}</span>`;
   };
-  return `<div style="display:flex;gap:12px;margin-top:8px;font-size:11px;font-family:'DM Mono',monospace">${fmt('1d', chg1d)}${fmt('5d', chg5d)}${fmt('20d', chg20d)}</div>`;
+  return `<div class="mono" style="display:flex;gap:12px;margin-top:8px;font-size:11px">${fmt('1d', chg1d)}${fmt('5d', chg5d)}${fmt('20d', chg20d)}</div>`;
 }
 
 /**
@@ -100,9 +100,9 @@ export function render(container) {
             <canvas id="vixMiniChart" aria-hidden="true"></canvas>
           </div>
           <div style="margin-top:12px;font-size:12px;color:var(--m);line-height:2" role="note">
-            Under 20 - Full storrelse<br>
-            20-30 - Halv storrelse<br>
-            Over 30 - Kvart storrelse
+            Under 20 - Full størrelse<br>
+            20-30 - Halv størrelse<br>
+            Over 30 - Kvart størrelse
           </div>
         </div>
         <div class="card" style="margin-bottom:12px" role="region" aria-label="Sentiment">
@@ -115,7 +115,7 @@ export function render(container) {
         </div>
       </div>
     </div>
-    <div class="sh"><h2 class="sh-t">Makro Noekkeltall</h2><div class="sh-b">VIX, DXY, Brent, Gull</div></div>
+    <div class="sh"><h2 class="sh-t">Makro Nøkkeltall</h2><div class="sh-b">VIX, DXY, Brent, Gull</div></div>
     <div class="g2" id="macroStats" role="group" aria-label="Makro noekkeltall"></div>
     <div class="sh" style="margin-top:16px"><h2 class="sh-t">Rente &amp; Kreditt</h2><div class="sh-b">Realrenter, spreader, vekst</div></div>
     <div class="g4" id="macroRente" role="group" aria-label="Rente og kreditt indikatorer"></div>
@@ -254,12 +254,12 @@ export function update(m) {
       <div style="display:flex;gap:24px;align-items:center;margin-bottom:10px">
         <div>
           <div style="font-size:11px;color:var(--m);margin-bottom:4px">Fear & Greed</div>
-          <div style="font-family:'DM Mono',monospace;font-size:28px;font-weight:600;color:${fgColor}">${fgScore != null ? fgScore.toFixed(0) : '--'}</div>
+          <div class="mono" style="font-size:28px;font-weight:600;color:${fgColor}">${fgScore != null ? fgScore.toFixed(0) : '--'}</div>
           <div style="font-size:10px;color:${fgColor};text-transform:uppercase;font-weight:600">${fg.rating || '--'}</div>
         </div>
         <div>
           <div style="font-size:11px;color:var(--m);margin-bottom:4px">Nyhetssentiment</div>
-          <div style="font-family:'DM Mono',monospace;font-size:16px;font-weight:600;color:${newsColor}">${newsDisplay}</div>
+          <div class="mono" style="font-size:16px;font-weight:600;color:${newsColor}">${newsDisplay}</div>
           <div style="font-size:10px;color:var(--m)">Score: ${news.score != null ? news.score.toFixed(2) : '--'}</div>
         </div>
       </div>
@@ -408,7 +408,7 @@ export function update(m) {
         const col = item.colorFn(item.data);
         title.textContent = item.name + ' \u2014 Detaljer';
         body.innerHTML = `
-          <div style="margin-bottom:8px"><strong>Napris:</strong> ${price ? price.toFixed(price > 100 ? 2 : 5) : '-'}</div>
+          <div style="margin-bottom:8px"><strong>Nåpris:</strong> ${price ? price.toFixed(price > 100 ? 2 : 5) : '-'}</div>
           <div style="margin-bottom:8px"><strong>1-dags endring:</strong> ${trendArrow(item.data.chg1d)}</div>
           <div style="margin-bottom:8px"><strong>5-dagers endring:</strong> ${trendArrow(item.data.chg5d)}</div>
           <div style="margin-bottom:8px"><strong>20-dagers endring:</strong> ${trendArrow(item.data.chg20d)}</div>
@@ -476,7 +476,7 @@ export function update(m) {
         { name: 'VIX 3M', val: vt.vix_3m.toFixed(1), col: vt.vix_3m > 25 ? 'bear' : vt.vix_3m > 20 ? 'warn' : 'bull' },
         { name: 'Regime', val: escapeHtml(regimeLabel), col: regimeColor },
       ]
-        .map((x) => `<div class="card"><div class="ct">${escapeHtml(x.name)}</div><div class="snum" style="font-size:20px;font-family:'DM Mono',monospace">${x.val}</div><div class="slabel" style="margin-top:4px;color:var(--${x.col})">${x.col.toUpperCase()}</div></div>`)
+        .map((x) => `<div class="card"><div class="ct">${escapeHtml(x.name)}</div><div class="snum mono" style="font-size:20px">${x.val}</div><div class="slabel" style="margin-top:4px;color:var(--${x.col})">${x.col.toUpperCase()}</div></div>`)
         .join('');
 
       // Render VIX term structure chart
@@ -520,7 +520,7 @@ export function update(m) {
       const adrEl = document.getElementById('adrTable');
       if (!adrEl || !data || !data.items || !data.items.length) return;
       const rows = data.items
-        .map((r) => `<tr><td>${escapeHtml(r.instrument)}</td><td style="font-family:'DM Mono',monospace;text-align:right">${formatPrice(r.current_price)}</td><td style="font-family:'DM Mono',monospace;text-align:right">${r.adr > 10 ? r.adr.toFixed(1) : r.adr.toFixed(5)}</td><td style="font-family:'DM Mono',monospace;text-align:right;color:var(--${r.adr_pct > 2 ? 'bear' : r.adr_pct > 1 ? 'warn' : 'bull'})">${r.adr_pct.toFixed(2)}%</td><td style="text-align:right;color:var(--m)">${r.days_used}d</td></tr>`)
+        .map((r) => `<tr><td>${escapeHtml(r.instrument)}</td><td class="data-value" style="text-align:right">${formatPrice(r.current_price)}</td><td class="data-value" style="text-align:right">${r.adr > 10 ? r.adr.toFixed(1) : r.adr.toFixed(5)}</td><td class="data-value" style="text-align:right;color:var(--${r.adr_pct > 2 ? 'bear' : r.adr_pct > 1 ? 'warn' : 'bull'})">${r.adr_pct.toFixed(2)}%</td><td style="text-align:right;color:var(--m)">${r.days_used}d</td></tr>`)
         .join('');
       adrEl.innerHTML = `<div class="cotw"><table class="cott" aria-label="ADR tabell"><thead><tr><th scope="col">Instrument</th><th scope="col" style="text-align:right">Pris</th><th scope="col" style="text-align:right">ADR</th><th scope="col" style="text-align:right">ADR%</th><th scope="col" style="text-align:right">Dager</th></tr></thead><tbody>${rows}</tbody></table></div>`;
     })

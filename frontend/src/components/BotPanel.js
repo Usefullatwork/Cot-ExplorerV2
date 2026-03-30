@@ -36,11 +36,8 @@ function modeBadge(mode) {
   return `<span class="tbias ${c[mode] || 'neutral'}">${escapeHtml((mode || 'paper').toUpperCase())}</span>`;
 }
 
-const inputStyle = 'width:100%;padding:7px 10px;background:var(--s2);border:1px solid var(--b);color:var(--t);border-radius:6px;font-size:13px';
-const labelStyle = 'font-size:10px;font-weight:600;text-transform:uppercase;color:var(--m);display:block;margin-bottom:4px';
-
 function cfgField(label, id, html) {
-  return `<div><label style="${labelStyle}">${label}</label>${html}</div>`;
+  return `<div><label class="bot-label">${label}</label>${html}</div>`;
 }
 
 /* ── Render (skeleton) ───────────────────────────────────── */
@@ -55,7 +52,7 @@ export function render(container) {
     <div class="sh"><h2 class="sh-t">Aktive Posisjoner</h2><div class="sh-b" id="posCount">0</div></div>
     <div class="cotw" style="margin-bottom:18px;overflow-x:auto">
       <table class="cott"><thead><tr>
-        <th>Instrument</th><th>Retning</th><th>Inngang</th><th>Napris</th>
+        <th>Instrument</th><th>Retning</th><th>Inngang</th><th>Nåpris</th>
         <th class="tdr">P&L (pips)</th><th class="tdr">P&L ($)</th>
         <th class="tdr">Lots</th><th class="tdr">Candles</th><th>T1</th><th>Status</th>
       </tr></thead><tbody id="positionsBody"><tr><td colspan="10" style="color:var(--m);text-align:center">Ingen posisjoner</td></tr></tbody></table>
@@ -72,7 +69,7 @@ export function render(container) {
       <div class="card"><div class="ct">Dagens P&L</div><div class="snum" id="pnlToday">-</div></div>
       <div class="card"><div class="ct">Antall trades</div><div class="snum" id="pnlTrades">-</div></div>
       <div class="card"><div class="ct">Win Rate</div><div class="snum" id="pnlWinRate">-</div></div>
-      <div class="card"><div class="ct">Beste / Darligste</div><div id="pnlBestWorst" style="font-size:13px;color:var(--m);margin-top:8px">-</div></div>
+      <div class="card"><div class="ct">Beste / Dårligste</div><div id="pnlBestWorst" style="font-size:13px;color:var(--m);margin-top:8px">-</div></div>
     </div>
     <div class="card" style="margin-bottom:18px" role="region" aria-label="P&L-kurve">
       <div class="ct">Equity-kurve</div>
@@ -95,27 +92,27 @@ export function render(container) {
     <div class="sh"><h2 class="sh-t">Konfigurasjon</h2></div>
     <div class="card" style="margin-bottom:18px" id="configCard" role="region" aria-label="Bot-konfigurasjon">
       <div class="g2" id="configBody" style="gap:12px">
-        ${cfgField('Bot aktiv', 'cfgActive', `<select id="cfgActive" style="${inputStyle}"><option value="true">Pa</option><option value="false">Av</option></select>`)}
-        ${cfgField('Megler-modus', 'cfgMode', `<select id="cfgMode" style="${inputStyle}"><option value="paper">Paper</option><option value="demo">Demo</option><option value="live">Live</option></select>`)}
-        ${cfgField('Maks posisjoner', 'cfgMaxPos', `<input id="cfgMaxPos" type="number" min="1" max="20" value="5" style="${inputStyle}">`)}
-        ${cfgField('Risiko %', 'cfgRisk', `<input id="cfgRisk" type="number" min="0.1" max="5" step="0.1" value="1.0" style="${inputStyle}">`)}
-        ${cfgField('Min. grade', 'cfgMinGrade', `<select id="cfgMinGrade" style="${inputStyle}"><option value="A+">A+</option><option value="A">A</option><option value="B" selected>B</option><option value="C">C</option></select>`)}
-        ${cfgField('Min. score', 'cfgMinScore', `<input id="cfgMinScore" type="number" min="1" max="8" step="1" value="5" style="${inputStyle}">`)}
+        ${cfgField('Bot aktiv', 'cfgActive', `<select id="cfgActive" class="bot-input"><option value="true">Pa</option><option value="false">Av</option></select>`)}
+        ${cfgField('Megler-modus', 'cfgMode', `<select id="cfgMode" class="bot-input"><option value="paper">Paper</option><option value="demo">Demo</option><option value="live">Live</option></select>`)}
+        ${cfgField('Maks posisjoner', 'cfgMaxPos', `<input id="cfgMaxPos" type="number" min="1" max="20" value="5" class="bot-input">`)}
+        ${cfgField('Risiko %', 'cfgRisk', `<input id="cfgRisk" type="number" min="0.1" max="5" step="0.1" value="1.0" class="bot-input">`)}
+        ${cfgField('Min. grade', 'cfgMinGrade', `<select id="cfgMinGrade" class="bot-input"><option value="A+">A+</option><option value="A">A</option><option value="B" selected>B</option><option value="C">C</option></select>`)}
+        ${cfgField('Min. score', 'cfgMinScore', `<input id="cfgMinScore" type="number" min="1" max="8" step="1" value="5" class="bot-input">`)}
       </div>
       <div style="margin-top:12px;display:flex;gap:8px;align-items:center">
         <button id="cfgSaveBtn" class="fc" style="background:var(--bbg);border-color:var(--bull);color:var(--bull);padding:8px 20px;font-size:12px;font-weight:600">Lagre</button>
         <span id="cfgSaveMsg" style="font-size:11px;color:var(--m)" aria-live="polite"></span>
       </div>
     </div>
-    <div class="sh" style="margin-top:16px"><h2 class="sh-t">Posisjonskalkulator</h2><div class="sh-b">Beregn lot-storrelse</div></div>
+    <div class="sh" style="margin-top:16px"><h2 class="sh-t">Posisjonskalkulator</h2><div class="sh-b">Beregn lot-størrelse</div></div>
     <div class="card" style="margin-bottom:18px" id="posCalcCard" role="region" aria-label="Posisjonskalkulator">
       <div class="g2" style="gap:12px">
-        ${cfgField('Balanse (USD)', 'calcBalance', `<input id="calcBalance" type="number" min="100" value="10000" style="${inputStyle}">`)}
-        ${cfgField('Risiko %', 'calcRisk', `<input id="calcRisk" type="number" min="0.1" max="10" step="0.1" value="1.0" style="${inputStyle}">`)}
-        ${cfgField('Instrument', 'calcInst', `<select id="calcInst" style="${inputStyle}"><option value="EURUSD">EUR/USD</option><option value="GBPUSD">GBP/USD</option><option value="USDJPY">USD/JPY</option><option value="AUDUSD">AUD/USD</option><option value="Gold">Gull</option><option value="Brent">Brent</option><option value="SPX">S&P 500</option><option value="NAS100">Nasdaq</option></select>`)}
-        ${cfgField('SL distanse (pips)', 'calcSL', `<input id="calcSL" type="number" min="1" value="30" style="${inputStyle}">`)}
-        ${cfgField('VIX', 'calcVix', `<input id="calcVix" type="number" min="0" step="0.1" value="15.0" style="${inputStyle}">`)}
-        ${cfgField('Grade', 'calcGrade', `<select id="calcGrade" style="${inputStyle}"><option value="A+">A+</option><option value="A" selected>A</option><option value="B">B</option><option value="C">C</option></select>`)}
+        ${cfgField('Balanse (USD)', 'calcBalance', `<input id="calcBalance" type="number" min="100" value="10000" class="bot-input">`)}
+        ${cfgField('Risiko %', 'calcRisk', `<input id="calcRisk" type="number" min="0.1" max="10" step="0.1" value="1.0" class="bot-input">`)}
+        ${cfgField('Instrument', 'calcInst', `<select id="calcInst" class="bot-input"><option value="EURUSD">EUR/USD</option><option value="GBPUSD">GBP/USD</option><option value="USDJPY">USD/JPY</option><option value="AUDUSD">AUD/USD</option><option value="Gold">Gull</option><option value="Brent">Brent</option><option value="SPX">S&P 500</option><option value="NAS100">Nasdaq</option></select>`)}
+        ${cfgField('SL distanse (pips)', 'calcSL', `<input id="calcSL" type="number" min="1" value="30" class="bot-input">`)}
+        ${cfgField('VIX', 'calcVix', `<input id="calcVix" type="number" min="0" step="0.1" value="15.0" class="bot-input">`)}
+        ${cfgField('Grade', 'calcGrade', `<select id="calcGrade" class="bot-input"><option value="A+">A+</option><option value="A" selected>A</option><option value="B">B</option><option value="C">C</option></select>`)}
       </div>
       <div style="margin-top:12px;display:flex;gap:8px;align-items:center">
         <button id="calcSizeBtn" class="fc" style="background:var(--bbg);border-color:var(--bull);color:var(--bull);padding:8px 20px;font-size:12px;font-weight:600">Beregn</button>
@@ -362,10 +359,10 @@ function wirePositionCalc() {
       resultEl.style.display = 'block';
       resultEl.innerHTML = `
         <div class="g4" style="gap:8px;margin-top:8px">
-          <div class="card"><div class="ct">Lot-storrelse</div><div class="snum bull" style="font-family:'DM Mono',monospace">${data.lot_size.toFixed(2)}</div></div>
-          <div class="card"><div class="ct">Maks tap</div><div class="snum bear" style="font-family:'DM Mono',monospace">$${data.max_loss_usd.toFixed(0)}</div></div>
-          <div class="card"><div class="ct">VIX Regime</div><div class="snum warn" style="font-family:'DM Mono',monospace;font-size:14px">${escapeHtml(data.vix_regime)}</div></div>
-          <div class="card"><div class="ct">Tier-multiplikator</div><div class="snum" style="font-family:'DM Mono',monospace">${data.tier_multiplier.toFixed(1)}x</div></div>
+          <div class="card"><div class="ct">Lot-størrelse</div><div class="snum bull mono">${data.lot_size.toFixed(2)}</div></div>
+          <div class="card"><div class="ct">Maks tap</div><div class="snum bear mono">$${data.max_loss_usd.toFixed(0)}</div></div>
+          <div class="card"><div class="ct">VIX Regime</div><div class="snum warn mono" style="font-size:14px">${escapeHtml(data.vix_regime)}</div></div>
+          <div class="card"><div class="ct">Tier-multiplikator</div><div class="snum mono">${data.tier_multiplier.toFixed(1)}x</div></div>
         </div>`;
     } catch (e) {
       resultEl.style.display = 'block';

@@ -63,8 +63,8 @@ describe('MetalsIntelPanel', () => {
 
     // Gold card should contain "Gull"
     expect(cards[0].textContent).toContain('Gull');
-    // Silver card should contain "Solv"
-    expect(cards[1].textContent).toContain('Solv');
+    // Silver card should contain "Sølv"
+    expect(cards[1].textContent).toContain('Sølv');
     // Copper card should contain "Kobber"
     expect(cards[2].textContent).toContain('Kobber');
   });

@@ -37,7 +37,7 @@ const TICKER_ITEMS = [
   ['AUD/USD', 'AUDUSD'],
   ['Brent',   'Brent'],
   ['Gull',    'Gold'],
-  ['Solv',    'Silver'],
+  ['Sølv',    'Silver'],
   ['WTI',     'WTI'],
   ['CHF',     'USDCHF'],
   ['NOK',     'USDNOK'],
@@ -56,7 +56,7 @@ export function render(container) {
       <div class="topbar-r">
         <span class="vb" id="vbadge" role="status" aria-live="polite" aria-label="VIX verdi">VIX -</span>
         <span class="upd" id="upd" role="status" aria-live="polite">-</span>
-        <button class="hamburger" id="hamburgerBtn" aria-label="Apne navigasjonsmeny" aria-expanded="false" aria-controls="main-nav">
+        <button class="hamburger" id="hamburgerBtn" aria-label="Åpne navigasjonsmeny" aria-expanded="false" aria-controls="main-nav">
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6h18v2H3V6zm0 5h18v2H3v-2zm0 5h18v2H3v-2z"/></svg>
         </button>
       </div>
@@ -76,7 +76,7 @@ export function render(container) {
     hamburger.addEventListener('click', () => {
       const isOpen = nav.classList.toggle('mobile-open');
       hamburger.setAttribute('aria-expanded', String(isOpen));
-      hamburger.setAttribute('aria-label', isOpen ? 'Lukk navigasjonsmeny' : 'Apne navigasjonsmeny');
+      hamburger.setAttribute('aria-label', isOpen ? 'Lukk navigasjonsmeny' : 'Åpne navigasjonsmeny');
     });
 
     // Close mobile nav when a tab is clicked
@@ -84,7 +84,7 @@ export function render(container) {
       if (e.target.closest('.nt')) {
         nav.classList.remove('mobile-open');
         hamburger.setAttribute('aria-expanded', 'false');
-        hamburger.setAttribute('aria-label', 'Apne navigasjonsmeny');
+        hamburger.setAttribute('aria-label', 'Åpne navigasjonsmeny');
       }
     });
 
