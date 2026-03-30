@@ -47,7 +47,7 @@ export function render(container) {
   container.innerHTML = `
     <div class="card" id="botStatusBanner" role="region" aria-label="Bot-status" style="margin-bottom:12px">
       <div class="ct">Bot-status</div>
-      <div id="botStatusBody" style="font-size:13px;color:var(--m);line-height:1.8" aria-live="polite">Laster status...</div>
+      <div id="botStatusBody" style="font-size:13px;color:var(--m);line-height:1.8" aria-live="polite"><div class="loading"><div class="spinner"></div>Laster status\u2026</div></div>
     </div>
     <div class="sh"><h2 class="sh-t">Aktive Posisjoner</h2><div class="sh-b" id="posCount">0</div></div>
     <div class="cotw" style="margin-bottom:18px;overflow-x:auto">

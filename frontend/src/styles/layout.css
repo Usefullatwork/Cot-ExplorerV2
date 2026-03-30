@@ -10,6 +10,7 @@
 }
 .panel.active {
   display: block;
+  animation: fadeSlideIn 0.15s ease;
 }
 
 /* Grid utilities */
