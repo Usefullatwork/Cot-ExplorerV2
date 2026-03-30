@@ -11,10 +11,17 @@ DANGEROUS_PATTERNS = [
 
 
 def sanitize_string(value: str, max_length: int = 1000) -> str:
-    """Sanitize a string input by truncating and stripping dangerous chars."""
-    value = value.strip()[:max_length]
+    """Validate a string input — rejects if dangerous patterns are detected.
+
+    Raises ValueError instead of silently stripping, so attacks are visible
+    in logs and callers can return proper 400 responses.
+    """
+    value = value.strip()
+    if len(value) > max_length:
+        raise ValueError(f"Input exceeds maximum length of {max_length}")
     for pattern in DANGEROUS_PATTERNS:
-        value = pattern.sub("", value)
+        if pattern.search(value):
+            raise ValueError("Input contains potentially dangerous characters")
     return value
 
 

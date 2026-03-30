@@ -5,7 +5,7 @@
  * then call update() when state.instruments or state.health changes.
  */
 
-import { formatPct } from '../utils.js';
+import { formatPct, escapeHtml } from '../utils.js';
 
 // ── Tab definitions ─────────────────────────────────────────
 const TABS = [
@@ -131,8 +131,8 @@ export function updateTickers(instruments) {
     const up = d.chg1d >= 0;
     return `<div class="ti">
       <span class="tn">${label}</span>
-      <span>${d.price}</span>
-      <span class="tc ${up ? 'up' : 'dn'}">${formatPct(d.chg1d)}</span>
+      <span>${escapeHtml(String(d.price))}</span>
+      <span class="tc ${up ? 'up' : 'dn'}">${escapeHtml(formatPct(d.chg1d))}</span>
     </div>`;
   }).join('');
 }

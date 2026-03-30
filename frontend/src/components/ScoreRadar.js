@@ -7,6 +7,7 @@
  */
 
 import { createRadarChart } from '../charts/radarChart.js';
+import { escapeHtml } from '../utils.js';
 
 let chartInstance = null;
 /** @type {Object|null} Cached instrument data for modal */
@@ -86,11 +87,11 @@ function openRadarModal() {
     const pass = d.verdi;
     const icon = pass ? '\u2705' : '\u274C';
     const cls = pass ? 'bull' : 'bear';
-    const desc = d.beskrivelse || d.description || d.kryss || '';
+    const desc = escapeHtml(d.beskrivelse || d.description || d.kryss || '');
     return `<div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--b)">
       <span style="font-size:16px;flex-shrink:0">${icon}</span>
       <div style="flex:1">
-        <div style="font-size:13px;font-weight:500;color:var(--${cls})">${d.kryss || d.label || 'Kriterium'}</div>
+        <div style="font-size:13px;font-weight:500;color:var(--${cls})">${escapeHtml(d.kryss || d.label || 'Kriterium')}</div>
         <div style="font-size:11px;color:var(--m);margin-top:2px">${desc}</div>
       </div>
       <span style="font-family:'DM Mono',monospace;font-size:12px;color:var(--${cls});flex-shrink:0">${pass ? 'PASS' : 'FAIL'}</span>
@@ -168,7 +169,7 @@ export function update(instrument) {
   if (breakdownEl) {
     breakdownEl.innerHTML = `<div class="score-items">${details.map((d) => {
       const pass = d.verdi;
-      return `<div class="score-item" title="${d.beskrivelse || d.description || d.kryss || ''}"><div class="score-dot" style="background:${pass ? 'var(--bull)' : 'var(--b2)'}"></div><span style="color:${pass ? 'var(--bull)' : 'var(--m)'}">${d.kryss || d.label || ''}</span></div>`;
+      return `<div class="score-item" title="${escapeHtml(d.beskrivelse || d.description || d.kryss || '')}"><div class="score-dot" style="background:${pass ? 'var(--bull)' : 'var(--b2)'}"></div><span style="color:${pass ? 'var(--bull)' : 'var(--m)'}">${escapeHtml(d.kryss || d.label || '')}</span></div>`;
     }).join('')}</div>`;
   }
 }

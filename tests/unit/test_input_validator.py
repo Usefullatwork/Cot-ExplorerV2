@@ -22,38 +22,43 @@ class TestSanitizeString:
     def test_strips_leading_trailing_whitespace(self):
         assert sanitize_string("  hello  ") == "hello"
 
-    def test_truncates_to_max_length(self):
+    def test_rejects_over_max_length(self):
         long = "a" * 2000
-        result = sanitize_string(long, max_length=100)
-        assert len(result) == 100
+        with pytest.raises(ValueError, match="exceeds maximum length"):
+            sanitize_string(long, max_length=100)
 
-    def test_default_max_length_is_1000(self):
+    def test_rejects_over_default_max_length(self):
         long = "x" * 1500
-        assert len(sanitize_string(long)) == 1000
+        with pytest.raises(ValueError, match="exceeds maximum length"):
+            sanitize_string(long)
 
-    def test_sql_injection_semicolon_removed(self):
-        assert ";" not in sanitize_string("DROP TABLE; --")
+    def test_rejects_sql_injection_semicolon(self):
+        with pytest.raises(ValueError, match="dangerous characters"):
+            sanitize_string("DROP TABLE; --")
 
-    def test_sql_injection_single_quote_removed(self):
-        assert "'" not in sanitize_string("' OR 1=1 --")
+    def test_rejects_sql_injection_single_quote(self):
+        with pytest.raises(ValueError, match="dangerous characters"):
+            sanitize_string("' OR 1=1 --")
 
-    def test_sql_injection_double_quote_removed(self):
-        assert '"' not in sanitize_string('" OR ""="')
+    def test_rejects_sql_injection_double_quote(self):
+        with pytest.raises(ValueError, match="dangerous characters"):
+            sanitize_string('" OR ""="')
 
-    def test_sql_injection_backslash_removed(self):
-        assert "\\" not in sanitize_string("path\\to\\file")
+    def test_rejects_sql_injection_backslash(self):
+        with pytest.raises(ValueError, match="dangerous characters"):
+            sanitize_string("path\\to\\file")
 
-    def test_xss_script_tag_removed(self):
-        result = sanitize_string("<script>alert('xss')</script>")
-        assert "<script" not in result.lower()
+    def test_rejects_xss_script_tag(self):
+        with pytest.raises(ValueError, match="dangerous characters"):
+            sanitize_string("<script>alert('xss')</script>")
 
-    def test_xss_mixed_case_script_removed(self):
-        result = sanitize_string("<ScRiPt>alert(1)</ScRiPt>")
-        assert "<script" not in result.lower()
+    def test_rejects_xss_mixed_case_script(self):
+        with pytest.raises(ValueError, match="dangerous characters"):
+            sanitize_string("<ScRiPt>alert(1)</ScRiPt>")
 
-    def test_path_traversal_removed(self):
-        result = sanitize_string("../../etc/passwd")
-        assert "../" not in result
+    def test_rejects_path_traversal(self):
+        with pytest.raises(ValueError, match="dangerous characters"):
+            sanitize_string("../../etc/passwd")
 
     def test_empty_string(self):
         assert sanitize_string("") == ""
