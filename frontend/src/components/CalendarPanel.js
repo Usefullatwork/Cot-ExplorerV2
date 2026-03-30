@@ -131,7 +131,7 @@ function updateCountdown() {
  */
 function renderEvents(events) {
   if (!events || !events.length) {
-    return '<div style="color:var(--m);font-size:13px;padding:10px 0">Ingen</div>';
+    return '<div class="empty-state" style="padding:24px 12px"><div class="empty-state-icon">\uD83D\uDCC5</div><div class="empty-state-title">Ingen hendelser</div><div class="empty-state-text">Ingen økonomiske hendelser i denne kategorien. Kjør <code>python fetch_calendar.py</code> for å oppdatere kalenderen.</div></div>';
   }
 
   return events

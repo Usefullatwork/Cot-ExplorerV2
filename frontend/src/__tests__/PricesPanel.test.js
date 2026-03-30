@@ -92,6 +92,6 @@ describe('PricesPanel', () => {
     update({ items: [] });
 
     const content = document.getElementById('pricesContent');
-    expect(content.innerHTML).toBe('');
+    expect(content.textContent).toContain('Ingen prisdata');
   });
 });

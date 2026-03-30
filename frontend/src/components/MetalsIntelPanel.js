@@ -102,7 +102,7 @@ export async function refreshAll() {
 
 function updateComex(comex) {
   const el = document.getElementById('mi-comex');
-  if (!el || !comex) { if (el) el.innerHTML = '<div class="card" style="color:var(--m)">Ingen COMEX-data</div>'; return; }
+  if (!el || !comex) { if (el) el.innerHTML = '<div class="card"><div class="empty-state" style="padding:20px 12px"><div class="empty-state-icon">\u26CF\uFE0F</div><div class="empty-state-title">Ingen COMEX-data</div><div class="empty-state-text">COMEX lagerdata hentes fra CME. Sjekk API-tilkobling eller kjør en manuell oppdatering.</div></div></div>'; return; }
 
   const metals = [
     { key: 'gold', label: 'Gull', color: '#FFD700' },

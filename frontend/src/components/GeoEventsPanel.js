@@ -86,7 +86,7 @@ export async function refreshAll() {
 function updateRegime(regime) {
   const el = document.getElementById('geo-regime-banner');
   if (!el) return;
-  if (!regime) { el.innerHTML = '<div class="card" style="color:var(--m)">Ingen regime-data</div>'; return; }
+  if (!regime) { el.innerHTML = '<div class="card"><div class="empty-state" style="padding:20px 12px"><div class="empty-state-icon">\uD83C\uDF10</div><div class="empty-state-title">Ingen regime-data</div><div class="empty-state-text">Markedsregimet beregnes automatisk fra VIX, geopolitiske hendelser og energipriser.</div></div></div>'; return; }
   const r = REGIME_COLORS[regime.name] || REGIME_COLORS.NORMAL;
   el.innerHTML = `<div class="card" style="border-left:4px solid ${r.bg};padding:14px 18px">
     <div style="font-size:16px;font-weight:700;color:${r.bg}">${r.icon} ${escapeHtml(r.label)} REGIME</div>
@@ -118,7 +118,7 @@ function updateSignals(signals) {
   const el = document.getElementById('geo-signals');
   if (!el) return;
   if (!Array.isArray(signals) || signals.length === 0) {
-    el.innerHTML = '<div class="card" style="color:var(--m)">Ingen aktive geo-signaler</div>';
+    el.innerHTML = '<div class="card"><div class="empty-state" style="padding:20px 12px"><div class="empty-state-icon">\uD83D\uDEE1\uFE0F</div><div class="empty-state-title">Ingen aktive geo-signaler</div><div class="empty-state-text">Geopolitiske signaler genereres fra nyhetskilder, seismiske data og energiinfrastruktur.</div></div></div>';
     return;
   }
   const sorted = [...signals].sort((a, b) => (b.confidence || 0) - (a.confidence || 0));

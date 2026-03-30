@@ -37,7 +37,11 @@ export function render(container) {
  */
 export function update(data) {
   const el = document.getElementById('pricesContent');
-  if (!el || !data || !data.items) return;
+  if (!el) return;
+  if (!data || !data.items || !data.items.length) {
+    el.innerHTML = `<div class="empty-state"><div class="empty-state-icon">\uD83D\uDCB1</div><div class="empty-state-title">Ingen prisdata tilgjengelig</div><div class="empty-state-text">Kjør <code>python fetch_prices.py</code> for å hente oppdaterte priser for indekser, valuta og råvarer.</div></div>`;
+    return;
+  }
 
   // Group items
   const groups = {};
