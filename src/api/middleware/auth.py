@@ -27,7 +27,7 @@ class APIKeyMiddleware(BaseHTTPMiddleware):
         if not api_key:
             global _warned_public_mode
             if not _warned_public_mode:
-                logger.warning("SCALP_API_KEY not set — API running in PUBLIC mode (no authentication)")
+                logger.warning("SCALP_API_KEY not set — API running in PUBLIC mode. Set SCALP_API_KEY in production.")
                 _warned_public_mode = True
             # Public mode — no authentication required
             return await call_next(request)

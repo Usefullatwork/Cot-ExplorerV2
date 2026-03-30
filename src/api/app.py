@@ -8,12 +8,29 @@ from pathlib import Path
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
+from starlette.middleware.base import BaseHTTPMiddleware
 
 from src.api.middleware.auth import APIKeyMiddleware
 from src.api.middleware.rate_limit import RateLimitMiddleware
 from src.api.routes import backtests, correlations, cot, crypto, geointel, health, instruments, macro, prices, signal_log, signals, trading, webhook
 
 CORS_ORIGINS = os.environ.get("CORS_ORIGINS", "http://localhost:3000").split(",")
+
+
+class CSPMiddleware(BaseHTTPMiddleware):
+    """Add Content-Security-Policy headers to all responses."""
+
+    async def dispatch(self, request, call_next):
+        response = await call_next(request)
+        response.headers["Content-Security-Policy"] = (
+            "default-src 'self'; "
+            "script-src 'self'; "
+            "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; "
+            "font-src https://fonts.gstatic.com; "
+            "img-src 'self' data: https://*.basemaps.cartocdn.com; "
+            "connect-src 'self'"
+        )
+        return response
 
 
 def create_app() -> FastAPI:
@@ -29,8 +46,8 @@ def create_app() -> FastAPI:
         CORSMiddleware,
         allow_origins=CORS_ORIGINS,
         allow_credentials=True,
-        allow_methods=["*"],
-        allow_headers=["*"],
+        allow_methods=["GET", "POST"],
+        allow_headers=["Content-Type", "X-API-Key"],
     )
 
     # Per-IP rate limiting
@@ -38,6 +55,9 @@ def create_app() -> FastAPI:
 
     # API key authentication middleware
     app.add_middleware(APIKeyMiddleware)
+
+    # Content Security Policy headers
+    app.add_middleware(CSPMiddleware)
 
     # Register routers
     app.include_router(health.router)
