@@ -1,5 +1,40 @@
 /* ── Utility classes, badges, spinners, responsive ────────── */
 
+/* Typography utilities */
+.mono { font-family: 'DM Mono', monospace; }
+.data-value {
+  font-family: 'DM Mono', monospace;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Form input utilities (extracted from BotPanel inline styles) */
+.bot-input {
+  width: 100%;
+  padding: 7px 10px;
+  background: var(--s2);
+  border: 1px solid var(--b);
+  color: var(--t);
+  border-radius: 6px;
+  font-size: 13px;
+}
+
+.bot-label {
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  color: var(--m);
+  display: block;
+  margin-bottom: 4px;
+}
+
+/* Analytics grid (extracted from SignalLogPanel) */
+.sl-analytics-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
 /* Color utilities */
 .bull    { color: var(--bull); }
 .bear    { color: var(--bear); }

@@ -22,4 +22,31 @@
   /* Focus ring for accessibility */
   --focus: #58a6ff;
   --focus-ring: 0 0 0 2px var(--bg), 0 0 0 4px var(--focus);
+
+  /* Spacing scale */
+  --sp-xs: 4px;
+  --sp-sm: 8px;
+  --sp-md: 12px;
+  --sp-lg: 16px;
+  --sp-xl: 24px;
+  --sp-2xl: 32px;
+
+  /* Font sizes */
+  --fs-xs: 9px;
+  --fs-sm: 10px;
+  --fs-md: 13px;
+  --fs-base: 14px;
+  --fs-lg: 16px;
+  --fs-xl: 17px;
+  --fs-2xl: 26px;
+
+  /* Border radius */
+  --radius-sm: 4px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --radius-pill: 20px;
+
+  /* Transitions */
+  --ease: 0.15s ease;
+  --ease-slow: 0.3s ease;
 }
