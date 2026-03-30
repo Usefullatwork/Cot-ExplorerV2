@@ -24,7 +24,7 @@ export function render(container) {
     <div id="btStats" class="g4" role="group" aria-label="Ytelsesstatistikk"></div>
     <div class="sh" style="margin-top:16px"><h2 class="sh-t">Egenkapitalkurve</h2><div class="sh-b">Kumulativ PnL (R:R)</div></div>
     <div id="btEquity" style="text-align:center;padding:16px 0" role="img" aria-label="Egenkapitalkurve"></div>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:16px">
+    <div class="g22" style="margin-top:16px">
       <div>
         <div class="sh"><h2 class="sh-t">Per Instrument</h2></div>
         <div id="btInstruments" role="region" aria-label="Instrument-fordeling"></div>
@@ -63,7 +63,7 @@ export function update(data) {
     ];
 
     statsEl.innerHTML = metrics
-      .map((m) => `<div class="card"><div class="ct">${escapeHtml(m.name)}</div><div class="snum ${m.col} mono">${m.val}</div></div>`)
+      .map((m) => `<div class="card card-stat"><div class="ct">${escapeHtml(m.name)}</div><div class="snum ${m.col} mono">${m.val}</div></div>`)
       .join('');
   }
 
@@ -78,7 +78,7 @@ export function update(data) {
     const lastVal = data.equity_curve[data.equity_curve.length - 1];
     eqEl.innerHTML = svg + `<div class="mono" style="margin-top:8px;font-size:14px;color:var(--${lastVal >= 0 ? 'bull' : 'bear'})">Total: ${lastVal >= 0 ? '+' : ''}${lastVal.toFixed(2)}R</div>`;
   } else if (eqEl) {
-    eqEl.innerHTML = '<div style="color:var(--m);font-size:13px">Ingen backtest-data ennå. Kjør backtest for å generere kurven.</div>';
+    eqEl.innerHTML = '<div class="empty-state" style="padding:24px 12px"><div class="empty-state-icon">\uD83D\uDCC8</div><div class="empty-state-title">Ingen backtest-data ennå</div><div class="empty-state-text">Kjør backtest for å generere egenkapitalkurven. Strategier finnes i <code>src/trading/backtesting/strategies/</code>.</div></div>';
   }
 
   // ── Per-instrument breakdown ───────────────────────────

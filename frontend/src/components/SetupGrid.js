@@ -92,7 +92,7 @@ function renderGrid(arr) {
     gridEl.innerHTML = `<div class="empty-state">
       <div class="empty-state-icon">${isFiltered ? '\uD83D\uDD0D' : '\uD83D\uDCCA'}</div>
       <div class="empty-state-title">${isFiltered ? 'Ingen treff' : 'Ingen trading setups'}</div>
-      <div class="empty-state-text">${isFiltered ? 'Prov a endre filter.' : 'Kjor <code>fetch_all.py</code> for a hente ferske data fra CFTC og beregne setups.'}</div>
+      <div class="empty-state-text">${isFiltered ? 'Prøv å endre filter for å se flere setups.' : 'Kjør <code>python fetch_all.py</code> for å hente ferske data fra CFTC og beregne setups.'}</div>
     </div>`;
     return;
   }
@@ -133,10 +133,10 @@ export function update(data) {
   const statsEl = document.getElementById('ideStats');
   if (statsEl) {
     statsEl.innerHTML =
-      '<div class="card" role="status" aria-label="A+ setups: ' + aplus + '"><div class="ct">A+ Setups</div><div class="snum bull">' + aplus + '</div><div class="slabel">Score 7-8/8</div></div>' +
-      '<div class="card" role="status" aria-label="A setups: ' + agrade + '"><div class="ct">A Setups</div><div class="snum bull">' + agrade + '</div><div class="slabel">Score 6/8</div></div>' +
-      '<div class="card" role="status" aria-label="MAKRO setups: ' + makro + '"><div class="ct">MAKRO</div><div class="snum bull">' + makro + '</div><div class="slabel">COT + HTF</div></div>' +
-      '<div class="card" role="status" aria-label="Binar risiko: ' + risk + '"><div class="ct">Binar risiko</div><div class="snum bear">' + risk + '</div><div class="slabel">High impact</div></div>';
+      '<div class="card card-stat" role="status" aria-label="A+ setups: ' + aplus + '"><div class="ct">A+ Setups</div><div class="snum bull">' + aplus + '</div><div class="slabel">Score 7-8/8</div></div>' +
+      '<div class="card card-stat" role="status" aria-label="A setups: ' + agrade + '"><div class="ct">A Setups</div><div class="snum bull">' + agrade + '</div><div class="slabel">Score 6/8</div></div>' +
+      '<div class="card card-stat" role="status" aria-label="MAKRO setups: ' + makro + '"><div class="ct">MAKRO</div><div class="snum bull">' + makro + '</div><div class="slabel">COT + HTF</div></div>' +
+      '<div class="card card-stat" role="status" aria-label="Binær risiko: ' + risk + '"><div class="ct">Binær risiko</div><div class="snum bear">' + risk + '</div><div class="slabel">High impact</div></div>';
   }
 
   // Render filter chips

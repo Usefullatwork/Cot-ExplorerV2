@@ -133,8 +133,8 @@ function renderAccordion() {
     const isSearch = searchQuery.length > 0;
     gridEl.innerHTML = `<div class="empty-state">
       <div class="empty-state-icon">${isSearch ? '\uD83D\uDD0D' : '\uD83D\uDCCA'}</div>
-      <div class="empty-state-title">${isSearch ? 'Ingen resultater' : 'Ingen COT-data'}</div>
-      <div class="empty-state-text">${isSearch ? 'Prov a endre sok.' : 'Kjor fetch_all.py for a laste inn data.'}</div>
+      <div class="empty-state-title">${isSearch ? 'Ingen resultater' : 'Ingen COT-data tilgjengelig'}</div>
+      <div class="empty-state-text">${isSearch ? 'Prøv å endre søkeordet.' : 'Kjør <code>python fetch_all.py</code> for å hente siste CFTC-rapport og COT-posisjoner.'}</div>
     </div>`;
     return;
   }
