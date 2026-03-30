@@ -23,7 +23,7 @@ import {
 import { state, subscribe, setState } from './state.js';
 import { initRouter } from './router.js';
 
-/* ── Component imports ───────────────────────────────────── */
+/* ── Component imports (static — first-load essentials) ──── */
 import * as TopBar from './components/TopBar.js';
 import * as SetupGrid from './components/SetupGrid.js';
 import * as MacroPanel from './components/MacroPanel.js';
@@ -32,16 +32,37 @@ import * as CotChart from './components/CotChart.js';
 import * as CalendarPanel from './components/CalendarPanel.js';
 import * as ScoreRadar from './components/ScoreRadar.js';
 import * as PinePanel from './components/PinePanel.js';
-import * as CompetitorPanel from './components/CompetitorPanel.js';
-import * as BotPanel from './components/BotPanel.js';
 import * as LiveTicker from './components/LiveTicker.js';
-import * as MetalsIntelPanel from './components/MetalsIntelPanel.js';
-import * as CorrelationPanel from './components/CorrelationPanel.js';
-import * as SignalLogPanel from './components/SignalLogPanel.js';
-import * as GeoEventsPanel from './components/GeoEventsPanel.js';
-import * as PricesPanel from './components/PricesPanel.js';
-import * as BacktestDashboard from './components/BacktestDashboard.js';
-import * as CryptoPanel from './components/CryptoPanel.js';
+
+/* ── Lazy-loaded panels (loaded on first tab switch) ─────── */
+const lazyPanels = {
+  'backtest':      () => import('./components/BacktestDashboard.js'),
+  'trading':       () => import('./components/BotPanel.js'),
+  'competitor':    () => import('./components/CompetitorPanel.js'),
+  'krypto-intel':  () => import('./components/CryptoPanel.js'),
+  'geo-events':    () => import('./components/GeoEventsPanel.js'),
+  'metals-intel':  () => import('./components/MetalsIntelPanel.js'),
+  'correlations':  () => import('./components/CorrelationPanel.js'),
+  'prices':        () => import('./components/PricesPanel.js'),
+  'signal-log':    () => import('./components/SignalLogPanel.js'),
+};
+
+/** Loaded module cache — maps tab key to resolved module */
+const loadedModules = {};
+
+/**
+ * Load a lazy panel module. Returns the cached module if already loaded.
+ * @param {string} tab  Tab key
+ * @returns {Promise<Object|null>}
+ */
+async function loadPanel(tab) {
+  if (loadedModules[tab]) return loadedModules[tab];
+  const loader = lazyPanels[tab];
+  if (!loader) return null;
+  const mod = await loader();
+  loadedModules[tab] = mod;
+  return mod;
+}
 
 /* ── Error boundary ──────────────────────────────────────── */
 
@@ -185,45 +206,11 @@ function initComponents() {
   const calPanel = document.getElementById('panel-calendar');
   safeCall('CalendarPanel', () => CalendarPanel.render(calPanel), calPanel);
 
-  // Backtest dashboard
-  const backtestPanel = document.getElementById('panel-backtest');
-  safeCall('BacktestDashboard', () => BacktestDashboard.render(backtestPanel), backtestPanel);
-
-  // Pine panel
+  // Pine panel (static — lightweight, no lazy benefit)
   const pinePanel = document.getElementById('panel-pine');
   safeCall('PinePanel', () => PinePanel.render(pinePanel), pinePanel);
 
-  // Competitor panel
-  const compPanel = document.getElementById('panel-competitor');
-  safeCall('CompetitorPanel', () => CompetitorPanel.render(compPanel), compPanel);
-
-  // Trading bot panel
-  const tradingPanel = document.getElementById('panel-trading');
-  safeCall('BotPanel', () => BotPanel.render(tradingPanel), tradingPanel);
-
-  // Metals Intel panel
-  const miPanel = document.getElementById('panel-metals-intel');
-  safeCall('MetalsIntelPanel', () => MetalsIntelPanel.render(miPanel), miPanel);
-
-  // Correlation panel
-  const corrPanel = document.getElementById('panel-correlations');
-  safeCall('CorrelationPanel', () => CorrelationPanel.render(corrPanel), corrPanel);
-
-  // Signal Log panel
-  const slPanel = document.getElementById('panel-signal-log');
-  safeCall('SignalLogPanel', () => SignalLogPanel.render(slPanel), slPanel);
-
-  // Geo Events panel
-  const geoPanel = document.getElementById('panel-geo-events');
-  safeCall('GeoEventsPanel', () => GeoEventsPanel.render(geoPanel), geoPanel);
-
-  // Prices panel
-  const pricesPanel = document.getElementById('panel-prices');
-  safeCall('PricesPanel', () => PricesPanel.render(pricesPanel), pricesPanel);
-
-  // Krypto Intel panel
-  const kryptoPanel = document.getElementById('panel-krypto-intel');
-  safeCall('CryptoPanel', () => CryptoPanel.render(kryptoPanel), kryptoPanel);
+  // Lazy panels are rendered on first tab switch — spinner skeleton shows until then
 }
 
 /* ── State subscriptions ──────────────────────────────────── */
@@ -266,62 +253,76 @@ function wireSubscriptions() {
     safeCall('ScoreRadar.update', () => ScoreRadar.update(data));
   });
 
-  // Trading tab -> BotPanel: fetch data when tab becomes active
-  subscribe('activeTab', (tab) => {
+  // Tab switch -> lazy load panel on first visit, then refresh/cleanup
+  subscribe('activeTab', async (tab) => {
+    // Lazy-load panel if not yet loaded
+    if (lazyPanels[tab] && !loadedModules[tab]) {
+      const mod = await loadPanel(tab);
+      if (mod) {
+        const el = document.getElementById(`panel-${tab}`);
+        safeCall(tab, () => mod.render(el), el);
+      }
+    }
+
+    const m = loadedModules;
     if (tab === 'trading') {
-      safeAsync('BotPanel.refreshAll', () => BotPanel.refreshAll());
+      if (m['trading']) safeAsync('BotPanel.refreshAll', () => m['trading'].refreshAll());
     } else {
-      // Clean up charts when leaving trading tab
-      safeCall('BotPanel.cleanup', () => BotPanel.cleanup());
+      if (m['trading']) safeCall('BotPanel.cleanup', () => m['trading'].cleanup());
     }
     if (tab === 'metals-intel') {
-      safeAsync('MetalsIntelPanel.refreshAll', () => MetalsIntelPanel.refreshAll());
+      if (m['metals-intel']) safeAsync('MetalsIntelPanel.refreshAll', () => m['metals-intel'].refreshAll());
     }
     if (tab === 'correlations') {
-      safeAsync('CorrelationPanel.refreshAll', () => CorrelationPanel.refreshAll());
+      if (m['correlations']) safeAsync('CorrelationPanel.refreshAll', () => m['correlations'].refreshAll());
     }
     if (tab === 'backtest') {
-      safeAsync('BacktestDashboard.refreshAll', () => BacktestDashboard.refreshAll());
+      if (m['backtest']) safeAsync('BacktestDashboard.refreshAll', () => m['backtest'].refreshAll());
     }
     if (tab === 'signal-log') {
-      safeAsync('SignalLogPanel.refreshAll', () => SignalLogPanel.refreshAll());
+      if (m['signal-log']) safeAsync('SignalLogPanel.refreshAll', () => m['signal-log'].refreshAll());
     }
     if (tab === 'geo-events') {
-      safeAsync('GeoEventsPanel.refreshAll', () => GeoEventsPanel.refreshAll());
+      if (m['geo-events']) safeAsync('GeoEventsPanel.refreshAll', () => m['geo-events'].refreshAll());
     } else {
-      safeCall('GeoEventsPanel.cleanup', () => GeoEventsPanel.cleanup());
+      if (m['geo-events']) safeCall('GeoEventsPanel.cleanup', () => m['geo-events'].cleanup());
     }
     if (tab === 'prices') {
-      safeAsync('PricesPanel.refreshAll', () => PricesPanel.refreshAll());
+      if (m['prices']) safeAsync('PricesPanel.refreshAll', () => m['prices'].refreshAll());
     } else {
-      safeCall('PricesPanel.stopPolling', () => PricesPanel.stopPolling());
+      if (m['prices']) safeCall('PricesPanel.stopPolling', () => m['prices'].stopPolling());
     }
     if (tab === 'krypto-intel') {
-      safeAsync('CryptoPanel.refreshAll', () => CryptoPanel.refreshAll());
+      if (m['krypto-intel']) safeAsync('CryptoPanel.refreshAll', () => m['krypto-intel'].refreshAll());
     } else {
-      safeCall('CryptoPanel.stopPolling', () => CryptoPanel.stopPolling());
+      if (m['krypto-intel']) safeCall('CryptoPanel.stopPolling', () => m['krypto-intel'].stopPolling());
     }
   });
 
-  // Geointel -> MetalsIntelPanel
+  // Geointel -> MetalsIntelPanel (lazy — only update if loaded)
   subscribe('geointel', (data) => {
-    safeCall('MetalsIntelPanel.update', () => MetalsIntelPanel.update(data), document.getElementById('panel-metals-intel'));
+    const mod = loadedModules['metals-intel'];
+    if (mod) safeCall('MetalsIntelPanel.update', () => mod.update(data), document.getElementById('panel-metals-intel'));
   });
 
-  // Correlations -> CorrelationPanel
+  // Correlations -> CorrelationPanel (lazy)
   subscribe('correlations', (data) => {
-    safeCall('CorrelationPanel.update', () => CorrelationPanel.update(data), document.getElementById('panel-correlations'));
+    const mod = loadedModules['correlations'];
+    if (mod) safeCall('CorrelationPanel.update', () => mod.update(data), document.getElementById('panel-correlations'));
   });
 
-  // Signal Log -> SignalLogPanel
+  // Signal Log -> SignalLogPanel (lazy)
   subscribe('signalLog', (data) => {
-    safeCall('SignalLogPanel.update', () => SignalLogPanel.update(data), document.getElementById('panel-signal-log'));
+    const mod = loadedModules['signal-log'];
+    if (mod) safeCall('SignalLogPanel.update', () => mod.update(data), document.getElementById('panel-signal-log'));
   });
 
-  // Geo-events data -> GeoEventsPanel
+  // Geo-events data -> GeoEventsPanel (lazy)
   const geoUpdateFn = () => {
+    const mod = loadedModules['geo-events'];
+    if (!mod) return;
     const { regime, geoSignals, geoEvents } = state;
-    safeCall('GeoEventsPanel.update', () => GeoEventsPanel.update({ regime, geoSignals, geoEvents }), document.getElementById('panel-geo-events'));
+    safeCall('GeoEventsPanel.update', () => mod.update({ regime, geoSignals, geoEvents }), document.getElementById('panel-geo-events'));
   };
   subscribe('regime', geoUpdateFn);
   subscribe('geoSignals', geoUpdateFn);
@@ -362,8 +363,9 @@ function startPolling() {
 
   // Bot status polling — every 10s when trading tab is active
   setInterval(() => {
-    if (state.activeTab === 'trading') {
-      safeAsync('BotPanel.refresh', () => BotPanel.refreshAll());
+    const mod = loadedModules['trading'];
+    if (state.activeTab === 'trading' && mod) {
+      safeAsync('BotPanel.refresh', () => mod.refreshAll());
     }
   }, 10_000);
 }
