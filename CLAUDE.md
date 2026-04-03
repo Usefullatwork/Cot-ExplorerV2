@@ -8,22 +8,22 @@ Python 3.11+, FastAPI, SQLAlchemy/SQLite, Pydantic v2, Vite + vanilla JS fronten
 
 | Module | Files | Lines | Purpose |
 |--------|-------|-------|---------|
-| `src/analysis/` | 14 | 2,400+ | Scoring (19pt), SMC, levels, sentiment, setup builder, COT analyzer, technical, geo_classifier, geo_signals, impact_mapper, regime_detector, correlation, signal_tracker, adr_calculator |
-| `src/api/` | 17 | 1,800+ | FastAPI app, 13 route files, 4 middleware (auth, cache, rate_limit, fetch_cache) |
+| `src/analysis/` | 29 | 7,500+ | Scoring (19pt), SMC, levels, sentiment, setup builder, COT analyzer, technical, geo_classifier, geo_signals, impact_mapper, regime_detector, correlation, signal_tracker, adr_calculator, portfolio_risk, stress_test, kelly, signal_monitor, drift_detector, rebalancer, risk_parity, bootstrap, microstructure, nlp_sentiment, signal_propagation, signal_statistics, transaction_costs, attribution |
+| `src/api/` | 18 | 2,000+ | FastAPI app, 14 route files (incl. pipeline), 4 middleware, lifespan scheduler |
 | `src/agents/` | 1+36 | 145+ | Agent registry + 36 YAML prompts across 8 categories |
 | `src/competitor/` | 3 | 309 | Competitor analyzer + scrapers (MyFxBook, TradingView) |
 | `src/core/` | 3 | 223 | Domain models, enums, error types |
 | `src/data/` | 5 | 899 | Price router, rate limiter, providers (CFTC, Stooq, Yahoo, base) |
-| `src/db/` | 3 | 815 | SQLAlchemy engine, ORM models, repository (CRUD) |
-| `src/pipeline/` | 1 | 158 | Full analysis pipeline runner |
+| `src/db/` | 3 | 900+ | SQLAlchemy engine, ORM models (21 tables incl. pipeline_state, pipeline_runs), repository (CRUD) |
+| `src/pipeline/` | 5 | 1,100+ | Pipeline runner (13 stages), Layer 2 runner, gate orchestrator (8 gates), execution bridge, APScheduler |
 | `src/pine/` | 12 | -- | Pine Script v6 indicators (7), strategies (2), combos (3) |
 | `src/publishers/` | 3 | 211 | Telegram, Discord, JSON file signal publishers |
 | `src/security/` | 2 | 62 | Input validator, audit log |
 | `src/trading/core/` | 11 | 2,640 | Fetch scripts, SMC engine, signal push, build scripts |
-| `src/trading/scrapers/` | 13 | -- | Yahoo, Stooq, Twelvedata, Finnhub, FRED, Alpha Vantage, CNN, seismic (USGS), comex (CME), intel_feed (Google News), chokepoints, vix_futures (CBOE), crypto (CoinGecko) |
+| `src/trading/scrapers/` | 16 | 1,200+ | Yahoo, Stooq, Twelvedata, Finnhub, FRED, Alpha Vantage, CNN, seismic (USGS), comex (CME), intel_feed, chokepoints, vix_futures, crypto, agri_weather (Open-Meteo), shipping_intel (Baltic), oilgas_intel (energy) |
 | `src/trading/backtesting/` | 9 | 1,998 | Engine, metrics, reports, data loader, models, 4 strategies |
-| **Total src/** | **83** | **13,000+** | |
-| `tests/unit/` | 42 | 12,500+ | 1,047+ test functions |
+| **Total src/** | **97** | **17,000+** | |
+| `tests/unit/` | 48 | 14,500+ | 1,130+ test functions |
 | `tests/integration/` | 23 | 4,200+ | API (14 route groups), DB, pipeline, backtest, provider, signal, competitor tests |
 | `frontend/src/` | 32 | 6,500+ | 19 components + 3 macro sub-modules, 8 charts, SPA router, state, API client, live ticker |
 | `frontend/src/__tests__/` | 26 | 3,200+ | 283 Vitest test cases |
@@ -65,11 +65,14 @@ python fetch_fundamentals.py            # Fetch FRED macro data
 python fetch_calendar.py                # Fetch economic calendar
 python push_signals.py                  # Push signals to Telegram/Discord
 python smc.py                           # Run SMC analysis
+python fetch_agri.py                    # Fetch agriculture weather + COT
+python fetch_shipping.py                # Fetch shipping Baltic indices + routes
+python fetch_oilgas.py                  # Fetch oil & gas intelligence
 ```
 
 ## API Routes
 
-13 route groups registered in `src/api/app.py`:
+16 route groups registered in `src/api/app.py`:
 - `health` -- `/health` (GET)
 - `signals` -- `/api/signals` (GET)
 - `instruments` -- `/api/instruments` (GET)
@@ -83,8 +86,13 @@ python smc.py                           # Run SMC analysis
 - `signal-log` -- `/api/v1/signal-log` (GET, POST, analytics)
 - `prices` -- `/api/v1/prices/live` (GET: grouped live prices), `/api/v1/prices/{instrument}/history` (GET: daily close prices)
 - `crypto` -- `/api/v1/crypto/market` (GET: 8-coin market overview), `/api/v1/crypto/fear-greed` (GET: Fear & Greed index)
+- `signal-health` -- `/api/v1/signal-health` (GET: ensemble health, weights, decay alerts — live from pipeline_state)
+- `risk` -- `/api/v1/risk` (GET: VaR, stress-test, correlation-matrix, regime-limits — live from pipeline_state)
+- `pipeline` -- `/api/v1/pipeline` (GET: status, runs, gate-log; POST: approve, force-layer2)
 
 Middleware stack: CORS -> RateLimitMiddleware -> APIKeyMiddleware -> CSPMiddleware
+
+Lifespan: APScheduler (6 jobs) starts/stops with the app when `SCHEDULER_ENABLED=1`
 
 ## Architecture Decisions (Sprint 3)
 
