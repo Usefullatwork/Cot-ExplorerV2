@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
+import logging
 import os
+from contextlib import asynccontextmanager
 from pathlib import Path
 
 from fastapi import FastAPI
@@ -22,6 +24,7 @@ from src.api.routes import (
     instruments,
     intelligence,
     macro,
+    pipeline,
     prices,
     risk,
     signal_health,
@@ -30,6 +33,8 @@ from src.api.routes import (
     trading,
     webhook,
 )
+
+logger = logging.getLogger(__name__)
 
 CORS_ORIGINS = os.environ.get("CORS_ORIGINS", "http://localhost:3000").split(",")
 
@@ -50,12 +55,37 @@ class CSPMiddleware(BaseHTTPMiddleware):
         return response
 
 
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Start/stop the pipeline scheduler with the app."""
+    from src.pipeline.scheduler import create_scheduler
+
+    scheduler = None
+    try:
+        from src.db.engine import get_engine
+
+        scheduler = create_scheduler(get_engine())
+        if scheduler is not None:
+            scheduler.start()
+            logger.info("Pipeline scheduler started")
+        app.state.scheduler = scheduler
+    except Exception as exc:
+        logger.warning("Scheduler init failed (non-fatal): %s", exc)
+
+    yield
+
+    if scheduler is not None:
+        scheduler.shutdown(wait=False)
+        logger.info("Pipeline scheduler stopped")
+
+
 def create_app() -> FastAPI:
     """Build and return the FastAPI application with all routes and middleware."""
     app = FastAPI(
         title="Cot-ExplorerV2 API",
-        version="2.0.0",
+        version="2.1.0-rc1",
         description="Trading signal platform: COT + SMC + 12-point confluence scoring",
+        lifespan=lifespan,
     )
 
     # CORS — restricted to configured origins
@@ -94,6 +124,7 @@ def create_app() -> FastAPI:
     app.include_router(signal_health.router)
     app.include_router(risk.router)
     app.include_router(intelligence.router)
+    app.include_router(pipeline.router)
 
     # Serve built frontend (must be LAST — after all API routes)
     frontend_dist = Path(__file__).resolve().parents[2] / "frontend" / "dist"

@@ -1,8 +1,15 @@
-"""Risk management routes — VaR, stress tests, correlation, regime limits."""
+"""Risk management routes — VaR, stress tests, correlation, regime limits.
+
+Reads live data from pipeline_state when available, falls back to
+placeholder data when no Layer 2 run has occurred yet.
+"""
 
 from __future__ import annotations
 
 from fastapi import APIRouter
+
+from src.db.engine import session_scope
+from src.db.models import PipelineState
 
 router = APIRouter(prefix="/api/v1/risk", tags=["risk"])
 
@@ -32,20 +39,34 @@ _CORR_MATRIX = [
 ]
 
 
+def _load_state():
+    """Load pipeline state, return None if no row exists."""
+    with session_scope() as session:
+        return session.query(PipelineState).first()
+
+
 # ── Endpoints ────────────────────────────────────────────────────────────────
 
 
-@router.get(
-    "/var",
-    summary="Portfolio Value-at-Risk",
-    description=(
-        "Returns VaR and CVaR metrics for the current portfolio. "
-        "Currently returns placeholder data — real integration with "
-        "portfolio_risk module requires live position data."
-    ),
-)
+@router.get("/var", summary="Portfolio Value-at-Risk")
 async def get_portfolio_var() -> dict:
-    """Portfolio VaR and CVaR metrics."""
+    """Portfolio VaR and CVaR — live from pipeline_state or placeholder."""
+    with session_scope() as session:
+        state = session.query(PipelineState).first()
+
+    if state and state.var_95_pct is not None:
+        return {
+            "var_95": round(state.var_95_pct * 100, 2),
+            "var_99": round(state.var_99_pct * 100, 2) if state.var_99_pct else None,
+            "cvar_95": round(state.cvar_95_pct * 100, 2) if state.cvar_95_pct else None,
+            "confidence_levels": [0.95, 0.99],
+            "horizon_days": 1,
+            "method": "historical_simulation",
+            "positions_count": state.open_position_count or 0,
+            "is_live": True,
+            "updated_at": state.updated_at.isoformat() if state.updated_at else None,
+        }
+
     return {
         "var_95": 1.52,
         "var_99": 2.34,
@@ -54,71 +75,54 @@ async def get_portfolio_var() -> dict:
         "confidence_levels": [0.95, 0.99],
         "horizon_days": 1,
         "method": "historical_simulation",
-        "positions_count": 6,
-        "portfolio_notional_usd": 485000,
-        "timestamp": "2026-03-31T08:00:00Z",
+        "positions_count": 0,
+        "is_placeholder": True,
     }
 
 
-@router.get(
-    "/stress-test",
-    summary="Stress test results",
-    description="Returns results for 4 pre-defined stress scenarios.",
-)
+@router.get("/stress-test", summary="Stress test results")
 async def get_stress_test() -> dict:
-    """Pre-computed stress test results across 4 scenarios."""
+    """Stress test results — live from pipeline_state or placeholder."""
+    with session_scope() as session:
+        state = session.query(PipelineState).first()
+
+    if state and state.stress_worst_pct is not None:
+        return {
+            "worst_scenario_loss_pct": round(state.stress_worst_pct, 2),
+            "survives_all": state.stress_survives,
+            "positions_count": state.open_position_count or 0,
+            "is_live": True,
+            "updated_at": state.updated_at.isoformat() if state.updated_at else None,
+        }
+
     return {
         "scenarios": [
             {
                 "name": "2008 GFC Replay",
-                "description": "Global financial crisis conditions with extreme VIX",
                 "portfolio_impact_pct": -8.4,
-                "max_drawdown_pct": -12.1,
-                "var_breach": True,
-                "surviving_positions": 2,
-                "total_positions": 6,
                 "status": "fail",
             },
             {
                 "name": "USD Flash Crash",
-                "description": "Sudden 3% USD depreciation across all pairs",
                 "portfolio_impact_pct": -3.2,
-                "max_drawdown_pct": -4.8,
-                "var_breach": True,
-                "surviving_positions": 4,
-                "total_positions": 6,
                 "status": "fail",
             },
             {
                 "name": "Gold Shock +5%",
-                "description": "Safe-haven surge with gold rallying 5% intraday",
                 "portfolio_impact_pct": 1.8,
-                "max_drawdown_pct": -0.9,
-                "var_breach": False,
-                "surviving_positions": 6,
-                "total_positions": 6,
                 "status": "pass",
             },
             {
                 "name": "Oil Supply Cut",
-                "description": "OPEC emergency cut with Brent +12%",
                 "portfolio_impact_pct": -1.5,
-                "max_drawdown_pct": -2.3,
-                "var_breach": False,
-                "surviving_positions": 5,
-                "total_positions": 6,
                 "status": "pass",
             },
         ],
-        "run_timestamp": "2026-03-31T08:00:00Z",
+        "is_placeholder": True,
     }
 
 
-@router.get(
-    "/correlation-matrix",
-    summary="Correlation matrix",
-    description="Returns the 14x14 instrument correlation matrix.",
-)
+@router.get("/correlation-matrix", summary="Correlation matrix")
 async def get_correlation_matrix() -> dict:
     """14x14 correlation matrix across all instruments."""
     return {
@@ -129,35 +133,69 @@ async def get_correlation_matrix() -> dict:
     }
 
 
-@router.get(
-    "/regime-limits",
-    summary="Regime position limits",
-    description="Returns current market regime and position sizing limits.",
-)
+@router.get("/regime-limits", summary="Regime position limits")
 async def get_regime_limits() -> dict:
-    """Current regime and position limits."""
+    """Current regime and position limits — live or placeholder."""
+    with session_scope() as session:
+        state = session.query(PipelineState).first()
+
+    if state and state.regime:
+        from src.analysis.portfolio_risk import _DEFAULT_REGIME_LIMITS
+
+        max_pos = _DEFAULT_REGIME_LIMITS.get(state.regime, 5)
+        return {
+            "current_regime": state.regime.upper(),
+            "max_positions": max_pos,
+            "current_positions": state.open_position_count or 0,
+            "is_live": True,
+            "updated_at": state.updated_at.isoformat() if state.updated_at else None,
+        }
+
     return {
         "current_regime": "NORMAL",
-        "max_positions": 8,
-        "max_correlated_positions": 3,
-        "max_sector_exposure_pct": 40.0,
-        "current_positions": 6,
-        "current_correlated": 2,
-        "current_sector_exposure_pct": 28.5,
-        "regime_history": [
-            {"regime": "NORMAL", "started": "2026-03-20T00:00:00Z", "duration_days": 11},
-            {"regime": "RISK_OFF", "started": "2026-03-15T00:00:00Z", "duration_days": 5},
-            {"regime": "NORMAL", "started": "2026-03-01T00:00:00Z", "duration_days": 14},
-        ],
+        "max_positions": 5,
+        "current_positions": 0,
+        "is_placeholder": True,
     }
 
 
-@router.post(
-    "/run-stress-test",
-    summary="Run on-demand stress test",
-    description="Execute stress tests on demand. Returns same format as GET.",
-)
+@router.post("/run-stress-test", summary="Run on-demand stress test")
 async def run_stress_test() -> dict:
-    """Run stress tests on demand — returns same structure as the GET endpoint."""
-    # Delegate to the same data for now
-    return await get_stress_test()
+    """Run stress tests on demand — delegates to Layer 2 if available."""
+    from src.analysis.stress_test import Position, run_all_stress_tests
+    from src.db.models import BotPosition
+
+    with session_scope() as session:
+        positions = (
+            session.query(BotPosition)
+            .filter(BotPosition.status.in_(["open", "partial"]))
+            .all()
+        )
+        if not positions:
+            return {"message": "No open positions to stress test", "scenarios": []}
+
+        stress_positions = [
+            Position(
+                instrument=p.instrument,
+                direction="long" if p.direction == "bull" else "short",
+                value_usd=abs(p.entry_price * p.lot_size),
+            )
+            for p in positions
+        ]
+        results, survives, msg = run_all_stress_tests(stress_positions, 10_000.0)
+
+        return {
+            "scenarios": [
+                {
+                    "name": r.scenario_name,
+                    "description": r.description,
+                    "total_loss_pct": round(r.total_loss_pct, 2),
+                    "worst_instrument": r.worst_instrument,
+                    "survives": r.survives,
+                }
+                for r in results
+            ],
+            "survives_all": survives,
+            "message": msg,
+            "is_live": True,
+        }
