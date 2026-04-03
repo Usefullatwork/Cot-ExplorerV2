@@ -401,6 +401,8 @@ class BotSignal(Base):
     confirmed_at = Column(DateTime, nullable=True)
     rejection_reason = Column(Text, nullable=True)
     tv_payload = Column(Text, nullable=True)  # raw TradingView JSON
+    gate_log = Column(Text, nullable=True)  # JSON array of gate results
+    automation_level = Column(String(8), nullable=True)  # "A+"/"A"/"B"/"blocked"
 
     signal_rel = relationship("Signal")
 
@@ -629,4 +631,67 @@ class CorrelationSnapshot(Base):
     __table_args__ = (
         Index("ix_corr_instruments", "instrument_a", "instrument_b"),
         Index("ix_corr_calculated", "calculated_at"),
+    )
+
+
+# ---------------------------------------------------------------------------
+# 20. PipelineState
+# ---------------------------------------------------------------------------
+class PipelineState(Base):
+    """Single-row cache of Layer 2 pipeline computation results.
+
+    Stores the latest VaR, stress test, regime, signal weights, and other
+    portfolio-level metrics computed by the Layer 2 runner.  Read by the
+    gate orchestrator when evaluating pending signals.
+    """
+
+    __tablename__ = "pipeline_state"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    updated_at = Column(DateTime, nullable=False, default=lambda: datetime.now(timezone.utc))
+    regime = Column(String(32), nullable=True)
+    vix_price = Column(Float, nullable=True)
+    var_95_pct = Column(Float, nullable=True)
+    var_99_pct = Column(Float, nullable=True)
+    cvar_95_pct = Column(Float, nullable=True)
+    stress_worst_pct = Column(Float, nullable=True)
+    stress_survives = Column(Boolean, nullable=True)
+    correlation_max = Column(Float, nullable=True)
+    open_position_count = Column(Integer, default=0)
+    signal_weights_json = Column(Text, nullable=True)
+    ensemble_quality = Column(String(16), nullable=True)
+    kelly_cache_json = Column(Text, nullable=True)
+    risk_parity_json = Column(Text, nullable=True)
+    drift_detected = Column(Boolean, default=False)
+    account_equity = Column(Float, nullable=True)
+    peak_equity = Column(Float, nullable=True)
+    layer1_last_run_at = Column(DateTime, nullable=True)
+    layer2_last_run_at = Column(DateTime, nullable=True)
+    heartbeat_at = Column(DateTime, nullable=True)
+
+
+# ---------------------------------------------------------------------------
+# 21. PipelineRun
+# ---------------------------------------------------------------------------
+class PipelineRun(Base):
+    """Audit trail for pipeline executions (Layer 1, Layer 2, retrain).
+
+    Each row records when a pipeline run started, finished, its status,
+    and a JSON blob with per-stage details or error messages.
+    """
+
+    __tablename__ = "pipeline_runs"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    started_at = Column(DateTime, nullable=False, default=lambda: datetime.now(timezone.utc))
+    finished_at = Column(DateTime, nullable=True)
+    layer = Column(String(8), nullable=False)  # "layer1"/"layer2"/"retrain"
+    status = Column(String(16), nullable=False)  # "running"/"ok"/"error"
+    duration_sec = Column(Float, nullable=True)
+    signals_processed = Column(Integer, default=0)
+    details_json = Column(Text, nullable=True)
+
+    __table_args__ = (
+        Index("ix_pipeline_runs_started", "started_at"),
+        Index("ix_pipeline_runs_layer", "layer"),
     )

@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "cot-explorer-v2"
-version = "2.0.0"
+version = "2.1.0-rc1"
 description = "Modular trading signal platform: COT + SMC + 12-point confluence scoring"
 readme = "README.md"
 license = "MIT"

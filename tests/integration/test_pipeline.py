@@ -26,6 +26,9 @@ def mock_stage_functions():
         patch("src.pipeline.runner._stage_combine") as combine,
         patch("src.pipeline.runner._stage_fundamentals") as fund,
         patch("src.pipeline.runner._stage_prices") as prices,
+        patch("src.pipeline.runner._stage_agri") as agri,
+        patch("src.pipeline.runner._stage_shipping") as shipping,
+        patch("src.pipeline.runner._stage_oilgas") as oilgas,
         patch("src.pipeline.runner._stage_scoring") as scoring,
         patch("src.pipeline.runner._stage_output") as output,
         patch("src.pipeline.runner._stage_push") as push,
@@ -38,6 +41,9 @@ def mock_stage_functions():
             "combine": combine,
             "fundamentals": fund,
             "prices": prices,
+            "agri": agri,
+            "shipping": shipping,
+            "oilgas": oilgas,
             "scoring": scoring,
             "output": output,
             "push": push,
@@ -60,7 +66,7 @@ def test_run_full_pipeline_returns_all_stages():
     """Pipeline returns results for all 8 stages."""
     results = run_full_pipeline()
 
-    expected_stages = {"quality", "calendar", "cot", "combine", "fundamentals", "prices", "scoring", "output", "push", "rebalance"}
+    expected_stages = {"quality", "calendar", "cot", "combine", "fundamentals", "prices", "agri", "shipping", "oilgas", "scoring", "output", "push", "rebalance"}
     assert set(results.keys()) == expected_stages
 
 
@@ -97,6 +103,9 @@ def test_pipeline_output_stage_with_no_macro_file(mock_stage_functions, tmp_path
         patch("src.pipeline.runner._stage_combine"),
         patch("src.pipeline.runner._stage_fundamentals"),
         patch("src.pipeline.runner._stage_prices"),
+        patch("src.pipeline.runner._stage_agri"),
+        patch("src.pipeline.runner._stage_shipping"),
+        patch("src.pipeline.runner._stage_oilgas"),
         patch("src.pipeline.runner._stage_scoring"),
         patch("src.pipeline.runner._stage_push"),
     ):
@@ -143,7 +152,7 @@ def test_all_stages_fail(mock_stage_functions):
 
     results = run_full_pipeline()
 
-    assert len(results) == 10
+    assert len(results) == 13
     for stage, outcome in results.items():
         assert "error" in outcome
 
@@ -199,5 +208,5 @@ def test_pipeline_order_preserved(mock_stage_functions):
     """Results dict should have stages in pipeline order."""
     results = run_full_pipeline()
 
-    expected_order = ["quality", "calendar", "cot", "combine", "fundamentals", "prices", "scoring", "output", "push", "rebalance"]
+    expected_order = ["quality", "calendar", "cot", "combine", "fundamentals", "prices", "agri", "shipping", "oilgas", "scoring", "output", "push", "rebalance"]
     assert list(results.keys()) == expected_order

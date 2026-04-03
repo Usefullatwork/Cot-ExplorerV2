@@ -176,14 +176,46 @@ def _stage_push() -> None:
     push_main()
 
 
+def _stage_agri() -> None:
+    """Fetch agriculture weather + COT intelligence."""
+    from src.trading.scrapers.agri_weather import fetch_agri_report
+
+    report = fetch_agri_report()
+    logger.info("Agri stage: %d regions processed", len(report.get("regions", [])))
+
+
+def _stage_shipping() -> None:
+    """Fetch shipping intelligence (Baltic indices + route disruption)."""
+    from src.trading.scrapers.shipping_intel import fetch_shipping_report
+
+    report = fetch_shipping_report()
+    logger.info("Shipping stage: overall_risk=%s", report.get("overall_risk", "?"))
+
+
+def _stage_oilgas() -> None:
+    """Fetch oil & gas intelligence (prices + segment risk)."""
+    from src.trading.scrapers.oilgas_intel import fetch_oilgas_report
+
+    report = fetch_oilgas_report()
+    logger.info("Oil/gas stage: overall_risk=%s", report.get("overall_risk", "?"))
+
+
 def _stage_rebalance() -> None:
-    """Weekly rebalance placeholder — only runs on Fridays."""
+    """Weekly rebalance — runs on Fridays via weekly_retrain."""
     from datetime import date
 
     if date.today().weekday() != 4:  # 4 = Friday
         logger.info("Rebalance stage: skipped (not Friday)")
         return
-    logger.info("Rebalance stage: placeholder for weekly_retrain integration")
+
+    from src.pipeline.weekly_retrain import run_weekly_retrain
+
+    result = run_weekly_retrain()
+    logger.info(
+        "Rebalance stage: weights_updated=%s drift=%s",
+        result.weights_updated,
+        result.drift_detected,
+    )
 
 
 # Ordered list of pipeline stage names — functions are resolved at runtime
@@ -195,6 +227,9 @@ _STAGE_NAMES: list[str] = [
     "combine",
     "fundamentals",
     "prices",
+    "agri",
+    "shipping",
+    "oilgas",
     "scoring",
     "output",
     "push",
