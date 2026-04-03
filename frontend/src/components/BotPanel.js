@@ -8,7 +8,7 @@ import { createPnlChart, destroyPnlChart } from '../charts/pnlChart.js';
 import {
   fetchBotStatus, fetchBotPositions, fetchBotSignals,
   fetchBotHistory, fetchBotConfig, updateBotConfig,
-  invalidateBot, startBot, stopBot,
+  invalidateBot, startBot, stopBot, fetchJournal,
 } from '../api.js';
 
 /* ── Helpers ─────────────────────────────────────────────── */
@@ -119,6 +119,13 @@ export function render(container) {
       </div>
       <div id="calcResult" style="margin-top:12px;font-size:13px;color:var(--m);display:none" aria-live="polite"></div>
     </div>
+    <div class="sh"><h2 class="sh-t">Handelsjournal</h2><div class="sh-b">Reasoning &amp; beslutninger</div></div>
+    <div class="cotw" style="margin-bottom:18px;overflow-x:auto">
+      <table class="cott"><thead><tr>
+        <th>Tid</th><th>Instrument</th><th>Retning</th><th>Grade</th>
+        <th>Resultat</th><th class="tdr">P&L</th><th>Reasoning</th>
+      </tr></thead><tbody id="journalBody"><tr><td colspan="7" style="color:var(--m);text-align:center">Ingen journal-poster</td></tr></tbody></table>
+    </div>
     <div class="sh"><h2 class="sh-t">Handelslogg</h2><div class="sh-b">Siste hendelser</div></div>
     <div class="cotw" style="overflow-x:auto">
       <table class="cott"><thead><tr><th>Tid</th><th>Hendelse</th><th>Instrument</th><th>Detaljer</th></tr></thead>
@@ -190,7 +197,7 @@ function wireBotToggle() {
 
 /* ── Update (data) ───────────────────────────────────────── */
 
-/** @param {Object} data  { status, positions, signals, config, history, pnl } */
+/** @param {Object} data  { status, positions, signals, config, history, pnl, journal } */
 export function update(data) {
   if (!data) return;
   if (data.status) updateStatus(data.status);
@@ -198,6 +205,7 @@ export function update(data) {
   if (data.signals) updateSignals(data.signals);
   if (data.pnl) updatePnl(data.pnl);
   if (data.config) updateConfig(data.config);
+  if (data.journal) updateJournal(data.journal);
   if (data.history) updateLog(data.history);
 }
 
@@ -245,15 +253,30 @@ function updateSignals(signals) {
   if (count) count.textContent = String(arr.length);
   if (!arr.length) { body.innerHTML = '<tr><td colspan="7"><div class="empty-state" style="padding:20px 12px"><div class="empty-state-icon">\uD83D\uDCE1</div><div class="empty-state-title">Ingen signaler i køen</div><div class="empty-state-text">Signaler genereres av analysemotoren. Kjør <code>python fetch_all.py</code> for å oppdatere.</div></div></td></tr>'; return; }
   body.innerHTML = arr.map((s) => {
-    const dirCol = s.direction === 'LONG' ? 'bull' : 'bear';
+    const dirCol = s.direction === 'LONG' || s.direction === 'bull' ? 'bull' : 'bear';
     const gradeCol = s.grade === 'A+' ? 'bull' : s.grade === 'B' ? 'warn' : s.grade === 'C' ? 'bear' : 'bull';
-    return `<tr>
+    const mainRow = `<tr>
       <td class="tdname">${escapeHtml(s.instrument || '-')}</td>
       <td><span class="tbias ${dirCol}" style="font-size:10px">${escapeHtml(s.direction || '-')}</span></td>
       <td><span class="tgrade ${gradeCol}">${escapeHtml(s.grade || '-')}</span></td>
-      <td class="tdr">${escapeHtml(s.score ?? '-')}</td><td class="tdr">${escapeHtml(s.entry_zone || '-')}</td>
+      <td class="tdr">${escapeHtml(s.score ?? '-')}</td><td class="tdr">${escapeHtml(s.entry_zone || s.entry_price || '-')}</td>
       <td><span class="tsess ${s.status === 'pending' ? 'active' : 'inactive'}">${escapeHtml(s.status || '-')}</span></td>
-      <td style="font-size:11px;color:var(--m)">${s.received ? escapeHtml(timeAgo(s.received)) : '-'}</td></tr>`;
+      <td style="font-size:11px;color:var(--m)">${s.received ? escapeHtml(timeAgo(s.received)) : (s.received_at ? escapeHtml(timeAgo(s.received_at)) : '-')}</td></tr>`;
+
+    // Gate reasoning expandable row
+    const gates = s.gate_log_parsed;
+    if (!gates || !gates.length) return mainRow;
+    const gateHtml = gates.map((g) => {
+      const icon = g.passed ? '\u2714' : '\u2718';
+      const color = g.passed ? 'var(--bull)' : 'var(--bear)';
+      const text = g.detail || g.reason || g.gate_name;
+      return `<div style="font-size:11px;margin-bottom:2px"><span style="color:${color}">${icon}</span> <span style="color:var(--f)">${escapeHtml(text)}</span></div>`;
+    }).join('');
+    const gateRow = `<tr><td colspan="7" style="padding:4px 12px;background:var(--s2)">
+      <details><summary style="cursor:pointer;font-size:11px;color:var(--m);font-weight:600">Gate decisions (${gates.filter(g => g.passed).length}/${gates.length} passed)</summary>
+      <div style="margin-top:4px">${gateHtml}</div></details>
+    </td></tr>`;
+    return mainRow + gateRow;
   }).join('');
 }
 
@@ -280,6 +303,48 @@ function updateConfig(cfg) {
   set('cfgMinScore', cfg.min_score);
 }
 
+function updateJournal(journal) {
+  const body = document.getElementById('journalBody');
+  if (!body) return;
+  const entries = journal.entries || [];
+  if (!entries.length) {
+    body.innerHTML = '<tr><td colspan="7"><div class="empty-state" style="padding:20px 12px"><div class="empty-state-icon">\uD83D\uDCD3</div><div class="empty-state-title">Ingen journal-poster</div><div class="empty-state-text">Journalen fylles n\u00e5r signaler med reasoning genereres.</div></div></td></tr>';
+    return;
+  }
+  body.innerHTML = entries.slice(0, 30).map((e) => {
+    const dirCol = (e.direction || '').toLowerCase() === 'long' || (e.direction || '').toLowerCase() === 'bull' ? 'bull' : 'bear';
+    const outCol = e.outcome === 'win' ? 'bull' : e.outcome === 'loss' ? 'bear' : 'warn';
+    const narrative = e.entry_reasoning?.narrative || '-';
+    const mainRow = `<tr>
+      <td style="font-size:11px;color:var(--m);white-space:nowrap">${escapeHtml(e.created_at ? timeAgo(e.created_at) : '-')}</td>
+      <td class="tdname">${escapeHtml(e.instrument || '-')}</td>
+      <td><span class="tbias ${dirCol}" style="font-size:10px">${escapeHtml(e.direction || '-')}</span></td>
+      <td><span class="tgrade ${e.grade === 'A+' || e.grade === 'A' ? 'bull' : e.grade === 'B' ? 'warn' : 'bear'}">${escapeHtml(e.grade || '-')}</span></td>
+      <td><span style="color:var(--${outCol});font-weight:600;font-size:11px;text-transform:uppercase">${escapeHtml(e.outcome || 'pending')}</span></td>
+      <td class="tdr" style="color:var(--${(e.pnl_pips || 0) >= 0 ? 'bull' : 'bear'})">${e.pnl_pips != null ? (e.pnl_pips >= 0 ? '+' : '') + e.pnl_pips.toFixed(1) : '-'}</td>
+      <td style="font-size:11px;color:var(--m);max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${escapeHtml(narrative)}">${escapeHtml(narrative.slice(0, 80))}${narrative.length > 80 ? '...' : ''}</td>
+    </tr>`;
+
+    // Expandable reasoning detail
+    if (!e.entry_reasoning && !e.gate_reasoning) return mainRow;
+    const gateHtml = (e.gate_reasoning || []).map((g) => {
+      const icon = g.passed ? '\u2714' : '\u2718';
+      const color = g.passed ? 'var(--bull)' : 'var(--bear)';
+      return `<div style="font-size:11px"><span style="color:${color}">${icon}</span> ${escapeHtml(g.detail || g.reason || '')}</div>`;
+    }).join('');
+    const detailRow = `<tr><td colspan="7" style="padding:4px 12px;background:var(--s2)">
+      <details><summary style="cursor:pointer;font-size:11px;color:var(--m)">Full reasoning</summary>
+      <div style="margin-top:4px;font-size:12px;line-height:1.6">
+        ${e.entry_reasoning?.narrative ? `<div style="margin-bottom:6px">${escapeHtml(e.entry_reasoning.narrative)}</div>` : ''}
+        ${gateHtml ? `<div style="margin-top:4px"><strong>Gates:</strong>${gateHtml}</div>` : ''}
+        ${e.exit_reasoning ? `<div style="margin-top:4px"><strong>Exit:</strong> ${escapeHtml(JSON.stringify(e.exit_reasoning))}</div>` : ''}
+        ${e.lessons ? `<div style="margin-top:4px"><strong>Lessons:</strong> ${escapeHtml(e.lessons)}</div>` : ''}
+      </div></details>
+    </td></tr>`;
+    return mainRow + detailRow;
+  }).join('');
+}
+
 function updateLog(history) {
   const body = document.getElementById('tradeLogBody');
   if (!body) return;
@@ -301,7 +366,7 @@ function updateLog(history) {
 export async function refreshAll() {
   const r = await Promise.allSettled([
     fetchBotStatus(), fetchBotPositions(), fetchBotSignals(),
-    fetchBotHistory(50), fetchBotConfig(),
+    fetchBotHistory(50), fetchBotConfig(), fetchJournal({ limit: 30 }),
   ]);
   const data = {};
   if (r[0].status === 'fulfilled') data.status = r[0].value;
@@ -309,6 +374,7 @@ export async function refreshAll() {
   if (r[2].status === 'fulfilled') data.signals = r[2].value;
   if (r[3].status === 'fulfilled') { data.history = r[3].value; if (r[3].value?.pnl_summary) data.pnl = r[3].value.pnl_summary; }
   if (r[4].status === 'fulfilled') data.config = r[4].value;
+  if (r[5].status === 'fulfilled') data.journal = r[5].value;
   if (data.status?.pnl) data.pnl = data.status.pnl;
   update(data);
 }

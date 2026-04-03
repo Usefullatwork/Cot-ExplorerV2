@@ -63,6 +63,8 @@ class BotSignalResponse(BaseModel):
     source: str
     status: str
     received_at: str
+    reasoning: Optional[dict] = None
+    gate_log_parsed: Optional[list] = None
 
 class BotConfigResponse(BaseModel):
     active: bool
@@ -131,12 +133,30 @@ def _position_to_dict(pos: Any) -> dict[str, Any]:
 
 def _bot_signal_to_dict(sig: Any) -> dict[str, Any]:
     """Convert a BotSignal ORM object to a JSON-friendly dict."""
+    import json as _json
+
+    reasoning = None
+    if sig.reasoning_json:
+        try:
+            reasoning = _json.loads(sig.reasoning_json)
+        except (ValueError, TypeError):
+            pass
+
+    gate_log_parsed = None
+    if sig.gate_log:
+        try:
+            gate_log_parsed = _json.loads(sig.gate_log)
+        except (ValueError, TypeError):
+            pass
+
     return {
         "id": sig.id, "instrument": sig.instrument, "direction": sig.direction,
         "grade": sig.grade, "score": sig.score, "entry_price": sig.entry_price,
         "stop_loss": sig.stop_loss, "target_1": sig.target_1,
         "target_2": sig.target_2, "source": sig.source, "status": sig.status,
         "received_at": sig.received_at.isoformat() if sig.received_at else None,
+        "reasoning": reasoning,
+        "gate_log_parsed": gate_log_parsed,
     }
 
 
