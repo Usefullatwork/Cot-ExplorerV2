@@ -23,6 +23,7 @@ from src.api.routes import (
     health,
     instruments,
     intelligence,
+    journal,
     macro,
     pipeline,
     prices,
@@ -125,6 +126,7 @@ def create_app() -> FastAPI:
     app.include_router(risk.router)
     app.include_router(intelligence.router)
     app.include_router(pipeline.router)
+    app.include_router(journal.router)
 
     # Serve built frontend (must be LAST — after all API routes)
     frontend_dist = Path(__file__).resolve().parents[2] / "frontend" / "dist"

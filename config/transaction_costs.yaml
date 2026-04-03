@@ -1,97 +1,97 @@
 # Cot-ExplorerV2 Transaction Cost Configuration
-# Per-instrument cost parameters for realistic backtest friction.
+# Calibrated to Pepperstone Standard Account (spread-only, no commission).
 #
-# base_spread: typical spread in pips (from DEFAULT_SPREADS)
+# base_spread: average spread in pips (Pepperstone Standard Account typical)
 # spread_multipliers: session-dependent multiplier on base_spread
 # slippage_mean / slippage_std: lognormal slippage parameters (pips)
 # swap_long / swap_short: overnight swap cost (pips/day, positive = cost)
-# commission_per_lot: round-trip commission in USD (0 for spread-only accounts)
+# commission_per_lot: round-trip commission in USD (0 for Standard account)
 
 spread_multipliers: &default_multipliers
-  asian: 1.8
-  london: 0.7
-  ny_overlap: 0.75
-  ny: 0.85
-  off_hours: 2.5
+  asian: 1.6
+  london: 0.8
+  ny_overlap: 0.85
+  ny: 0.9
+  off_hours: 2.2
 
 instruments:
   EURUSD:
-    base_spread: 1.2
+    base_spread: 0.77
     spread_multipliers: *default_multipliers
-    slippage_mean: 0.3
-    slippage_std: 0.15
-    swap_long: -0.6
-    swap_short: 0.1
+    slippage_mean: 0.2
+    slippage_std: 0.1
+    swap_long: -0.63
+    swap_short: 0.08
     commission_per_lot: 0.0
 
   USDJPY:
-    base_spread: 1.4
+    base_spread: 0.86
     spread_multipliers: *default_multipliers
-    slippage_mean: 0.4
-    slippage_std: 0.2
-    swap_long: 0.3
-    swap_short: -1.2
+    slippage_mean: 0.25
+    slippage_std: 0.12
+    swap_long: 0.35
+    swap_short: -1.15
     commission_per_lot: 0.0
 
   GBPUSD:
-    base_spread: 1.8
+    base_spread: 1.07
     spread_multipliers: *default_multipliers
-    slippage_mean: 0.5
-    slippage_std: 0.25
-    swap_long: -0.8
-    swap_short: 0.2
+    slippage_mean: 0.3
+    slippage_std: 0.15
+    swap_long: -0.78
+    swap_short: 0.15
     commission_per_lot: 0.0
 
   AUDUSD:
-    base_spread: 1.6
+    base_spread: 0.83
     spread_multipliers: *default_multipliers
-    slippage_mean: 0.4
-    slippage_std: 0.2
-    swap_long: -0.3
-    swap_short: -0.1
+    slippage_mean: 0.25
+    slippage_std: 0.12
+    swap_long: -0.32
+    swap_short: -0.05
     commission_per_lot: 0.0
 
   USDCHF:
-    base_spread: 1.6
+    base_spread: 0.92
     spread_multipliers: *default_multipliers
-    slippage_mean: 0.4
-    slippage_std: 0.2
-    swap_long: 0.4
-    swap_short: -0.9
+    slippage_mean: 0.25
+    slippage_std: 0.12
+    swap_long: 0.42
+    swap_short: -0.88
     commission_per_lot: 0.0
 
-  Gold:
-    base_spread: 3.0
+  XAUUSD:
+    base_spread: 2.0
     spread_multipliers: *default_multipliers
-    slippage_mean: 0.8
-    slippage_std: 0.4
+    slippage_mean: 0.5
+    slippage_std: 0.25
     swap_long: -2.5
     swap_short: 0.5
     commission_per_lot: 0.0
 
-  Silver:
-    base_spread: 3.5
+  XAGUSD:
+    base_spread: 2.4
     spread_multipliers: *default_multipliers
-    slippage_mean: 1.0
-    slippage_std: 0.5
+    slippage_mean: 0.6
+    slippage_std: 0.3
     swap_long: -1.8
     swap_short: 0.3
     commission_per_lot: 0.0
 
-  Brent:
-    base_spread: 4.0
+  USOIL:
+    base_spread: 3.0
     spread_multipliers: *default_multipliers
-    slippage_mean: 1.2
-    slippage_std: 0.6
+    slippage_mean: 0.8
+    slippage_std: 0.4
     swap_long: -3.0
     swap_short: 1.0
     commission_per_lot: 0.0
 
-  WTI:
-    base_spread: 4.0
+  UKOIL:
+    base_spread: 3.0
     spread_multipliers: *default_multipliers
-    slippage_mean: 1.2
-    slippage_std: 0.6
+    slippage_mean: 0.8
+    slippage_std: 0.4
     swap_long: -3.0
     swap_short: 1.0
     commission_per_lot: 0.0
@@ -99,8 +99,8 @@ instruments:
   NATGAS:
     base_spread: 5.0
     spread_multipliers: *default_multipliers
-    slippage_mean: 2.0
-    slippage_std: 1.0
+    slippage_mean: 1.5
+    slippage_std: 0.7
     swap_long: -5.0
     swap_short: 2.0
     commission_per_lot: 0.0
@@ -108,8 +108,8 @@ instruments:
   WHEAT:
     base_spread: 6.0
     spread_multipliers: *default_multipliers
-    slippage_mean: 2.5
-    slippage_std: 1.2
+    slippage_mean: 2.0
+    slippage_std: 1.0
     swap_long: -4.0
     swap_short: 1.5
     commission_per_lot: 0.0
@@ -117,8 +117,8 @@ instruments:
   CORN:
     base_spread: 5.0
     spread_multipliers: *default_multipliers
-    slippage_mean: 2.0
-    slippage_std: 1.0
+    slippage_mean: 1.5
+    slippage_std: 0.7
     swap_long: -3.5
     swap_short: 1.2
     commission_per_lot: 0.0
@@ -126,8 +126,8 @@ instruments:
   XPTUSD:
     base_spread: 4.0
     spread_multipliers: *default_multipliers
-    slippage_mean: 1.5
-    slippage_std: 0.7
+    slippage_mean: 1.2
+    slippage_std: 0.6
     swap_long: -2.0
     swap_short: 0.4
     commission_per_lot: 0.0
@@ -135,26 +135,26 @@ instruments:
   XPDUSD:
     base_spread: 8.0
     spread_multipliers: *default_multipliers
-    slippage_mean: 3.0
-    slippage_std: 1.5
+    slippage_mean: 2.5
+    slippage_std: 1.2
     swap_long: -4.0
     swap_short: 1.0
     commission_per_lot: 0.0
 
-  SPX:
-    base_spread: 5.0
+  SPX500:
+    base_spread: 0.4
     spread_multipliers: *default_multipliers
-    slippage_mean: 1.0
-    slippage_std: 0.5
+    slippage_mean: 0.3
+    slippage_std: 0.15
     swap_long: -1.5
     swap_short: 0.3
     commission_per_lot: 0.0
 
   NAS100:
-    base_spread: 8.0
+    base_spread: 1.0
     spread_multipliers: *default_multipliers
-    slippage_mean: 2.0
-    slippage_std: 1.0
+    slippage_mean: 0.5
+    slippage_std: 0.25
     swap_long: -2.5
     swap_short: 0.5
     commission_per_lot: 0.0

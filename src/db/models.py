@@ -1,4 +1,4 @@
-"""SQLAlchemy ORM models — 19 tables for the trading signal platform."""
+"""SQLAlchemy ORM models — 23 tables for the trading signal platform."""
 
 from __future__ import annotations
 
@@ -403,6 +403,7 @@ class BotSignal(Base):
     tv_payload = Column(Text, nullable=True)  # raw TradingView JSON
     gate_log = Column(Text, nullable=True)  # JSON array of gate results
     automation_level = Column(String(8), nullable=True)  # "A+"/"A"/"B"/"blocked"
+    reasoning_json = Column(Text, nullable=True)  # JSON: SignalReasoning output
 
     signal_rel = relationship("Signal")
 
@@ -694,4 +695,125 @@ class PipelineRun(Base):
     __table_args__ = (
         Index("ix_pipeline_runs_started", "started_at"),
         Index("ix_pipeline_runs_layer", "layer"),
+    )
+
+
+# ---------------------------------------------------------------------------
+# 21. TradeJournal
+# ---------------------------------------------------------------------------
+class TradeJournal(Base):
+    """Trade journal entry with reasoning for each signal/trade.
+
+    Records the full reasoning chain: signal scoring reasoning, gate
+    decision reasoning, exit reasoning, and post-trade lessons learned.
+    """
+
+    __tablename__ = "trade_journal"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    created_at = Column(DateTime, nullable=False, default=lambda: datetime.now(timezone.utc))
+    signal_id = Column(Integer, ForeignKey("bot_signals.id"), nullable=True)
+    position_id = Column(Integer, ForeignKey("bot_positions.id"), nullable=True)
+    instrument = Column(String(32), nullable=False)
+    direction = Column(String(8), nullable=False)
+    grade = Column(String(4), nullable=False)
+    score = Column(Integer, nullable=False)
+    entry_reasoning = Column(Text, nullable=True)  # JSON: SignalReasoning
+    gate_reasoning = Column(Text, nullable=True)  # JSON: gate detail array
+    exit_reasoning = Column(Text, nullable=True)  # JSON: exit rule + reason
+    outcome = Column(String(16), nullable=True)  # win/loss/breakeven/pending
+    pnl_pips = Column(Float, nullable=True)
+    pnl_rr = Column(Float, nullable=True)
+    lessons = Column(Text, nullable=True)  # Free-text post-trade notes
+
+    signal_rel = relationship("BotSignal")
+    position_rel = relationship("BotPosition")
+
+    __table_args__ = (
+        Index("ix_journal_instrument", "instrument"),
+        Index("ix_journal_created", "created_at"),
+        Index("ix_journal_outcome", "outcome"),
+    )
+
+
+# ---------------------------------------------------------------------------
+# 22. WfoRun
+# ---------------------------------------------------------------------------
+class WfoRun(Base):
+    """Walk-forward optimization run metadata.
+
+    Stores instrument, strategy filters, window settings, runtime,
+    PBO score, and a JSON blob of the best combo and top rankings.
+    """
+
+    __tablename__ = "wfo_runs"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    started_at = Column(DateTime, nullable=False, default=lambda: datetime.now(timezone.utc))
+    finished_at = Column(DateTime, nullable=True)
+    instrument = Column(String(32), nullable=False)
+    status = Column(String(16), nullable=False, default="running")  # running/ok/error
+    train_months = Column(Integer, nullable=False, default=6)
+    test_months = Column(Integer, nullable=False, default=2)
+    window_mode = Column(String(16), nullable=False, default="sliding")
+    total_windows = Column(Integer, default=0)
+    total_combinations = Column(Integer, default=0)
+    runtime_seconds = Column(Float, nullable=True)
+    pbo_score = Column(Float, nullable=True)
+    best_strategy = Column(String(64), nullable=True)
+    best_timeframe = Column(String(8), nullable=True)
+    best_params_json = Column(Text, nullable=True)  # JSON
+    best_test_score = Column(Float, nullable=True)
+    ranking_json = Column(Text, nullable=True)  # JSON: top 20 combos
+    overfit_warnings_json = Column(Text, nullable=True)  # JSON: list of warning strings
+    oos_summary_json = Column(Text, nullable=True)  # JSON: CPCV/PBO/holdout results
+    error_message = Column(Text, nullable=True)
+
+    window_results = relationship(
+        "WfoWindowResult", back_populates="run", cascade="all, delete-orphan"
+    )
+
+    __table_args__ = (
+        Index("ix_wfo_runs_instrument", "instrument"),
+        Index("ix_wfo_runs_started", "started_at"),
+        Index("ix_wfo_runs_status", "status"),
+    )
+
+
+# ---------------------------------------------------------------------------
+# 21. WfoWindowResult
+# ---------------------------------------------------------------------------
+# 23. WfoWindowResult
+# ---------------------------------------------------------------------------
+class WfoWindowResult(Base):
+    """Individual walk-forward window result (train or test).
+
+    Stores per-window metrics for one strategy + timeframe + params
+    combination within a WFO run.
+    """
+
+    __tablename__ = "wfo_window_results"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    run_id = Column(Integer, ForeignKey("wfo_runs.id", ondelete="CASCADE"), nullable=False)
+    window_start = Column(String(10), nullable=False)
+    window_end = Column(String(10), nullable=False)
+    is_train = Column(Boolean, nullable=False)
+    strategy = Column(String(64), nullable=False)
+    timeframe = Column(String(8), nullable=False)
+    params_json = Column(Text, nullable=True)  # JSON
+    sharpe = Column(Float, nullable=True)
+    win_rate = Column(Float, nullable=True)
+    max_drawdown = Column(Float, nullable=True)
+    profit_factor = Column(Float, nullable=True)
+    total_trades = Column(Integer, default=0)
+    total_return_pct = Column(Float, nullable=True)
+    composite_score = Column(Float, nullable=False, default=0.0)
+
+    run = relationship("WfoRun", back_populates="window_results")
+
+    __table_args__ = (
+        Index("ix_wfo_window_run", "run_id"),
+        Index("ix_wfo_window_strategy", "strategy"),
+        Index("ix_wfo_window_is_train", "is_train"),
     )

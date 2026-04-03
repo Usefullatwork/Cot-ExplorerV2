@@ -25,7 +25,7 @@ Python 3.11+, FastAPI, SQLAlchemy/SQLite, Pydantic v2, Vite + vanilla JS fronten
 | **Total src/** | **97** | **17,000+** | |
 | `tests/unit/` | 48 | 14,500+ | 1,130+ test functions |
 | `tests/integration/` | 23 | 4,200+ | API (14 route groups), DB, pipeline, backtest, provider, signal, competitor tests |
-| `frontend/src/` | 32 | 6,500+ | 19 components + 3 macro sub-modules, 8 charts, SPA router, state, API client, live ticker |
+| `frontend/src/` | 33 | 7,000+ | 20 components + 3 macro sub-modules, 8 charts, SPA router, state, API client, live ticker |
 | `frontend/src/__tests__/` | 26 | 3,200+ | 283 Vitest test cases |
 
 ## Commands
@@ -72,7 +72,7 @@ python fetch_oilgas.py                  # Fetch oil & gas intelligence
 
 ## API Routes
 
-16 route groups registered in `src/api/app.py`:
+17 route groups registered in `src/api/app.py`:
 - `health` -- `/health` (GET)
 - `signals` -- `/api/signals` (GET)
 - `instruments` -- `/api/instruments` (GET)
@@ -89,6 +89,7 @@ python fetch_oilgas.py                  # Fetch oil & gas intelligence
 - `signal-health` -- `/api/v1/signal-health` (GET: ensemble health, weights, decay alerts — live from pipeline_state)
 - `risk` -- `/api/v1/risk` (GET: VaR, stress-test, correlation-matrix, regime-limits — live from pipeline_state)
 - `pipeline` -- `/api/v1/pipeline` (GET: status, runs, gate-log; POST: approve, force-layer2)
+- `journal` -- `/api/v1/journal` (GET: trade journal with reasoning, stats, filtering)
 
 Middleware stack: CORS -> RateLimitMiddleware -> APIKeyMiddleware -> CSPMiddleware
 

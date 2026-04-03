@@ -119,4 +119,69 @@ describe('BacktestDashboard', () => {
     const stats = document.getElementById('btStats');
     expect(stats.innerHTML).toBe('');
   });
+
+  it('renders WFO section skeleton', () => {
+    render(container);
+
+    const wfo = document.getElementById('btWfo');
+    expect(wfo).toBeTruthy();
+  });
+
+  it('renders WFO heading text', () => {
+    render(container);
+
+    const headings = container.querySelectorAll('.sh-t');
+    const wfoHeading = Array.from(headings).find(
+      (h) => h.textContent === 'Walk-Forward Optimalisering',
+    );
+    expect(wfoHeading).toBeTruthy();
+  });
+
+  it('renders drawdown section', () => {
+    render(container);
+
+    const dd = document.getElementById('btDrawdown');
+    expect(dd).toBeTruthy();
+  });
+
+  it('renders drawdown SVG from equity curve', () => {
+    render(container);
+    update(makeStats({ equity_curve: [0, 2, 1, 3, 2, 4] }));
+
+    const dd = document.getElementById('btDrawdown');
+    expect(dd.innerHTML).toContain('<svg');
+    expect(dd.textContent).toContain('Maks drawdown');
+  });
+
+  it('renders monthly heatmap section', () => {
+    render(container);
+
+    const monthly = document.getElementById('btMonthly');
+    expect(monthly).toBeTruthy();
+  });
+
+  it('renders monthly heatmap from equity curve', () => {
+    render(container);
+    // Need enough data points (>20) to generate heatmap
+    const curve = Array.from({ length: 30 }, (_, i) => i * 0.5 + Math.random());
+    update(makeStats({ equity_curve: curve }));
+
+    const monthly = document.getElementById('btMonthly');
+    expect(monthly.innerHTML).toContain('R');
+  });
+
+  it('renders strategy comparison section', () => {
+    render(container);
+
+    const el = document.getElementById('btStratCompare');
+    expect(el).toBeTruthy();
+  });
+
+  it('shows empty message when equity curve too short for drawdown', () => {
+    render(container);
+    update(makeStats({ equity_curve: [1] }));
+
+    const dd = document.getElementById('btDrawdown');
+    expect(dd.textContent).toContain('Ikke nok data');
+  });
 });

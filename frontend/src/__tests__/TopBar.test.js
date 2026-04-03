@@ -18,10 +18,10 @@ describe('TopBar', () => {
     expect(logo.textContent).toContain('Markeds');
   });
 
-  it('should render all 18 tabs', () => {
+  it('should render all 19 tabs', () => {
     render(container);
     const tabs = container.querySelectorAll('.nt');
-    expect(tabs.length).toBe(18);
+    expect(tabs.length).toBe(19);
   });
 
   it('should render ticker bar', () => {

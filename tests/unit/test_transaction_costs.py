@@ -450,18 +450,18 @@ def test_load_cost_configs_from_file():
     configs = load_cost_configs(yaml_path)
 
     assert "EURUSD" in configs
-    assert "Gold" in configs
+    assert "XAUUSD" in configs
     assert "NAS100" in configs
     assert len(configs) == 16
 
     eurusd = configs["EURUSD"]
-    assert eurusd.base_spread == pytest.approx(1.2)
+    assert eurusd.base_spread == pytest.approx(0.77)
     assert "london" in eurusd.spread_multipliers
-    assert eurusd.spread_multipliers["london"] == pytest.approx(0.7)
+    assert eurusd.spread_multipliers["london"] == pytest.approx(0.8)
 
 
 def test_load_cost_configs_all_instruments_present():
-    """All 16 SYMBOL_MAP instruments are present in config."""
+    """All 16 instruments are present in Pepperstone config."""
     yaml_path = Path(__file__).resolve().parents[2] / "config" / "transaction_costs.yaml"
     if not yaml_path.exists():
         pytest.skip("config/transaction_costs.yaml not found")
@@ -469,7 +469,7 @@ def test_load_cost_configs_all_instruments_present():
     configs = load_cost_configs(yaml_path)
     expected = {
         "EURUSD", "USDJPY", "GBPUSD", "AUDUSD", "USDCHF",
-        "Gold", "Silver", "Brent", "WTI", "NATGAS",
-        "WHEAT", "CORN", "XPTUSD", "XPDUSD", "SPX", "NAS100",
+        "XAUUSD", "XAGUSD", "USOIL", "UKOIL", "NATGAS",
+        "WHEAT", "CORN", "XPTUSD", "XPDUSD", "SPX500", "NAS100",
     }
     assert set(configs.keys()) == expected

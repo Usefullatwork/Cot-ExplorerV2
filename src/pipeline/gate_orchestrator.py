@@ -37,6 +37,7 @@ class GateResult:
     passed: bool
     reason: str
     size_multiplier: float = 1.0
+    detail: str = ""  # Extended human-readable explanation
 
 
 @dataclass(frozen=True)
@@ -60,8 +61,12 @@ def _gate_kill_switch(config: BotConfig) -> GateResult:
     """Gate 1: Master kill switch."""
     if config and config.kill_switch_active:
         reason = config.kill_switch_reason or "Kill switch active"
-        return GateResult("kill_switch", False, reason, 0.0)
-    return GateResult("kill_switch", True, "Kill switch off")
+        detail = f"Kill switch: BLOCKED — {reason}"
+        return GateResult("kill_switch", False, reason, 0.0, detail)
+    return GateResult(
+        "kill_switch", True, "Kill switch off",
+        detail="Kill switch: OFF — trading enabled",
+    )
 
 
 def _gate_signal_health(
@@ -69,52 +74,93 @@ def _gate_signal_health(
 ) -> GateResult:
     """Gate 2: Is the signal's underlying strategy still healthy?"""
     if state is None or not state.signal_weights_json:
-        return GateResult("signal_health", True, "No weight data — pass conservatively")
+        return GateResult(
+            "signal_health", True, "No weight data — pass conservatively",
+            detail="Signal health: no weight data available — passing conservatively",
+        )
 
     weights = json.loads(state.signal_weights_json)
-    # Look up by instrument or signal source
     weight = weights.get(signal.instrument, 1.0)
 
     if weight <= 0.0:
-        return GateResult("signal_health", False, f"Signal weight 0 for {signal.instrument}", 0.0)
+        return GateResult(
+            "signal_health", False, f"Signal weight 0 for {signal.instrument}", 0.0,
+            detail=f"Signal health: {signal.instrument} weight is 0.00 — BLOCKED (strategy dead)",
+        )
     if weight < 0.5:
-        return GateResult("signal_health", True, f"Degraded weight {weight:.2f}", 0.7)
-    return GateResult("signal_health", True, f"Healthy weight {weight:.2f}")
+        return GateResult(
+            "signal_health", True, f"Degraded weight {weight:.2f}", 0.7,
+            detail=f"Signal health: {signal.instrument} weight {weight:.2f} (degraded, <0.50) — size reduced to 70%",
+        )
+    return GateResult(
+        "signal_health", True, f"Healthy weight {weight:.2f}",
+        detail=f"Signal health: {signal.instrument} weight {weight:.2f} — PASSED (healthy)",
+    )
 
 
 def _gate_var(state: PipelineState | None) -> GateResult:
     """Gate 3: Portfolio VaR must be below 2%."""
     if state is None or state.var_95_pct is None:
-        return GateResult("var_gate", True, "No VaR data — pass conservatively")
+        return GateResult(
+            "var_gate", True, "No VaR data — pass conservatively",
+            detail="VaR gate: no VaR data available — passing conservatively",
+        )
 
     passed, reason = check_var_gate(state.var_95_pct)
-    return GateResult("var_gate", passed, reason, 1.0 if passed else 0.0)
+    limit = 2.0
+    headroom = limit - state.var_95_pct
+    status = "PASSED" if passed else "BLOCKED"
+    detail = (
+        f"VaR gate: portfolio VaR at {state.var_95_pct:.1f}% (limit {limit:.1f}%) "
+        f"— {status} with {headroom:.1f}% headroom"
+    )
+    return GateResult("var_gate", passed, reason, 1.0 if passed else 0.0, detail)
 
 
 def _gate_stress(state: PipelineState | None) -> GateResult:
     """Gate 4: Portfolio must survive all stress scenarios."""
     if state is None or state.stress_survives is None:
-        return GateResult("stress_gate", True, "No stress data — pass conservatively")
+        return GateResult(
+            "stress_gate", True, "No stress data — pass conservatively",
+            detail="Stress gate: no stress test data — passing conservatively",
+        )
 
+    limit = 15.0
+    worst = state.stress_worst_pct or 0.0
     if not state.stress_survives:
         return GateResult(
             "stress_gate", False,
-            f"Worst scenario loss {state.stress_worst_pct:.1f}% exceeds 15%", 0.0,
+            f"Worst scenario loss {worst:.1f}% exceeds 15%", 0.0,
+            detail=f"Stress gate: worst scenario loss {worst:.1f}% (limit {limit:.0f}%) — BLOCKED",
         )
-    return GateResult("stress_gate", True, f"Stress OK (worst {state.stress_worst_pct:.1f}%)")
+    margin = limit - worst
+    return GateResult(
+        "stress_gate", True, f"Stress OK (worst {worst:.1f}%)",
+        detail=f"Stress gate: worst scenario loss {worst:.1f}% (limit {limit:.0f}%) — PASSED with {margin:.1f}% margin",
+    )
 
 
 def _gate_regime(state: PipelineState | None) -> GateResult:
     """Gate 5: Regime-based position limit."""
     if state is None or state.regime is None:
-        return GateResult("regime_gate", True, "No regime data — pass conservatively")
+        return GateResult(
+            "regime_gate", True, "No regime data — pass conservatively",
+            detail="Regime gate: no regime data — passing conservatively",
+        )
 
     limits = compute_regime_position_limit(
         state.regime, state.open_position_count or 0,
     )
+    open_count = state.open_position_count or 0
     if not limits.can_open:
-        return GateResult("regime_gate", False, limits.reason, 0.0)
-    return GateResult("regime_gate", True, limits.reason)
+        return GateResult(
+            "regime_gate", False, limits.reason, 0.0,
+            detail=f"Regime gate: {state.regime} regime, {open_count} open positions — BLOCKED ({limits.reason})",
+        )
+    return GateResult(
+        "regime_gate", True, limits.reason,
+        detail=f"Regime gate: {state.regime} regime, {open_count} open positions — PASSED",
+    )
 
 
 def _gate_correlation(
@@ -134,12 +180,17 @@ def _gate_correlation(
     overlap = open_instruments & set(correlated)
 
     if overlap:
+        overlap_str = ", ".join(sorted(overlap))
         return GateResult(
             "correlation_gate", True,
             f"Correlated with {overlap} — size reduced",
             0.5,
+            detail=f"Correlation gate: {signal.instrument} correlated with {overlap_str} (open) — lot reduced 50%",
         )
-    return GateResult("correlation_gate", True, "No correlation conflict")
+    return GateResult(
+        "correlation_gate", True, "No correlation conflict",
+        detail="Correlation gate: no correlated instruments open — PASSED",
+    )
 
 
 def _gate_kelly(
@@ -162,9 +213,10 @@ def _gate_kelly(
 
     if signal.instrument in kelly_cache:
         kf = kelly_cache[signal.instrument]
+        wr = kf.get("win_rate", 0.5)
         lot = kelly_position_size(
             account_equity=equity,
-            win_rate=kf.get("win_rate", 0.5),
+            win_rate=wr,
             avg_win=kf.get("avg_win", 1.0),
             avg_loss=kf.get("avg_loss", 1.0),
             entry_price=signal.entry_price,
@@ -173,7 +225,11 @@ def _gate_kelly(
             pip_value_per_lot=params.pip_value_per_lot,
         )
         if lot > 0:
-            return GateResult("kelly_sizing", True, f"Kelly lot={lot:.2f}"), lot
+            detail = (
+                f"Kelly sizing: win_rate={wr:.0%}, lot={lot:.2f} "
+                f"(equity=${equity:,.0f}) — PASSED"
+            )
+            return GateResult("kelly_sizing", True, f"Kelly lot={lot:.2f}", detail=detail), lot
 
     # Fallback to VIX×grade matrix
     vix = state.vix_price if state and state.vix_price else 20.0
@@ -187,7 +243,12 @@ def _gate_kelly(
         instrument=signal.instrument,
     )
     reason = f"Fallback lot={lot:.2f}" if lot > 0 else "Blocked by VIX×grade"
-    return GateResult("kelly_sizing", lot > 0, reason, 1.0 if lot > 0 else 0.0), lot
+    status = "PASSED" if lot > 0 else "BLOCKED"
+    detail = (
+        f"Kelly sizing: no cached stats, fallback to VIX×grade matrix "
+        f"(VIX={vix:.1f}, grade={signal.grade}) — {status}, lot={lot:.2f}"
+    )
+    return GateResult("kelly_sizing", lot > 0, reason, 1.0 if lot > 0 else 0.0, detail), lot
 
 
 def _gate_risk_parity(
@@ -208,8 +269,15 @@ def _gate_risk_parity(
             "risk_parity_clamp", True,
             f"Clamped to {clamp:.0%} of full size (weight={max_weight:.2f})",
             clamp,
+            detail=(
+                f"Risk parity: {signal.instrument} allocation weight {max_weight:.2f} "
+                f"(< 0.30 cap) — lot clamped to {clamp:.0%} of full size"
+            ),
         )
-    return GateResult("risk_parity_clamp", True, "Within parity bounds")
+    return GateResult(
+        "risk_parity_clamp", True, "Within parity bounds",
+        detail=f"Risk parity: {signal.instrument} allocation within bounds — PASSED",
+    )
 
 
 # ---------------------------------------------------------------------------

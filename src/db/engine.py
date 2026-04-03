@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import os
+from contextlib import contextmanager
 from typing import Generator
 
 from sqlalchemy import create_engine, event
@@ -60,6 +61,25 @@ def get_session() -> sessionmaker[Session]:
 
 def session_scope() -> Generator[Session, None, None]:
     """Context manager that yields a transactional session and auto-commits."""
+    factory = get_session()
+    session = factory()
+    try:
+        yield session
+        session.commit()
+    except Exception:
+        session.rollback()
+        raise
+    finally:
+        session.close()
+
+
+@contextmanager
+def session_ctx() -> Generator[Session, None, None]:
+    """Context manager for DB sessions — use with ``with`` statement.
+
+    Same lifecycle as ``session_scope`` (auto-commit, rollback on error)
+    but wrapped with ``@contextmanager`` for ``with`` blocks in routes.
+    """
     factory = get_session()
     session = factory()
     try:

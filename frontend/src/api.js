@@ -132,6 +132,20 @@ export function fetchBacktestStats() {
   return get('/api/v1/backtests/stats');
 }
 
+export function fetchWfoRuns(instrument) {
+  const params = instrument ? { instrument } : {};
+  return get('/api/v1/backtests/wfo/runs', params);
+}
+
+export function fetchWfoRunDetail(runId) {
+  return get(`/api/v1/backtests/wfo/${runId}`);
+}
+
+export function fetchWfoWindows(runId, isTrain) {
+  const params = isTrain !== undefined ? { is_train: isTrain } : {};
+  return get(`/api/v1/backtests/wfo/${runId}/windows`, params);
+}
+
 // ── Regime History ─────────────────────────────────────────
 
 export function fetchRegimeHistory(days = 30) {
@@ -299,4 +313,40 @@ export function fetchAttribution() {
 
 export function fetchMicrostructure() {
   return get('/api/v1/intelligence/microstructure');
+}
+
+// ── Pipeline ──────────────────────────────────────────────
+
+export function fetchPipelineStatus() {
+  return get('/api/v1/pipeline/status');
+}
+
+/**
+ * @param {string} [layer]  Optional filter: 'layer1', 'layer2', 'retrain'
+ * @param {number} [limit=20]
+ */
+export function fetchPipelineRuns(layer, limit = 20) {
+  const params = { limit };
+  if (layer) params.layer = layer;
+  return get('/api/v1/pipeline/runs', params);
+}
+
+/**
+ * @param {number} signalId  Signal ID for gate log
+ */
+export function fetchGateLog(signalId) {
+  return get(`/api/v1/pipeline/gate-log/${signalId}`);
+}
+
+export function forceLayer2() {
+  return post('/api/v1/pipeline/force-layer2');
+}
+
+// ── Trade Journal ─────────────────────────────────────────
+
+/**
+ * @param {Object} [params] - Optional query params (instrument, outcome, limit)
+ */
+export function fetchJournal(params = {}) {
+  return get('/api/v1/journal', params);
 }
