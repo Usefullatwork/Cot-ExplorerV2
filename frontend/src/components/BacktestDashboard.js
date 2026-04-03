@@ -33,6 +33,10 @@ export function render(container) {
         <div class="sh"><h2 class="sh-t">Per Klasse</h2></div>
         <div id="btGrades" role="region" aria-label="Klasse-fordeling"></div>
       </div>
+    </div>
+    <div style="margin-top:24px">
+      <div class="sh"><h2 class="sh-t">Walk-Forward Optimalisering</h2><div class="sh-b">OOS-validering + PBO</div></div>
+      <div id="btWfo" role="region" aria-label="WFO-resultater"></div>
     </div>`;
 }
 
@@ -113,14 +117,67 @@ export function update(data) {
   if (ts) ts.textContent = data.total_trades + ' trades';
 }
 
+// ── WFO Section ──────────────────────────────────────────────
+
 /**
- * Fetch and display backtest stats.
+ * Render the WFO results section below the signal-based stats.
+ * @param {Array} runs  List of WfoRunResponse objects
+ */
+function updateWfo(runs) {
+  const wfoEl = document.getElementById('btWfo');
+  if (!wfoEl) return;
+
+  if (!runs || runs.length === 0) {
+    wfoEl.innerHTML = '<div class="empty-state" style="padding:16px"><div class="empty-state-title">Ingen WFO-resultater</div><div class="empty-state-text">Kjør walk-forward optimalisering via POST /api/v1/backtests/wfo/run</div></div>';
+    return;
+  }
+
+  const rows = runs
+    .map((r) => {
+      const pboColor = r.pbo_rating === 'green' ? 'bull' : r.pbo_rating === 'yellow' ? 'warn' : 'bear';
+      const pboVal = r.pbo_score !== null ? r.pbo_score.toFixed(3) : '-';
+      const score = r.best_test_score !== null ? r.best_test_score.toFixed(4) : '-';
+      const strat = r.best_strategy || '-';
+      const tf = r.best_timeframe || '-';
+      const warnings = r.overfit_warnings ? r.overfit_warnings.length : 0;
+      const runtime = r.runtime_seconds ? r.runtime_seconds.toFixed(1) + 's' : '-';
+
+      return `<tr>
+        <td>${escapeHtml(r.instrument)}</td>
+        <td>${escapeHtml(strat)}</td>
+        <td style="text-align:center">${escapeHtml(tf)}</td>
+        <td class="data-value" style="text-align:right">${score}</td>
+        <td style="text-align:center"><span class="tag ${pboColor}">${pboVal}</span></td>
+        <td style="text-align:right">${r.total_windows}</td>
+        <td style="text-align:right;color:var(--${warnings > 0 ? 'warn' : 'm'})">${warnings}</td>
+        <td style="text-align:right;color:var(--m)">${runtime}</td>
+      </tr>`;
+    })
+    .join('');
+
+  wfoEl.innerHTML = `<div class="cotw"><table class="cott" aria-label="WFO-resultater">
+    <thead><tr>
+      <th>Instrument</th><th>Beste strategi</th><th style="text-align:center">TF</th>
+      <th style="text-align:right">OOS Score</th><th style="text-align:center">PBO</th>
+      <th style="text-align:right">Vinduer</th><th style="text-align:right">Advarsler</th>
+      <th style="text-align:right">Tid</th>
+    </tr></thead>
+    <tbody>${rows}</tbody>
+  </table></div>`;
+}
+
+/**
+ * Fetch and display backtest stats + WFO results.
  */
 export async function refreshAll() {
   try {
-    const { fetchBacktestStats } = await import('../api.js');
-    const data = await fetchBacktestStats();
-    update(data);
+    const { fetchBacktestStats, fetchWfoRuns } = await import('../api.js');
+    const [statsData, wfoData] = await Promise.all([
+      fetchBacktestStats().catch(() => null),
+      fetchWfoRuns().catch(() => []),
+    ]);
+    update(statsData);
+    updateWfo(wfoData);
   } catch (e) {
     console.error('[BacktestDashboard]', e);
   }

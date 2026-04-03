@@ -119,4 +119,21 @@ describe('BacktestDashboard', () => {
     const stats = document.getElementById('btStats');
     expect(stats.innerHTML).toBe('');
   });
+
+  it('renders WFO section skeleton', () => {
+    render(container);
+
+    const wfo = document.getElementById('btWfo');
+    expect(wfo).toBeTruthy();
+  });
+
+  it('renders WFO heading text', () => {
+    render(container);
+
+    const headings = container.querySelectorAll('.sh-t');
+    const wfoHeading = Array.from(headings).find(
+      (h) => h.textContent === 'Walk-Forward Optimalisering',
+    );
+    expect(wfoHeading).toBeTruthy();
+  });
 });

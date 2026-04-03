@@ -132,6 +132,20 @@ export function fetchBacktestStats() {
   return get('/api/v1/backtests/stats');
 }
 
+export function fetchWfoRuns(instrument) {
+  const params = instrument ? { instrument } : {};
+  return get('/api/v1/backtests/wfo/runs', params);
+}
+
+export function fetchWfoRunDetail(runId) {
+  return get(`/api/v1/backtests/wfo/${runId}`);
+}
+
+export function fetchWfoWindows(runId, isTrain) {
+  const params = isTrain !== undefined ? { is_train: isTrain } : {};
+  return get(`/api/v1/backtests/wfo/${runId}/windows`, params);
+}
+
 // ── Regime History ─────────────────────────────────────────
 
 export function fetchRegimeHistory(days = 30) {

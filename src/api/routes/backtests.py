@@ -1,15 +1,16 @@
-"""Backtest results API routes."""
+"""Backtest results API routes — signal-based backtests + WFO runs."""
 
 from __future__ import annotations
 
+import json
 from typing import Any, Optional
 
 from fastapi import APIRouter, HTTPException, Query
 from pydantic import BaseModel, Field
-from sqlalchemy import case, func, select
+from sqlalchemy import func, select
 
 from src.db.engine import session_scope
-from src.db.models import BacktestResult
+from src.db.models import BacktestResult, WfoRun, WfoWindowResult
 from src.security.input_validator import validate_symbol
 
 router = APIRouter(prefix="/api/v1/backtests", tags=["backtests"])
@@ -320,6 +321,273 @@ def backtest_stats() -> dict:
         except StopIteration:
             pass
         return result
+    except Exception:
+        try:
+            gen.throw(Exception)
+        except StopIteration:
+            pass
+        raise
+
+
+# ── WFO (Walk-Forward Optimization) endpoints ─────────────────────────
+
+
+class WfoRunRequest(BaseModel):
+    """Request body for triggering a WFO run."""
+
+    instrument: str = Field(..., description="Instrument key", examples=["EURUSD"])
+    train_months: int = Field(6, ge=2, le=24, description="Training window months")
+    test_months: int = Field(2, ge=1, le=12, description="Test window months")
+    window_mode: str = Field("sliding", description="sliding, anchored, expanding")
+
+
+class WfoRunResponse(BaseModel):
+    """WFO run summary."""
+
+    id: int
+    instrument: str
+    status: str
+    started_at: Any
+    finished_at: Optional[Any] = None
+    train_months: int
+    test_months: int
+    window_mode: str
+    total_windows: int
+    total_combinations: int
+    runtime_seconds: Optional[float] = None
+    pbo_score: Optional[float] = None
+    pbo_rating: Optional[str] = None
+    best_strategy: Optional[str] = None
+    best_timeframe: Optional[str] = None
+    best_params: Optional[dict] = None
+    best_test_score: Optional[float] = None
+    ranking: Optional[list] = None
+    overfit_warnings: Optional[list] = None
+    oos_summary: Optional[dict] = None
+    error_message: Optional[str] = None
+
+
+def _wfo_run_to_dict(run: WfoRun) -> dict:
+    """Convert WfoRun ORM object to response dict."""
+    pbo = run.pbo_score
+    return {
+        "id": run.id,
+        "instrument": run.instrument,
+        "status": run.status,
+        "started_at": run.started_at,
+        "finished_at": run.finished_at,
+        "train_months": run.train_months,
+        "test_months": run.test_months,
+        "window_mode": run.window_mode,
+        "total_windows": run.total_windows or 0,
+        "total_combinations": run.total_combinations or 0,
+        "runtime_seconds": run.runtime_seconds,
+        "pbo_score": pbo,
+        "pbo_rating": (
+            "green" if pbo is not None and pbo < 0.3
+            else "yellow" if pbo is not None and pbo < 0.5
+            else "red" if pbo is not None
+            else None
+        ),
+        "best_strategy": run.best_strategy,
+        "best_timeframe": run.best_timeframe,
+        "best_params": json.loads(run.best_params_json) if run.best_params_json else None,
+        "best_test_score": run.best_test_score,
+        "ranking": json.loads(run.ranking_json) if run.ranking_json else None,
+        "overfit_warnings": (
+            json.loads(run.overfit_warnings_json) if run.overfit_warnings_json else None
+        ),
+        "oos_summary": json.loads(run.oos_summary_json) if run.oos_summary_json else None,
+        "error_message": run.error_message,
+    }
+
+
+@router.post(
+    "/wfo/run",
+    response_model=WfoRunResponse,
+    summary="Run walk-forward optimization",
+)
+def wfo_run(req: WfoRunRequest) -> dict:
+    """Trigger a walk-forward optimization run."""
+    try:
+        instrument = validate_symbol(req.instrument)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+
+    if req.window_mode not in ("sliding", "anchored", "expanding"):
+        raise HTTPException(status_code=400, detail="Invalid window_mode")
+
+    gen = session_scope()
+    session = next(gen)
+    try:
+        from src.trading.backtesting.runner_service import WfoRunnerService
+
+        service = WfoRunnerService(session)
+        run = service.run_wfo(
+            instrument=instrument,
+            train_months=req.train_months,
+            test_months=req.test_months,
+            window_mode=req.window_mode,
+        )
+        result = _wfo_run_to_dict(run)
+        try:
+            gen.send(None)
+        except StopIteration:
+            pass
+        return result
+    except HTTPException:
+        raise
+    except Exception as exc:
+        try:
+            gen.throw(exc)
+        except StopIteration:
+            pass
+        raise HTTPException(status_code=500, detail=str(exc))
+
+
+@router.get(
+    "/wfo/runs",
+    response_model=list[WfoRunResponse],
+    summary="List WFO runs",
+)
+def wfo_list_runs(
+    instrument: Optional[str] = Query(None, description="Filter by instrument"),
+    limit: int = Query(20, ge=1, le=100),
+) -> list[dict]:
+    """List WFO optimization runs."""
+    gen = session_scope()
+    session = next(gen)
+    try:
+        stmt = select(WfoRun).order_by(WfoRun.started_at.desc())
+        if instrument:
+            try:
+                instrument = validate_symbol(instrument)
+            except ValueError as exc:
+                raise HTTPException(status_code=400, detail=str(exc))
+            stmt = stmt.where(WfoRun.instrument == instrument)
+        stmt = stmt.limit(limit)
+        rows = session.execute(stmt).scalars().all()
+        result = [_wfo_run_to_dict(r) for r in rows]
+        try:
+            gen.send(None)
+        except StopIteration:
+            pass
+        return result
+    except HTTPException:
+        raise
+    except Exception:
+        try:
+            gen.throw(Exception)
+        except StopIteration:
+            pass
+        raise
+
+
+@router.get(
+    "/wfo/{run_id}",
+    response_model=WfoRunResponse,
+    summary="Get WFO run details",
+)
+def wfo_get_run(run_id: int) -> dict:
+    """Get details for a specific WFO run."""
+    gen = session_scope()
+    session = next(gen)
+    try:
+        run = session.execute(
+            select(WfoRun).where(WfoRun.id == run_id)
+        ).scalar_one_or_none()
+        if run is None:
+            raise HTTPException(status_code=404, detail="WFO run not found")
+        result = _wfo_run_to_dict(run)
+        try:
+            gen.send(None)
+        except StopIteration:
+            pass
+        return result
+    except HTTPException:
+        raise
+    except Exception:
+        try:
+            gen.throw(Exception)
+        except StopIteration:
+            pass
+        raise
+
+
+class WfoWindowResponse(BaseModel):
+    """Individual WFO window result."""
+
+    id: int
+    run_id: int
+    window_start: str
+    window_end: str
+    is_train: bool
+    strategy: str
+    timeframe: str
+    params: Optional[dict] = None
+    sharpe: Optional[float] = None
+    win_rate: Optional[float] = None
+    max_drawdown: Optional[float] = None
+    profit_factor: Optional[float] = None
+    total_trades: int
+    total_return_pct: Optional[float] = None
+    composite_score: float
+
+
+@router.get(
+    "/wfo/{run_id}/windows",
+    response_model=list[WfoWindowResponse],
+    summary="Get WFO window results",
+)
+def wfo_get_windows(
+    run_id: int,
+    is_train: Optional[bool] = Query(None, description="Filter train/test"),
+) -> list[dict]:
+    """Get per-window results for a WFO run."""
+    gen = session_scope()
+    session = next(gen)
+    try:
+        stmt = (
+            select(WfoWindowResult)
+            .where(WfoWindowResult.run_id == run_id)
+            .order_by(WfoWindowResult.composite_score.desc())
+        )
+        if is_train is not None:
+            stmt = stmt.where(WfoWindowResult.is_train == is_train)
+        rows = session.execute(stmt).scalars().all()
+        if not rows:
+            run_exists = session.execute(
+                select(WfoRun.id).where(WfoRun.id == run_id)
+            ).scalar_one_or_none()
+            if run_exists is None:
+                raise HTTPException(status_code=404, detail="WFO run not found")
+        result = [
+            {
+                "id": r.id,
+                "run_id": r.run_id,
+                "window_start": r.window_start,
+                "window_end": r.window_end,
+                "is_train": r.is_train,
+                "strategy": r.strategy,
+                "timeframe": r.timeframe,
+                "params": json.loads(r.params_json) if r.params_json else None,
+                "sharpe": r.sharpe,
+                "win_rate": r.win_rate,
+                "max_drawdown": r.max_drawdown,
+                "profit_factor": r.profit_factor,
+                "total_trades": r.total_trades or 0,
+                "total_return_pct": r.total_return_pct,
+                "composite_score": r.composite_score,
+            }
+            for r in rows
+        ]
+        try:
+            gen.send(None)
+        except StopIteration:
+            pass
+        return result
+    except HTTPException:
+        raise
     except Exception:
         try:
             gen.throw(Exception)
