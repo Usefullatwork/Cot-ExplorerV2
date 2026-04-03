@@ -2,15 +2,12 @@
 
 from __future__ import annotations
 
-import pytest
-
 from src.trading.scrapers.agri_weather import (
     combine_agri_outlook,
     compute_season_multiplier,
     score_cot,
     score_weather,
 )
-
 
 # ── score_weather ────────────────────────────────────────────────────────────
 

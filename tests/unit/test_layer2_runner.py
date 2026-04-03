@@ -2,10 +2,7 @@
 
 from __future__ import annotations
 
-import pytest
-
 from src.pipeline.layer2_runner import _compute_daily_returns, _positions_to_stress_format
-
 
 # ── _compute_daily_returns ───────────────────────────────────────────────────
 

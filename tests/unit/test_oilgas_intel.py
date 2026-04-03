@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-import pytest
-
 from src.trading.scrapers.oilgas_intel import (
     SegmentRisk,
     classify_overall_risk,
@@ -12,7 +10,6 @@ from src.trading.scrapers.oilgas_intel import (
     score_energy_segments,
     score_price_signal,
 )
-
 
 # ── score_price_signal ───────────────────────────────────────────────────────
 

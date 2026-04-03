@@ -446,7 +446,7 @@ class BotPosition(Base):
     t1_hit = Column(Boolean, default=False)
     t1_closed_pct = Column(Float, default=0.0)
     candles_since_entry = Column(Integer, default=0)
-    exit_reason = Column(String(32), nullable=True)  # t1/t2/stop_loss/ema9_cross/candle_8/candle_16/geo_spike/kill_switch
+    exit_reason = Column(String(32), nullable=True)  # t1/t2/stop_loss/ema9_cross/candle_8/...
     pnl_pips = Column(Float, nullable=True)
     pnl_usd = Column(Float, nullable=True)
     pnl_rr = Column(Float, nullable=True)
@@ -477,7 +477,7 @@ class BotTradeLog(Base):
     id = Column(Integer, primary_key=True, autoincrement=True)
     timestamp = Column(DateTime, nullable=False, default=lambda: datetime.now(timezone.utc))
     position_id = Column(Integer, ForeignKey("bot_positions.id"), nullable=True)
-    event_type = Column(String(32), nullable=False)  # order_sent/fill/partial_close/sl_hit/t1_hit/ema9_exit/candle_rule/kill_switch/geo_spike/error/connection
+    event_type = Column(String(32), nullable=False)  # order_sent/fill/sl_hit/t1_hit/...
     details = Column(Text, nullable=True)  # JSON
 
     position_rel = relationship("BotPosition")

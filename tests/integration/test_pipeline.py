@@ -9,7 +9,7 @@ import pytest
 
 # Pre-load src.security so its audit_log sub-module can be mocked safely
 # without replacing the real package (which would break later imports).
-import src.security  # noqa: E402
+
 _mock_audit_mod = MagicMock()
 sys.modules.setdefault("src.security.audit_log", _mock_audit_mod)
 
@@ -66,7 +66,10 @@ def test_run_full_pipeline_returns_all_stages():
     """Pipeline returns results for all 8 stages."""
     results = run_full_pipeline()
 
-    expected_stages = {"quality", "calendar", "cot", "combine", "fundamentals", "prices", "agri", "shipping", "oilgas", "scoring", "output", "push", "rebalance"}
+    expected_stages = {
+        "quality", "calendar", "cot", "combine", "fundamentals", "prices",
+        "agri", "shipping", "oilgas", "scoring", "output", "push", "rebalance",
+    }
     assert set(results.keys()) == expected_stages
 
 
@@ -208,5 +211,8 @@ def test_pipeline_order_preserved(mock_stage_functions):
     """Results dict should have stages in pipeline order."""
     results = run_full_pipeline()
 
-    expected_order = ["quality", "calendar", "cot", "combine", "fundamentals", "prices", "agri", "shipping", "oilgas", "scoring", "output", "push", "rebalance"]
+    expected_order = [
+        "quality", "calendar", "cot", "combine", "fundamentals", "prices",
+        "agri", "shipping", "oilgas", "scoring", "output", "push", "rebalance",
+    ]
     assert list(results.keys()) == expected_order

@@ -4,10 +4,7 @@ from __future__ import annotations
 
 from unittest.mock import MagicMock
 
-import pytest
-
 from src.pipeline.gate_orchestrator import (
-    GateDecision,
     GateResult,
     _assign_automation_level,
     _gate_correlation,
@@ -18,7 +15,6 @@ from src.pipeline.gate_orchestrator import (
     _gate_var,
     evaluate_signal,
 )
-
 
 # ── Fixtures ─────────────────────────────────────────────────────────────────
 

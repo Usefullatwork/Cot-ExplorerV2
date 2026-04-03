@@ -2,15 +2,12 @@
 
 from __future__ import annotations
 
-import pytest
-
 from src.trading.scrapers.shipping_intel import (
+    RouteRisk,
     classify_overall_risk,
     score_index_signal,
     score_route_risks,
-    RouteRisk,
 )
-
 
 # ── score_route_risks ────────────────────────────────────────────────────────
 
