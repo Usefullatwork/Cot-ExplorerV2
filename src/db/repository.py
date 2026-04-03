@@ -20,6 +20,7 @@ from src.db.models import (
     MacroSnapshot,
     PriceDaily,
     Signal,
+    TradeJournal,
 )
 
 
@@ -754,6 +755,73 @@ def get_bot_trade_log(
             stmt = stmt.where(BotTradeLog.position_id == position_id)
         if event_type:
             stmt = stmt.where(BotTradeLog.event_type == event_type)
+        stmt = stmt.limit(limit)
+        return session.execute(stmt).scalars().all()
+
+    if db is not None:
+        return _do(db)
+    gen = session_scope()
+    session = next(gen)
+    try:
+        result = _do(session)
+        try:
+            gen.send(None)
+        except StopIteration:
+            pass
+    except Exception:
+        try:
+            gen.throw(Exception)
+        except StopIteration:
+            pass
+        raise
+    return result
+
+
+# ---------------------------------------------------------------------------
+# TradeJournal
+# ---------------------------------------------------------------------------
+def save_journal_entry(db: Session | None = None, **kwargs: Any) -> TradeJournal:
+    """Create a new trade journal entry."""
+
+    def _do(session: Session) -> TradeJournal:
+        entry = TradeJournal(**kwargs)
+        session.add(entry)
+        session.flush()
+        return entry
+
+    if db is not None:
+        return _do(db)
+    gen = session_scope()
+    session = next(gen)
+    try:
+        result = _do(session)
+        try:
+            gen.send(None)
+        except StopIteration:
+            pass
+    except Exception:
+        try:
+            gen.throw(Exception)
+        except StopIteration:
+            pass
+        raise
+    return result
+
+
+def get_journal_entries(
+    instrument: str | None = None,
+    outcome: str | None = None,
+    limit: int = 50,
+    db: Session | None = None,
+) -> Sequence[TradeJournal]:
+    """List trade journal entries with optional filters."""
+
+    def _do(session: Session) -> Sequence[TradeJournal]:
+        stmt = select(TradeJournal).order_by(TradeJournal.created_at.desc())
+        if instrument:
+            stmt = stmt.where(TradeJournal.instrument == instrument)
+        if outcome:
+            stmt = stmt.where(TradeJournal.outcome == outcome)
         stmt = stmt.limit(limit)
         return session.execute(stmt).scalars().all()
 

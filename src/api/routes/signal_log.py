@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 from datetime import datetime, timezone
 from typing import Any, Optional
 
@@ -10,7 +11,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy import func, select
 
 from src.db.engine import session_scope
-from src.db.models import SignalPerformance
+from src.db.models import BotSignal, SignalPerformance
 
 router = APIRouter(prefix="/api/v1/signal-log", tags=["signal-log"])
 
@@ -22,6 +23,7 @@ class SignalPerfResponse(BaseModel):
     entry_price: float; result: str; closed_at: Optional[str] = None
     pnl_pips: Optional[float] = None; risk_reward: Optional[float] = None
     created_at: Optional[str] = None
+    reasoning: Optional[dict] = None
 
 class SignalPerfStatsResponse(BaseModel):
     total: int; hits: int; misses: int; pending: int; neutral: int
@@ -35,14 +37,21 @@ class ResultUpdateRequest(BaseModel):
     pnl_pips: Optional[float] = Field(None, description="Profit/loss in pips")
 
 
-def _perf_to_dict(r: Any) -> dict:
+def _perf_to_dict(r: Any, reasoning_map: dict[int, str] | None = None) -> dict:
+    reasoning = None
+    if reasoning_map and r.signal_id in reasoning_map:
+        try:
+            reasoning = json.loads(reasoning_map[r.signal_id])
+        except (json.JSONDecodeError, TypeError):
+            pass
     return {"id": r.id, "signal_id": r.signal_id, "instrument": r.instrument,
             "direction": r.direction, "grade": r.grade, "score": r.score,
             "entry_price": r.entry_price, "result": r.result,
             "closed_at": r.closed_at.isoformat() if r.closed_at else None,
             "pnl_pips": r.pnl_pips,
             "risk_reward": r.risk_reward,
-            "created_at": r.created_at.isoformat() if r.created_at else None}
+            "created_at": r.created_at.isoformat() if r.created_at else None,
+            "reasoning": reasoning}
 
 
 # ── Endpoints ────────────────────────────────────────────────────────────────
@@ -83,7 +92,20 @@ def list_signal_log(
             stmt = stmt.where(SignalPerformance.result == result.upper())
         rows = session.execute(stmt.limit(limit)).scalars().all()
 
-        response = {"stats": stats, "history": [_perf_to_dict(r) for r in rows]}
+        # Fetch reasoning data from linked BotSignals
+        signal_ids = [r.signal_id for r in rows if r.signal_id]
+        reasoning_map: dict[int, str] = {}
+        if signal_ids:
+            bot_sigs = session.execute(
+                select(BotSignal.signal_id, BotSignal.reasoning_json)
+                .where(BotSignal.signal_id.in_(signal_ids))
+                .where(BotSignal.reasoning_json.isnot(None))
+            ).all()
+            for sig_id, rj in bot_sigs:
+                if sig_id is not None and rj:
+                    reasoning_map[sig_id] = rj
+
+        response = {"stats": stats, "history": [_perf_to_dict(r, reasoning_map) for r in rows]}
         try:
             gen.send(None)
         except StopIteration:

@@ -1,4 +1,4 @@
-"""SQLAlchemy ORM models — 19 tables for the trading signal platform."""
+"""SQLAlchemy ORM models — 22 tables for the trading signal platform."""
 
 from __future__ import annotations
 
@@ -403,6 +403,7 @@ class BotSignal(Base):
     tv_payload = Column(Text, nullable=True)  # raw TradingView JSON
     gate_log = Column(Text, nullable=True)  # JSON array of gate results
     automation_level = Column(String(8), nullable=True)  # "A+"/"A"/"B"/"blocked"
+    reasoning_json = Column(Text, nullable=True)  # JSON: SignalReasoning output
 
     signal_rel = relationship("Signal")
 
@@ -694,4 +695,42 @@ class PipelineRun(Base):
     __table_args__ = (
         Index("ix_pipeline_runs_started", "started_at"),
         Index("ix_pipeline_runs_layer", "layer"),
+    )
+
+
+# ---------------------------------------------------------------------------
+# 22. TradeJournal
+# ---------------------------------------------------------------------------
+class TradeJournal(Base):
+    """Trade journal entry with reasoning for each signal/trade.
+
+    Records the full reasoning chain: signal scoring reasoning, gate
+    decision reasoning, exit reasoning, and post-trade lessons learned.
+    """
+
+    __tablename__ = "trade_journal"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    created_at = Column(DateTime, nullable=False, default=lambda: datetime.now(timezone.utc))
+    signal_id = Column(Integer, ForeignKey("bot_signals.id"), nullable=True)
+    position_id = Column(Integer, ForeignKey("bot_positions.id"), nullable=True)
+    instrument = Column(String(32), nullable=False)
+    direction = Column(String(8), nullable=False)
+    grade = Column(String(4), nullable=False)
+    score = Column(Integer, nullable=False)
+    entry_reasoning = Column(Text, nullable=True)  # JSON: SignalReasoning
+    gate_reasoning = Column(Text, nullable=True)  # JSON: gate detail array
+    exit_reasoning = Column(Text, nullable=True)  # JSON: exit rule + reason
+    outcome = Column(String(16), nullable=True)  # win/loss/breakeven/pending
+    pnl_pips = Column(Float, nullable=True)
+    pnl_rr = Column(Float, nullable=True)
+    lessons = Column(Text, nullable=True)  # Free-text post-trade notes
+
+    signal_rel = relationship("BotSignal")
+    position_rel = relationship("BotPosition")
+
+    __table_args__ = (
+        Index("ix_journal_instrument", "instrument"),
+        Index("ix_journal_created", "created_at"),
+        Index("ix_journal_outcome", "outcome"),
     )

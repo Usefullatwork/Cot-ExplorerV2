@@ -190,14 +190,35 @@ function updateTable(data) {
   // Show last 100 signals
   const last100 = signals.slice(-100).reverse();
 
-  tbody.innerHTML = last100.map((s) => `<tr>
-    <td style="white-space:nowrap">${escapeHtml(s.time ? timeAgo(s.time) : '-')}</td>
+  tbody.innerHTML = last100.map((s) => {
+    const mainRow = `<tr>
+    <td style="white-space:nowrap">${escapeHtml(s.time ? timeAgo(s.time) : (s.created_at ? timeAgo(s.created_at) : '-'))}</td>
     <td style="font-weight:600">${escapeHtml(s.instrument || '-')}</td>
     <td>${dirBadge(s.direction)}</td>
     <td>${gradeBadge(s.grade)}</td>
     <td class="data-value">${escapeHtml(s.score != null ? String(s.score) : '-')}</td>
-    <td class="data-value">${escapeHtml(s.entry != null ? formatPrice(s.entry) : '-')}</td>
+    <td class="data-value">${escapeHtml(s.entry != null ? formatPrice(s.entry) : (s.entry_price != null ? formatPrice(s.entry_price) : '-'))}</td>
     <td class="data-value" style="color:${s.risk_reward != null && s.risk_reward >= 1.5 ? 'var(--bull)' : 'var(--m)'}">${escapeHtml(s.risk_reward != null ? s.risk_reward.toFixed(1) + ':1' : '-')}</td>
     <td>${resultBadge(s.result)}</td>
-  </tr>`).join('');
+  </tr>`;
+
+    // Expandable reasoning row
+    if (!s.reasoning) return mainRow;
+    const r = s.reasoning;
+    const met = (r.criteria_met || []).map((c) =>
+      `<span style="color:var(--bull);font-size:11px;margin-right:8px">\u2714 ${escapeHtml(c.narrative)}</span>`
+    ).join('');
+    const missed = (r.criteria_missed || []).map((c) =>
+      `<span style="color:var(--bear);font-size:11px;margin-right:8px">\u2718 ${escapeHtml(c.narrative)}</span>`
+    ).join('');
+    const reasoningRow = `<tr class="sl-reasoning-row"><td colspan="8" style="padding:4px 12px;background:var(--s2)">
+      <details><summary style="cursor:pointer;font-size:11px;color:var(--m);font-weight:600">Reasoning: ${escapeHtml(r.confidence || '')} confidence</summary>
+      <div style="margin-top:6px;font-size:12px;line-height:1.8">
+        <div style="margin-bottom:4px;color:var(--f)">${escapeHtml(r.narrative || '')}</div>
+        <div style="margin-bottom:4px"><strong style="color:var(--bull)">Strengths:</strong> ${met || '<span style="color:var(--m)">none</span>'}</div>
+        <div><strong style="color:var(--bear)">Risks:</strong> ${missed || '<span style="color:var(--m)">none</span>'}</div>
+      </div></details>
+    </td></tr>`;
+    return mainRow + reasoningRow;
+  }).join('');
 }

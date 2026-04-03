@@ -300,3 +300,12 @@ export function fetchAttribution() {
 export function fetchMicrostructure() {
   return get('/api/v1/intelligence/microstructure');
 }
+
+// ── Trade Journal ─────────────────────────────────────────
+
+/**
+ * @param {Object} [params] - Optional query params (instrument, outcome, limit)
+ */
+export function fetchJournal(params = {}) {
+  return get('/api/v1/journal', params);
+}
