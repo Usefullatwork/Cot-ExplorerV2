@@ -12,7 +12,24 @@ from starlette.middleware.base import BaseHTTPMiddleware
 
 from src.api.middleware.auth import APIKeyMiddleware
 from src.api.middleware.rate_limit import RateLimitMiddleware
-from src.api.routes import backtests, correlations, cot, crypto, geointel, health, instruments, macro, prices, signal_log, signals, trading, webhook
+from src.api.routes import (
+    backtests,
+    correlations,
+    cot,
+    crypto,
+    geointel,
+    health,
+    instruments,
+    intelligence,
+    macro,
+    prices,
+    risk,
+    signal_health,
+    signal_log,
+    signals,
+    trading,
+    webhook,
+)
 
 CORS_ORIGINS = os.environ.get("CORS_ORIGINS", "http://localhost:3000").split(",")
 
@@ -74,6 +91,9 @@ def create_app() -> FastAPI:
     app.include_router(signal_log.router)
     app.include_router(prices.router)
     app.include_router(crypto.router)
+    app.include_router(signal_health.router)
+    app.include_router(risk.router)
+    app.include_router(intelligence.router)
 
     # Serve built frontend (must be LAST — after all API routes)
     frontend_dist = Path(__file__).resolve().parents[2] / "frontend" / "dist"

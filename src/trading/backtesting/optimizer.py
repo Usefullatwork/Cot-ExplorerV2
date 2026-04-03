@@ -79,6 +79,136 @@ def _generate_windows(
     return windows
 
 
+def generate_windows_enhanced(
+    dates: list[str],
+    train_months: int,
+    test_months: int,
+    mode: str = "sliding",
+    purge_days: int = 0,
+    embargo_days: int = 0,
+) -> list[tuple[str, str, str, str]]:
+    """Enhanced window generation with multiple modes.
+
+    Modes:
+    - "sliding" (default): same as existing _generate_windows behavior.
+      Train window slides forward by test_months each step.
+    - "anchored": train always starts from first date, grows each step.
+      Test window still slides forward.
+    - "expanding": train starts from first date and grows, test immediately follows.
+
+    purge_days: gap between train end and test start (prevents lookahead).
+    embargo_days: gap after test end before next window's test start.
+
+    Returns list of (train_start, train_end, test_start, test_end) date strings.
+    Empty list if dates are too short or mode is invalid.
+    """
+    if not dates or mode not in ("sliding", "anchored", "expanding"):
+        return []
+
+    first = datetime.strptime(dates[0], "%Y-%m-%d")
+    last = datetime.strptime(dates[-1], "%Y-%m-%d")
+    train_days = train_months * 30
+    test_days = test_months * 30
+
+    min_span = train_days + purge_days + test_days
+    if (last - first).days < min_span:
+        return []
+
+    if mode == "sliding":
+        return _enhanced_sliding(
+            first, last, train_days, test_days, purge_days, embargo_days,
+        )
+    elif mode == "anchored":
+        return _enhanced_anchored(
+            first, last, train_days, test_days, purge_days, embargo_days,
+        )
+    else:  # expanding
+        return _enhanced_expanding(
+            first, last, train_days, test_days, purge_days, embargo_days,
+        )
+
+
+def _enhanced_sliding(
+    first: datetime,
+    last: datetime,
+    train_days: int,
+    test_days: int,
+    purge_days: int,
+    embargo_days: int,
+) -> list[tuple[str, str, str, str]]:
+    """Sliding mode: train window slides forward by test_days each step."""
+    windows: list[tuple[str, str, str, str]] = []
+    cursor = first
+    while True:
+        tr_end = cursor + timedelta(days=train_days)
+        te_start = tr_end + timedelta(days=purge_days)
+        te_end = te_start + timedelta(days=test_days)
+        if te_end > last:
+            break
+        windows.append((
+            cursor.strftime("%Y-%m-%d"),
+            tr_end.strftime("%Y-%m-%d"),
+            te_start.strftime("%Y-%m-%d"),
+            te_end.strftime("%Y-%m-%d"),
+        ))
+        cursor = te_end + timedelta(days=embargo_days)
+    return windows
+
+
+def _enhanced_anchored(
+    first: datetime,
+    last: datetime,
+    train_days: int,
+    test_days: int,
+    purge_days: int,
+    embargo_days: int,
+) -> list[tuple[str, str, str, str]]:
+    """Anchored mode: train always starts from first date, grows each step."""
+    windows: list[tuple[str, str, str, str]] = []
+    step = 0
+    while True:
+        tr_end = first + timedelta(days=train_days + step * test_days)
+        te_start = tr_end + timedelta(days=purge_days)
+        te_end = te_start + timedelta(days=test_days)
+        if te_end > last:
+            break
+        windows.append((
+            first.strftime("%Y-%m-%d"),
+            tr_end.strftime("%Y-%m-%d"),
+            te_start.strftime("%Y-%m-%d"),
+            te_end.strftime("%Y-%m-%d"),
+        ))
+        step += 1
+    return windows
+
+
+def _enhanced_expanding(
+    first: datetime,
+    last: datetime,
+    train_days: int,
+    test_days: int,
+    purge_days: int,
+    embargo_days: int,
+) -> list[tuple[str, str, str, str]]:
+    """Expanding mode: train starts from first date and grows, test follows."""
+    windows: list[tuple[str, str, str, str]] = []
+    step = 0
+    while True:
+        tr_end = first + timedelta(days=train_days + step * test_days)
+        te_start = tr_end + timedelta(days=purge_days)
+        te_end = te_start + timedelta(days=test_days)
+        if te_end > last:
+            break
+        windows.append((
+            first.strftime("%Y-%m-%d"),
+            tr_end.strftime("%Y-%m-%d"),
+            te_start.strftime("%Y-%m-%d"),
+            te_end.strftime("%Y-%m-%d"),
+        ))
+        step += 1
+    return windows
+
+
 def score_result(report: dict[str, Any]) -> float:
     """Composite score: 0.30*sharpe + 0.25*win_rate + 0.25*(1-dd) + 0.20*pf.
 
@@ -117,6 +247,9 @@ class WalkForwardOptimizer:
         min_trades: int = 10,
         data_dir: str = "data",
         initial_capital: float = 100_000.0,
+        window_mode: str = "sliding",
+        purge_days: int = 0,
+        embargo_days: int = 0,
     ):
         self.strategies = strategies or list(self.STRATEGY_NAMES)
         self.timeframes = timeframes or list(TIMEFRAMES)
@@ -126,6 +259,9 @@ class WalkForwardOptimizer:
         self.min_trades = min_trades
         self.data_dir = data_dir
         self.initial_capital = initial_capital
+        self.window_mode = window_mode
+        self.purge_days = purge_days
+        self.embargo_days = embargo_days
         self._combinations = generate_combinations(self.param_grid)
 
     def run(self, instrument: str) -> OptimizationResult:
@@ -137,7 +273,20 @@ class WalkForwardOptimizer:
             return self._empty_result(instrument, t0)
 
         all_dates = sorted({b.date for b in all_bars})
-        windows = _generate_windows(all_dates, self.train_months, self.test_months)
+        use_enhanced = (
+            self.window_mode != "sliding"
+            or self.purge_days > 0
+            or self.embargo_days > 0
+        )
+        if use_enhanced:
+            windows = generate_windows_enhanced(
+                all_dates, self.train_months, self.test_months,
+                mode=self.window_mode,
+                purge_days=self.purge_days,
+                embargo_days=self.embargo_days,
+            )
+        else:
+            windows = _generate_windows(all_dates, self.train_months, self.test_months)
         if not windows:
             return self._empty_result(instrument, t0)
 

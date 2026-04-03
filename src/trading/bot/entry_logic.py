@@ -229,21 +229,40 @@ def check_spread(
 def check_correlation_limit(
     instrument: str,
     open_positions: list[str],
+    *,
+    correlation_matrix: dict[tuple[str, str], float] | None = None,
+    dynamic_threshold: float = 0.85,
 ) -> tuple[bool, str]:
     """Check if a correlated instrument is already held.
 
-    Uses ``CORRELATED_PAIRS`` to find instruments that should not be
-    held simultaneously.
+    When ``correlation_matrix`` is provided, uses dynamic correlation
+    values instead of the static ``CORRELATED_PAIRS`` lookup.  A pair
+    is considered correlated when abs(correlation) > ``dynamic_threshold``.
+
+    Falls back to the static ``CORRELATED_PAIRS`` when ``correlation_matrix``
+    is None.
 
     Args:
         instrument: Instrument key for the candidate trade.
         open_positions: List of instrument keys currently held.
+        correlation_matrix: Optional mapping of ``(inst_a, inst_b)`` ->
+            correlation.  Pairs stored alphabetically.
+        dynamic_threshold: Absolute correlation above which the pair is
+            considered correlated (default 0.85).
 
     Returns:
         Tuple of (clear, reason).  ``(True, "")`` if no conflict,
         ``(False, "correlated_<symbol>_open")`` if a correlated
         position is already open.
     """
+    if correlation_matrix is not None:
+        for pos in open_positions:
+            pair = (instrument, pos) if instrument < pos else (pos, instrument)
+            corr = correlation_matrix.get(pair, 0.0)
+            if abs(corr) > dynamic_threshold:
+                return False, f"correlated_{pos}_open"
+        return True, ""
+
     correlated = CORRELATED_PAIRS.get(instrument, [])
     for pos in open_positions:
         if pos in correlated:
@@ -321,6 +340,7 @@ def evaluate_entry(
     rsi_14: float | None = None,
     regime: MarketRegime | None = None,
     regime_adjustments: dict | None = None,
+    correlation_matrix: dict[tuple[str, str], float] | None = None,
 ) -> EntryResult:
     """Orchestrate all entry checks for a candidate signal.
 
@@ -402,7 +422,8 @@ def evaluate_entry(
     # 7. Correlation limit
     if open_position_instruments is not None:
         clear, corr_reason = check_correlation_limit(
-            instrument, open_position_instruments
+            instrument, open_position_instruments,
+            correlation_matrix=correlation_matrix,
         )
         if not clear:
             return EntryResult(passed=False, reason=corr_reason)

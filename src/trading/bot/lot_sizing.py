@@ -162,18 +162,23 @@ def calculate_lot_size(
     consecutive_wins: int = 0,
     consecutive_losses: int = 0,
     spread_pips: float = 0.0,
+    correlation_adjustment: float = 1.0,
+    kelly_fraction: float | None = None,
 ) -> float:
     """Calculate lot size for a trade.
 
     The formula:
       1. risk_pct is adjusted for drawdown (``adjust_for_drawdown``).
+         If ``kelly_fraction`` is provided, effective risk is the minimum
+         of drawdown-adjusted risk and kelly_fraction.
       2. risk_amount = account_balance * adjusted_risk_pct * tier_multiplier
       3. An anti-martingale streak multiplier is applied
          (``adjust_for_streak``).
       4. Expected spread cost is deducted (``deduct_spread``).
       5. sl_distance_pips = abs(entry - stop_loss) / pip_size
       6. lots = adjusted_risk / (sl_distance_pips * pip_value_per_lot)
-      7. Round down to nearest lot_step, clamp to min_lot.
+      7. Multiply by ``correlation_adjustment``.
+      8. Round down to nearest lot_step, clamp to min_lot.
 
     Args:
         account_balance: Account equity in USD.
@@ -187,6 +192,10 @@ def calculate_lot_size(
         consecutive_wins: Length of current win streak (default 0).
         consecutive_losses: Length of current loss streak (default 0).
         spread_pips: Expected spread in pips (default 0.0).
+        correlation_adjustment: Multiplier from portfolio correlation
+            analysis (default 1.0, no adjustment).
+        kelly_fraction: Optional Kelly criterion risk fraction.  When
+            provided, effective risk = min(risk_pct, kelly_fraction).
 
     Returns:
         Lot size rounded to the instrument's lot_step.
@@ -209,8 +218,10 @@ def calculate_lot_size(
     if sl_pips == 0.0:
         return 0.0
 
-    # 1. Adjust risk for drawdown
+    # 1. Adjust risk for drawdown, cap by Kelly if provided
     adjusted_risk_pct = adjust_for_drawdown(risk_pct, drawdown_pct)
+    if kelly_fraction is not None:
+        adjusted_risk_pct = min(adjusted_risk_pct, kelly_fraction)
 
     # 2. Base risk amount with tier multiplier
     risk_amount = account_balance * adjusted_risk_pct * multiplier
@@ -226,6 +237,9 @@ def calculate_lot_size(
         return 0.0
 
     raw_lots = risk_amount / (sl_pips * params.pip_value_per_lot)
+
+    # 5. Correlation adjustment
+    raw_lots *= max(correlation_adjustment, 0.0)
 
     lots = _round_to_step(raw_lots, params.lot_step)
     return max(lots, params.min_lot) if lots > 0 else 0.0

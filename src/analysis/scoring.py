@@ -7,6 +7,8 @@ geopolitical risk factors (COMEX Stress, Seismic Risk, Chokepoint Clear).
 
 from __future__ import annotations
 
+import math
+
 from src.core.models import ScoreDetail, ScoringInput, ScoringResult
 
 # Correlated instrument groups — any open signal on a peer = conflict.
@@ -203,6 +205,160 @@ def calculate_confluence(inp: ScoringInput) -> ScoringResult:
 
     grade_color = "bull" if score >= 16 else "warn" if score >= 14 else "bear"
 
+    if score >= 6 and inp.cot_confirms and inp.htf_level_nearby:
+        timeframe_bias = "MAKRO"
+    elif score >= 4 and inp.htf_level_nearby:
+        timeframe_bias = "SWING"
+    elif score >= 2 and inp.at_level_now:
+        timeframe_bias = "SCALP"
+    else:
+        timeframe_bias = "WATCHLIST"
+
+    return ScoringResult(
+        score=score,
+        max_score=max_score,
+        grade=grade,
+        grade_color=grade_color,
+        timeframe_bias=timeframe_bias,
+        details=details,
+    )
+
+
+# Signal IDs matching the 19 criteria in order, for weight lookup.
+_SIGNAL_IDS: list[str] = [
+    "above_sma200",
+    "momentum_confirms",
+    "cot_confirms",
+    "cot_strong",
+    "at_level_now",
+    "htf_level_nearby",
+    "trend_congruent",
+    "no_event_risk",
+    "news_confirms",
+    "fund_confirms",
+    "bos_confirms",
+    "smc_struct_confirms",
+    "order_block",
+    "fvg",
+    "session_alignment",
+    "correlation_clear",
+    "comex_stress",
+    "seismic_clear",
+    "chokepoint_clear",
+]
+
+
+def _sigmoid(x: float, k: float, midpoint: float) -> float:
+    """Logistic sigmoid: p = 1 / (1 + exp(-k*(x - midpoint)))."""
+    z = -k * (x - midpoint)
+    # Clamp to avoid overflow
+    z = max(-500.0, min(500.0, z))
+    return 1.0 / (1.0 + math.exp(z))
+
+
+def calculate_weighted_confluence(
+    inp: ScoringInput,
+    weights: dict[str, float] | None = None,
+) -> ScoringResult:
+    """Weighted confluence scoring using signal weights.
+
+    If weights is None, falls back to calculate_confluence() (backward compat).
+
+    When weights provided:
+    1. Evaluate each signal same as calculate_confluence()
+    2. Multiply each signal's 0/1 by its weight
+    3. Sum weighted signals -> raw_weighted_score
+    4. Normalize to probability via sigmoid: p = 1 / (1 + exp(-k*(raw - midpoint)))
+       where k=0.5, midpoint = sum(weights)/2
+    5. Grade mapping: P>=0.85->A+, P>=0.70->A, P>=0.50->B, P<0.50->C
+    6. Return ScoringResult with score = int(round(raw_weighted_score))
+
+    Args:
+        inp: The 19-field ScoringInput.
+        weights: Optional dict of {signal_id: weight_float}.
+            Missing signal IDs default to weight 1.0.
+
+    Returns:
+        ScoringResult identical in structure to calculate_confluence().
+    """
+    if weights is None:
+        return calculate_confluence(inp)
+
+    # Evaluate all 19 signals identically to calculate_confluence()
+    ob_pass = _check_order_block(
+        inp.direction, inp.current_price, inp.order_blocks, inp.atr,
+    )
+    fvg_pass = _check_fvg(
+        inp.direction, inp.current_price, inp.fvgs, inp.atr,
+    )
+    session_pass = _check_session_alignment(
+        inp.instrument_class, inp.current_hour_cet,
+    )
+    corr_pass = _check_correlation_clear(inp.instrument, inp.open_signals)
+    comex_pass = _check_comex_stress(
+        inp.instrument, inp.direction, inp.comex_stress,
+    )
+    seismic_pass = _check_seismic_clear(inp.instrument, inp.seismic_clear)
+    chokepoint_pass = _check_chokepoint_clear(
+        inp.instrument, inp.chokepoint_clear,
+    )
+
+    details: list[ScoreDetail] = [
+        ScoreDetail(label="Over SMA200 (D1 trend)", passes=inp.above_sma200),
+        ScoreDetail(label="Momentum 20d bekrefter", passes=inp.momentum_confirms),
+        ScoreDetail(label="COT bekrefter retning", passes=inp.cot_confirms),
+        ScoreDetail(label="COT sterk posisjonering (>10%)", passes=inp.cot_strong),
+        ScoreDetail(label="Pris VED HTF-niva na", passes=inp.at_level_now),
+        ScoreDetail(label="HTF-niva D1/Ukentlig", passes=inp.htf_level_nearby),
+        ScoreDetail(label="D1 + 4H trend kongruent", passes=inp.trend_congruent),
+        ScoreDetail(label="Ingen event-risiko (4t)", passes=inp.no_event_risk),
+        ScoreDetail(label="Nyhetssentiment bekrefter", passes=inp.news_confirms),
+        ScoreDetail(label="Fundamental bekrefter", passes=inp.fund_confirms),
+        ScoreDetail(label="BOS 1H/4H bekrefter retning", passes=inp.bos_confirms),
+        ScoreDetail(label="SMC 1H struktur bekrefter", passes=inp.smc_struct_confirms),
+        ScoreDetail(label="Ordre-blokk bekrefter", passes=ob_pass),
+        ScoreDetail(label="FVG i naerheten", passes=fvg_pass),
+        ScoreDetail(label="Riktig handelssesjon", passes=session_pass),
+        ScoreDetail(label="Ingen korrelert konflikt", passes=corr_pass),
+        ScoreDetail(label="COMEX stress bekrefter", passes=comex_pass),
+        ScoreDetail(label="Ingen seismisk risiko", passes=seismic_pass),
+        ScoreDetail(label="Chokepoint klar", passes=chokepoint_pass),
+    ]
+
+    # Build pass/weight arrays
+    passes = [d.passes for d in details]
+    raw_weighted = 0.0
+    total_weight = 0.0
+    for i, (sig_id, did_pass) in enumerate(zip(_SIGNAL_IDS, passes)):
+        w = weights.get(sig_id, 1.0)
+        total_weight += w
+        if did_pass:
+            raw_weighted += w
+
+    # Sigmoid normalization
+    # Edge case: if total_weight is 0, no signal contributes -> probability 0
+    if total_weight == 0.0:
+        probability = 0.0
+    else:
+        midpoint = total_weight / 2.0
+        k = 0.5
+        probability = _sigmoid(raw_weighted, k, midpoint)
+
+    # Grade from probability
+    if probability >= 0.85:
+        grade = "A+"
+    elif probability >= 0.70:
+        grade = "A"
+    elif probability >= 0.50:
+        grade = "B"
+    else:
+        grade = "C"
+
+    grade_color = "bull" if grade == "A+" else "warn" if grade == "A" else "bear"
+    score = int(round(raw_weighted))
+    max_score = len(details)
+
+    # Timeframe bias (same logic as calculate_confluence)
     if score >= 6 and inp.cot_confirms and inp.htf_level_nearby:
         timeframe_bias = "MAKRO"
     elif score >= 4 and inp.htf_level_nearby:

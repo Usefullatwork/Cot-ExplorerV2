@@ -36,15 +36,19 @@ import * as LiveTicker from './components/LiveTicker.js';
 
 /* ── Lazy-loaded panels (loaded on first tab switch) ─────── */
 const lazyPanels = {
-  'backtest':      () => import('./components/BacktestDashboard.js'),
-  'trading':       () => import('./components/BotPanel.js'),
-  'competitor':    () => import('./components/CompetitorPanel.js'),
-  'krypto-intel':  () => import('./components/CryptoPanel.js'),
-  'geo-events':    () => import('./components/GeoEventsPanel.js'),
-  'metals-intel':  () => import('./components/MetalsIntelPanel.js'),
-  'correlations':  () => import('./components/CorrelationPanel.js'),
-  'prices':        () => import('./components/PricesPanel.js'),
-  'signal-log':    () => import('./components/SignalLogPanel.js'),
+  'backtest':       () => import('./components/BacktestDashboard.js'),
+  'trading':        () => import('./components/BotPanel.js'),
+  'competitor':     () => import('./components/CompetitorPanel.js'),
+  'krypto-intel':   () => import('./components/CryptoPanel.js'),
+  'geo-events':     () => import('./components/GeoEventsPanel.js'),
+  'metals-intel':   () => import('./components/MetalsIntelPanel.js'),
+  'correlations':   () => import('./components/CorrelationPanel.js'),
+  'prices':         () => import('./components/PricesPanel.js'),
+  'signal-log':     () => import('./components/SignalLogPanel.js'),
+  'signal-health':  () => import('./components/SignalHealthPanel.js'),
+  'risk':           () => import('./components/RiskDashboard.js'),
+  'intelligence':   () => import('./components/IntelligencePanel.js'),
+  'attribution':    () => import('./components/AttributionPanel.js'),
 };
 
 /** Loaded module cache — maps tab key to resolved module */
@@ -162,6 +166,18 @@ function buildShell() {
       <div class="panel" id="panel-krypto-intel" role="tabpanel" aria-labelledby="tab-krypto-intel" aria-hidden="true">
         <div class="loading" role="status"><div class="spinner" aria-hidden="true"></div>Laster krypto...</div>
       </div>
+      <div class="panel" id="panel-signal-health" role="tabpanel" aria-labelledby="tab-signal-health" aria-hidden="true">
+        <div class="loading" role="status"><div class="spinner" aria-hidden="true"></div>Laster signal health...</div>
+      </div>
+      <div class="panel" id="panel-risk" role="tabpanel" aria-labelledby="tab-risk" aria-hidden="true">
+        <div class="loading" role="status"><div class="spinner" aria-hidden="true"></div>Laster risiko...</div>
+      </div>
+      <div class="panel" id="panel-intelligence" role="tabpanel" aria-labelledby="tab-intelligence" aria-hidden="true">
+        <div class="loading" role="status"><div class="spinner" aria-hidden="true"></div>Laster intelligence...</div>
+      </div>
+      <div class="panel" id="panel-attribution" role="tabpanel" aria-labelledby="tab-attribution" aria-hidden="true">
+        <div class="loading" role="status"><div class="spinner" aria-hidden="true"></div>Laster attribusjon...</div>
+      </div>
     </main>
     <footer role="contentinfo">
       <span>Kilde: <a href="https://cftc.gov" target="_blank" rel="noopener noreferrer">CFTC.gov</a> &middot; Yahoo Finance &middot; ForexFactory</span>
@@ -221,12 +237,14 @@ function wireSubscriptions() {
     safeCall('TopBar.updateTickers', () => TopBar.updateTickers(data));
   });
 
-  // Macro updates -> TopBar VIX + timestamp, MacroPanel, CalendarPanel
+  // Macro updates -> TopBar VIX + timestamp, MacroPanel, CalendarPanel, instruments (prices)
   subscribe('macro', (data) => {
     safeCall('TopBar.updateVix', () => {
       if (data?.vix_regime) TopBar.updateVix(data.vix_regime);
       if (data?.date) TopBar.updateTimestamp(data.date);
     });
+    // Feed macro.prices into instruments state for TopBar tickers + LiveTicker
+    if (data?.prices) setState('instruments', data.prices);
     safeCall('MacroPanel.update', () => MacroPanel.update(data), document.getElementById('panel-macro'));
     safeCall('CalendarPanel.update', () => CalendarPanel.update(data), document.getElementById('panel-calendar'));
   });
@@ -297,6 +315,18 @@ function wireSubscriptions() {
     } else {
       if (m['krypto-intel']) safeCall('CryptoPanel.stopPolling', () => m['krypto-intel'].stopPolling());
     }
+    if (tab === 'signal-health') {
+      if (m['signal-health']) safeAsync('SignalHealthPanel.refreshAll', () => m['signal-health'].refreshAll());
+    }
+    if (tab === 'risk') {
+      if (m['risk']) safeAsync('RiskDashboard.refreshAll', () => m['risk'].refreshAll());
+    }
+    if (tab === 'intelligence') {
+      if (m['intelligence']) safeAsync('IntelligencePanel.refreshAll', () => m['intelligence'].refreshAll());
+    }
+    if (tab === 'attribution') {
+      if (m['attribution']) safeAsync('AttributionPanel.refreshAll', () => m['attribution'].refreshAll());
+    }
   });
 
   // Geointel -> MetalsIntelPanel (lazy — only update if loaded)
@@ -339,7 +369,6 @@ async function fetchAll() {
       .catch((e) => console.warn(`[${key}]`, e.message));
 
   await Promise.allSettled([
-    safe(fetchInstruments, 'instruments'),
     safe(fetchSignals,     'signals'),
     safe(fetchMacro,       'macro'),
     safe(fetchCot,         'cot'),

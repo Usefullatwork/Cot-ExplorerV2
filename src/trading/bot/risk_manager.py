@@ -183,6 +183,13 @@ def evaluate_risk(
     resume_threshold: float = 0.05,
     weekly_cap_pct: float = -5.0,
     vix_halt_threshold: float = 40.0,
+    portfolio_var_pct: float | None = None,
+    max_var_pct: float = 0.02,
+    stress_results: list | None = None,
+    max_stress_loss_pct: float = 15.0,
+    regime: str | None = None,
+    open_position_count: int = 0,
+    regime_limits: dict[str, int] | None = None,
 ) -> RiskCheckResult:
     """Run all risk checks and return the most restrictive result.
 
@@ -201,6 +208,16 @@ def evaluate_risk(
         resume_threshold: Equity-curve resume drawdown (default 5 %).
         weekly_cap_pct: Weekly loss cap in percent (default -5.0 %).
         vix_halt_threshold: VIX halt level (default 40).
+        portfolio_var_pct: Current portfolio VaR as a decimal fraction.
+            If None, VaR check is skipped.
+        max_var_pct: Maximum allowed VaR (default 2 %).
+        stress_results: List of StressResult-like objects with
+            ``total_loss_pct`` attribute.  If None, stress check is skipped.
+        max_stress_loss_pct: Maximum tolerable stress loss (default 15 %).
+        regime: Current market regime string (lowercase).
+            If None, regime check is skipped.
+        open_position_count: Number of currently open positions.
+        regime_limits: Optional override for regime -> max positions mapping.
 
     Returns:
         Aggregate RiskCheckResult.
@@ -222,6 +239,42 @@ def evaluate_risk(
         combined_multiplier *= chk.recommended_size_multiplier
         if chk.recommended_size_multiplier < 1.0:
             reasons.append(chk.reason)
+
+    # ── Portfolio-level checks (new, all optional) ─────────────────────
+    # VaR gate
+    if portfolio_var_pct is not None:
+        if portfolio_var_pct > max_var_pct:
+            return RiskCheckResult(
+                False,
+                f"VaR gate: {portfolio_var_pct:.4f} > max {max_var_pct:.4f}",
+                0.0,
+            )
+
+    # Stress test gate
+    if stress_results is not None:
+        for sr in stress_results:
+            loss_pct = getattr(sr, "total_loss_pct", 0.0)
+            if loss_pct >= max_stress_loss_pct:
+                name = getattr(sr, "scenario_name", "unknown")
+                return RiskCheckResult(
+                    False,
+                    f"stress gate: {name} loss {loss_pct:.1f}% "
+                    f">= {max_stress_loss_pct:.1f}%",
+                    0.0,
+                )
+
+    # Regime position limit
+    if regime is not None:
+        from src.analysis.portfolio_risk import _DEFAULT_REGIME_LIMITS
+
+        lim = regime_limits if regime_limits is not None else _DEFAULT_REGIME_LIMITS
+        max_pos = lim.get(regime, 5)
+        if open_position_count >= max_pos:
+            return RiskCheckResult(
+                False,
+                f"regime limit: {regime} {open_position_count}/{max_pos}",
+                0.0,
+            )
 
     combined_multiplier = round(combined_multiplier, 4)
 
