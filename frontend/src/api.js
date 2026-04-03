@@ -250,3 +250,53 @@ export function fetchEnergyInfra() {
 export function fetchMineLocations() {
   return get('/api/v1/geointel/mine-locations');
 }
+
+// ── Signal Health ──────────────────────────────────────────
+
+export function fetchSignalHealth() {
+  return get('/api/v1/signal-health');
+}
+
+export function fetchSignalWeights() {
+  return get('/api/v1/signal-health/weights');
+}
+
+export function fetchDecayAlerts() {
+  return get('/api/v1/signal-health/decay-alerts');
+}
+
+// ── Risk ───────────────────────────────────────────────────
+
+export function fetchRiskVar() {
+  return get('/api/v1/risk/var');
+}
+
+export function fetchStressTest() {
+  return get('/api/v1/risk/stress-test');
+}
+
+export function fetchCorrelationMatrix() {
+  return get('/api/v1/risk/correlation-matrix');
+}
+
+export function fetchRegimeLimits() {
+  return get('/api/v1/risk/regime-limits');
+}
+
+// ── Intelligence ───────────────────────────────────────────
+
+export function fetchSentiment() {
+  return get('/api/v1/intelligence/sentiment');
+}
+
+export function fetchPropagation() {
+  return get('/api/v1/intelligence/propagation');
+}
+
+export function fetchAttribution() {
+  return get('/api/v1/intelligence/attribution');
+}
+
+export function fetchMicrostructure() {
+  return get('/api/v1/intelligence/microstructure');
+}

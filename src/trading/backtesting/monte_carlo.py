@@ -210,6 +210,207 @@ def print_summary(result: MonteCarloResult) -> str:
     return "\n".join(lines)
 
 
+@dataclass(frozen=True)
+class EquityCurveMCResult:
+    """Results from equity curve Monte Carlo via block bootstrap."""
+
+    iterations: int
+    mean_annual_return: float
+    ci_annual_return: Tuple[float, float]   # (5th, 95th percentile)
+    mean_max_drawdown: float
+    ci_max_drawdown: Tuple[float, float]    # (5th, 95th percentile)
+    mean_sharpe: float
+    ci_sharpe: Tuple[float, float]
+    ruin_probability: float                  # fraction of paths hitting threshold
+    mean_recovery_time: float               # bars to recover from max DD
+
+
+def _block_resample(
+    daily_returns: List[float],
+    block_size: int,
+    rng: random.Random,
+) -> List[float]:
+    """Resample daily_returns using block bootstrap.
+
+    Randomly picks blocks of consecutive returns with replacement
+    until total length >= len(daily_returns), then trims to exact length.
+    """
+    n = len(daily_returns)
+    result: List[float] = []
+    while len(result) < n:
+        start = rng.randint(0, n - 1)
+        end = min(start + block_size, n)
+        result.extend(daily_returns[start:end])
+    return result[:n]
+
+
+def _equity_curve_stats(
+    returns: List[float],
+    starting_equity: float,
+    ruin_level: float,
+    periods_per_year: int,
+) -> Tuple[float, float, float, float, bool]:
+    """Compute stats from a single resampled return series.
+
+    Returns:
+        (annual_return, max_dd_pct, sharpe, recovery_time, hit_ruin)
+    """
+    n = len(returns)
+    equity = starting_equity
+    peak = starting_equity
+    max_dd_pct = 0.0
+    trough_bar = 0
+    peak_bar = 0
+    recovery_time = 0.0
+    hit_ruin = False
+    found_recovery = False
+
+    for i, r in enumerate(returns):
+        equity *= (1.0 + r)
+        if equity <= ruin_level:
+            hit_ruin = True
+        if equity > peak:
+            if max_dd_pct > 0.0 and not found_recovery:
+                recovery_time = float(i - trough_bar)
+                found_recovery = True
+            peak = equity
+            peak_bar = i
+        if peak > 0:
+            dd = (peak - equity) / peak * 100.0
+            if dd > max_dd_pct:
+                max_dd_pct = dd
+                trough_bar = i
+                found_recovery = False
+
+    # If never recovered from max DD, use distance to end
+    if not found_recovery and max_dd_pct > 0.0:
+        recovery_time = float(n - trough_bar)
+
+    # Annual return: geometric
+    final_equity = equity
+    total_return = (final_equity / starting_equity) if starting_equity > 0 else 0.0
+    if n > 0 and total_return > 0:
+        annual_return = total_return ** (periods_per_year / n) - 1.0
+    else:
+        annual_return = -1.0 if total_return <= 0 else 0.0
+
+    # Sharpe ratio
+    if n > 1:
+        mean_r = sum(returns) / n
+        var_r = sum((r - mean_r) ** 2 for r in returns) / (n - 1)
+        std_r = math.sqrt(var_r) if var_r > 0 else 0.0
+        sharpe = (mean_r / std_r * math.sqrt(periods_per_year)) if std_r > 0 else 0.0
+    else:
+        sharpe = 0.0
+
+    return annual_return, max_dd_pct, sharpe, recovery_time, hit_ruin
+
+
+def run_equity_curve_monte_carlo(
+    daily_returns: List[float],
+    starting_equity: float = 100000.0,
+    iterations: int = 10000,
+    block_size: int = 5,
+    ruin_threshold: float = 0.50,
+    seed: int = 42,
+    periods_per_year: int = 252,
+) -> EquityCurveMCResult:
+    """Block bootstrap Monte Carlo on equity curves.
+
+    Unlike run_monte_carlo() which reshuffles individual trades,
+    this preserves serial correlation by resampling blocks of consecutive returns.
+
+    Algorithm:
+    1. Divide daily_returns into blocks of block_size
+    2. For each iteration:
+       a. Randomly sample blocks with replacement until total length >= len(daily_returns)
+       b. Trim to exact length
+       c. Build equity curve from block-resampled returns
+       d. Compute: final return, max drawdown, Sharpe, recovery time
+    3. Aggregate across iterations: means, CIs, ruin probability
+
+    Uses random.Random(seed) for determinism.
+
+    Sharpe = (mean_return / std_return) * sqrt(periods_per_year)
+    Recovery time = bars from max DD trough to new equity high
+    Ruin = equity drops below starting * (1 - ruin_threshold)
+
+    Args:
+        daily_returns: List of daily return values (e.g. 0.01 = 1%).
+        starting_equity: Initial account balance.
+        iterations: Number of bootstrap resamples (min 100).
+        block_size: Size of consecutive return blocks to sample.
+        ruin_threshold: Fraction loss that constitutes ruin (0.50 = 50%).
+        seed: RNG seed for reproducibility.
+        periods_per_year: Trading periods per year for annualization.
+
+    Returns:
+        EquityCurveMCResult with aggregated statistics.
+
+    Raises:
+        ValueError: If daily_returns is empty or iterations < 1.
+    """
+    if not daily_returns:
+        raise ValueError("daily_returns must not be empty")
+    if iterations < 1:
+        raise ValueError("iterations must be >= 1")
+
+    iterations = max(iterations, 100)
+    block_size = max(block_size, 1)
+    rng = random.Random(seed)
+    ruin_level = starting_equity * (1.0 - ruin_threshold)
+
+    annual_returns: List[float] = []
+    max_drawdowns: List[float] = []
+    sharpes: List[float] = []
+    recovery_times: List[float] = []
+    ruin_count = 0
+
+    for _ in range(iterations):
+        resampled = _block_resample(daily_returns, block_size, rng)
+        ann_ret, max_dd, sharpe, rec_time, hit_ruin = _equity_curve_stats(
+            resampled, starting_equity, ruin_level, periods_per_year,
+        )
+        annual_returns.append(ann_ret)
+        max_drawdowns.append(max_dd)
+        sharpes.append(sharpe)
+        recovery_times.append(rec_time)
+        if hit_ruin:
+            ruin_count += 1
+
+    # Sort for percentile computation
+    annual_returns_sorted = sorted(annual_returns)
+    max_drawdowns_sorted = sorted(max_drawdowns)
+    sharpes_sorted = sorted(sharpes)
+
+    n = len(annual_returns)
+    mean_ann = sum(annual_returns) / n
+    mean_dd = sum(max_drawdowns) / n
+    mean_sh = sum(sharpes) / n
+    mean_rec = sum(recovery_times) / n
+
+    return EquityCurveMCResult(
+        iterations=iterations,
+        mean_annual_return=round(mean_ann, 6),
+        ci_annual_return=(
+            round(_percentile(annual_returns_sorted, 5.0), 6),
+            round(_percentile(annual_returns_sorted, 95.0), 6),
+        ),
+        mean_max_drawdown=round(mean_dd, 4),
+        ci_max_drawdown=(
+            round(_percentile(max_drawdowns_sorted, 5.0), 4),
+            round(_percentile(max_drawdowns_sorted, 95.0), 4),
+        ),
+        mean_sharpe=round(mean_sh, 4),
+        ci_sharpe=(
+            round(_percentile(sharpes_sorted, 5.0), 4),
+            round(_percentile(sharpes_sorted, 95.0), 4),
+        ),
+        ruin_probability=round(ruin_count / iterations, 4),
+        mean_recovery_time=round(mean_rec, 2),
+    )
+
+
 if __name__ == "__main__":
     # Standalone demo with synthetic trade data
     demo_trades = [

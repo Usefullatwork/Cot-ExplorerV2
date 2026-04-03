@@ -110,3 +110,22 @@ at_level_tolerance:
 
 # Level merge distance (× ATR)
 merge_distance_atr: 0.5
+
+# Statistical rigor settings (Medallion sprint)
+statistics:
+  alpha: 0.05
+  bonferroni_correction: true
+  min_trades_for_weight: 30
+  decay_window: 20
+  decay_threshold: 0.45
+  correlation_threshold: 0.7
+  kelly_mode: "half"
+  kelly_max_fraction: 0.25
+
+regime_weight_multipliers:
+  NORMAL: {default: 1.0}
+  RISK_OFF: {cot_confirms: 1.5, fund_confirms: 1.5, bos_confirms: 0.5, default: 1.0}
+  CRISIS: {cot_confirms: 1.0, fund_confirms: 1.0, default: 0.3}
+  WAR_FOOTING: {cot_confirms: 1.2, fund_confirms: 1.2, default: 0.5}
+  ENERGY_SHOCK: {cot_confirms: 1.0, fund_confirms: 1.3, default: 0.6}
+  SANCTIONS: {cot_confirms: 1.3, fund_confirms: 1.0, default: 0.4}

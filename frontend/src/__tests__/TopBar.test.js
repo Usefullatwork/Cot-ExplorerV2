@@ -18,10 +18,10 @@ describe('TopBar', () => {
     expect(logo.textContent).toContain('Markeds');
   });
 
-  it('should render all 14 tabs', () => {
+  it('should render all 18 tabs', () => {
     render(container);
     const tabs = container.querySelectorAll('.nt');
-    expect(tabs.length).toBe(14);
+    expect(tabs.length).toBe(18);
   });
 
   it('should render ticker bar', () => {
@@ -82,6 +82,8 @@ describe('TopBar', () => {
     expect(tabs[0].dataset.tab).toBe('setups');
     expect(tabs[1].dataset.tab).toBe('macro');
     expect(tabs[13].dataset.tab).toBe('krypto-intel');
+    expect(tabs[14].dataset.tab).toBe('signal-health');
+    expect(tabs[17].dataset.tab).toBe('attribution');
   });
 
   it('should toggle mobile nav on hamburger click', () => {

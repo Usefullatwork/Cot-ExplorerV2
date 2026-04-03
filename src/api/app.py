@@ -20,8 +20,11 @@ from src.api.routes import (
     geointel,
     health,
     instruments,
+    intelligence,
     macro,
     prices,
+    risk,
+    signal_health,
     signal_log,
     signals,
     trading,
@@ -88,6 +91,9 @@ def create_app() -> FastAPI:
     app.include_router(signal_log.router)
     app.include_router(prices.router)
     app.include_router(crypto.router)
+    app.include_router(signal_health.router)
+    app.include_router(risk.router)
+    app.include_router(intelligence.router)
 
     # Serve built frontend (must be LAST — after all API routes)
     frontend_dist = Path(__file__).resolve().parents[2] / "frontend" / "dist"

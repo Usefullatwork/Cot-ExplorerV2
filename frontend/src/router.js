@@ -25,6 +25,10 @@ const TABS = [
   'geo-events',
   'prices',
   'krypto-intel',
+  'signal-health',
+  'risk',
+  'intelligence',
+  'attribution',
 ];
 
 const DEFAULT_TAB = 'setups';
