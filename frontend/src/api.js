@@ -315,6 +315,33 @@ export function fetchMicrostructure() {
   return get('/api/v1/intelligence/microstructure');
 }
 
+// ── Pipeline ──────────────────────────────────────────────
+
+export function fetchPipelineStatus() {
+  return get('/api/v1/pipeline/status');
+}
+
+/**
+ * @param {string} [layer]  Optional filter: 'layer1', 'layer2', 'retrain'
+ * @param {number} [limit=20]
+ */
+export function fetchPipelineRuns(layer, limit = 20) {
+  const params = { limit };
+  if (layer) params.layer = layer;
+  return get('/api/v1/pipeline/runs', params);
+}
+
+/**
+ * @param {number} signalId  Signal ID for gate log
+ */
+export function fetchGateLog(signalId) {
+  return get(`/api/v1/pipeline/gate-log/${signalId}`);
+}
+
+export function forceLayer2() {
+  return post('/api/v1/pipeline/force-layer2');
+}
+
 // ── Trade Journal ─────────────────────────────────────────
 
 /**

@@ -49,6 +49,7 @@ const lazyPanels = {
   'risk':           () => import('./components/RiskDashboard.js'),
   'intelligence':   () => import('./components/IntelligencePanel.js'),
   'attribution':    () => import('./components/AttributionPanel.js'),
+  'pipeline':       () => import('./components/PipelinePanel.js'),
 };
 
 /** Loaded module cache — maps tab key to resolved module */
@@ -177,6 +178,9 @@ function buildShell() {
       </div>
       <div class="panel" id="panel-attribution" role="tabpanel" aria-labelledby="tab-attribution" aria-hidden="true">
         <div class="loading" role="status"><div class="spinner" aria-hidden="true"></div>Laster attribusjon...</div>
+      </div>
+      <div class="panel" id="panel-pipeline" role="tabpanel" aria-labelledby="tab-pipeline" aria-hidden="true">
+        <div class="loading" role="status"><div class="spinner" aria-hidden="true"></div>Laster pipeline...</div>
       </div>
     </main>
     <footer role="contentinfo">
@@ -326,6 +330,9 @@ function wireSubscriptions() {
     }
     if (tab === 'attribution') {
       if (m['attribution']) safeAsync('AttributionPanel.refreshAll', () => m['attribution'].refreshAll());
+    }
+    if (tab === 'pipeline') {
+      if (m['pipeline']) safeAsync('PipelinePanel.refreshAll', () => m['pipeline'].refreshAll());
     }
   });
 

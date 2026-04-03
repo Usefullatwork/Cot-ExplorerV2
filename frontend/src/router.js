@@ -29,6 +29,7 @@ const TABS = [
   'risk',
   'intelligence',
   'attribution',
+  'pipeline',
 ];
 
 const DEFAULT_TAB = 'setups';

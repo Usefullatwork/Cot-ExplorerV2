@@ -35,8 +35,20 @@ export function render(container) {
       </div>
     </div>
     <div style="margin-top:24px">
+      <div class="sh"><h2 class="sh-t">Drawdown</h2><div class="sh-b">Kumulativ drawdown (R:R)</div></div>
+      <div id="btDrawdown" style="text-align:center;padding:16px 0" role="img" aria-label="Drawdown-kurve"></div>
+    </div>
+    <div style="margin-top:24px">
+      <div class="sh"><h2 class="sh-t">Månedlig avkastning</h2><div class="sh-b">Heatmap per måned</div></div>
+      <div id="btMonthly" role="region" aria-label="Månedlig heatmap" style="overflow-x:auto"></div>
+    </div>
+    <div style="margin-top:24px">
       <div class="sh"><h2 class="sh-t">Walk-Forward Optimalisering</h2><div class="sh-b">OOS-validering + PBO</div></div>
       <div id="btWfo" role="region" aria-label="WFO-resultater"></div>
+    </div>
+    <div style="margin-top:24px">
+      <div class="sh"><h2 class="sh-t">Strategisammenligning</h2><div class="sh-b">WFO-basert</div></div>
+      <div id="btStratCompare" role="region" aria-label="Strategisammenligning"></div>
     </div>`;
 }
 
@@ -112,6 +124,12 @@ export function update(data) {
     gradeEl.innerHTML = '<div style="color:var(--m);font-size:12px">Ingen data</div>';
   }
 
+  // ── Drawdown curve ─────────────────────────────────────
+  updateDrawdown(data.equity_curve);
+
+  // ── Monthly heatmap ───────────────────────────────────
+  updateMonthlyHeatmap(data);
+
   // Update timestamp
   const ts = document.getElementById('btUpdated');
   if (ts) ts.textContent = data.total_trades + ' trades';
@@ -166,6 +184,151 @@ function updateWfo(runs) {
   </table></div>`;
 }
 
+// ── Drawdown curve ──────────────────────────────────────────
+
+/**
+ * Render drawdown waterfall from equity curve data.
+ * @param {number[]} equityCurve  Cumulative PnL series
+ */
+function updateDrawdown(equityCurve) {
+  const el = document.getElementById('btDrawdown');
+  if (!el) return;
+
+  if (!equityCurve || equityCurve.length < 2) {
+    el.innerHTML = '<div style="color:var(--m);font-size:12px">Ikke nok data for drawdown-kurve</div>';
+    return;
+  }
+
+  // Calculate drawdown series
+  const dd = [];
+  let peak = equityCurve[0];
+  for (const val of equityCurve) {
+    if (val > peak) peak = val;
+    dd.push(val - peak); // always <= 0
+  }
+
+  const svg = renderSparkline(dd, {
+    width: 600,
+    height: 80,
+    strokeWidth: 2,
+    color: '#f85149',
+  });
+
+  const maxDD = Math.min(...dd);
+  el.innerHTML = svg + `<div class="mono" style="margin-top:8px;font-size:12px;color:var(--bear)">Maks drawdown: ${maxDD.toFixed(2)}R</div>`;
+}
+
+// ── Monthly returns heatmap ─────────────────────────────────
+
+/**
+ * Render monthly returns heatmap from trade data.
+ * @param {Object} data  BacktestStatsResponse with monthly_returns
+ */
+function updateMonthlyHeatmap(data) {
+  const el = document.getElementById('btMonthly');
+  if (!el) return;
+
+  // Build monthly returns from equity curve if no explicit field
+  const monthly = data.monthly_returns;
+  if (!monthly || !monthly.length) {
+    // Derive from equity curve dates if possible, or show placeholder
+    if (data.equity_curve && data.equity_curve.length > 20) {
+      // Split equity curve into ~monthly chunks (approx 20 trades/month)
+      const chunkSize = Math.max(Math.floor(data.equity_curve.length / 12), 2);
+      const chunks = [];
+      for (let i = 0; i < data.equity_curve.length; i += chunkSize) {
+        const slice = data.equity_curve.slice(i, i + chunkSize);
+        const start = i === 0 ? 0 : data.equity_curve[i - 1];
+        const end = slice[slice.length - 1];
+        chunks.push(end - start);
+      }
+      renderHeatmapGrid(el, chunks);
+    } else {
+      el.innerHTML = '<div style="color:var(--m);font-size:12px">Ikke nok data for månedlig heatmap</div>';
+    }
+    return;
+  }
+
+  renderHeatmapGrid(el, monthly.map((m) => m.pnl_r || 0));
+}
+
+/**
+ * Render a grid of colored cells from numeric values.
+ * @param {HTMLElement} el  Container element
+ * @param {number[]} values  PnL values per period
+ */
+function renderHeatmapGrid(el, values) {
+  const maxAbs = Math.max(...values.map(Math.abs), 0.01);
+
+  const cells = values.map((v, i) => {
+    const intensity = Math.min(Math.abs(v) / maxAbs, 1);
+    const bg = v >= 0
+      ? `rgba(63, 185, 80, ${(0.15 + intensity * 0.6).toFixed(2)})`
+      : `rgba(248, 81, 73, ${(0.15 + intensity * 0.6).toFixed(2)})`;
+    const textCol = intensity > 0.5 ? '#fff' : 'var(--t)';
+    return `<div style="background:${bg};color:${textCol};padding:8px 6px;text-align:center;border-radius:var(--radius-sm);font-size:11px;font-family:'DM Mono',monospace;min-width:50px" title="Periode ${i + 1}: ${v >= 0 ? '+' : ''}${v.toFixed(2)}R">${v >= 0 ? '+' : ''}${v.toFixed(1)}R</div>`;
+  }).join('');
+
+  el.innerHTML = `<div style="display:flex;gap:4px;flex-wrap:wrap">${cells}</div>`;
+}
+
+// ── Strategy comparison table ───────────────────────────────
+
+/**
+ * Render strategy comparison from WFO runs.
+ * @param {Array} runs  WfoRunResponse objects
+ */
+function updateStrategyComparison(runs) {
+  const el = document.getElementById('btStratCompare');
+  if (!el) return;
+
+  if (!runs || runs.length === 0) {
+    el.innerHTML = '<div style="color:var(--m);font-size:12px">Ingen WFO-data for sammenligning</div>';
+    return;
+  }
+
+  // Group by strategy
+  const byStrategy = {};
+  for (const r of runs) {
+    const s = r.best_strategy || 'unknown';
+    if (!byStrategy[s]) {
+      byStrategy[s] = { instruments: 0, avgScore: 0, avgPbo: 0, totalWindows: 0, scores: [], pbos: [] };
+    }
+    byStrategy[s].instruments++;
+    byStrategy[s].totalWindows += r.total_windows || 0;
+    if (r.best_test_score != null) byStrategy[s].scores.push(r.best_test_score);
+    if (r.pbo_score != null) byStrategy[s].pbos.push(r.pbo_score);
+  }
+
+  const strategies = Object.entries(byStrategy).map(([name, d]) => {
+    const avgScore = d.scores.length > 0 ? d.scores.reduce((a, b) => a + b, 0) / d.scores.length : null;
+    const avgPbo = d.pbos.length > 0 ? d.pbos.reduce((a, b) => a + b, 0) / d.pbos.length : null;
+    return { name, instruments: d.instruments, avgScore, avgPbo, totalWindows: d.totalWindows };
+  }).sort((a, b) => (b.avgScore || 0) - (a.avgScore || 0));
+
+  const rows = strategies.map((s) => {
+    const scoreCls = (s.avgScore || 0) > 0 ? 'bull' : 'bear';
+    const pboCls = s.avgPbo != null ? (s.avgPbo < 0.3 ? 'bull' : s.avgPbo < 0.5 ? 'warn' : 'bear') : 'm';
+    const pboLabel = s.avgPbo != null ? s.avgPbo.toFixed(3) : '-';
+    return `<tr>
+      <td style="font-weight:600">${escapeHtml(s.name)}</td>
+      <td style="text-align:center">${s.instruments}</td>
+      <td class="mono ${scoreCls}" style="text-align:right">${s.avgScore != null ? s.avgScore.toFixed(4) : '-'}</td>
+      <td style="text-align:center"><span class="tag ${pboCls}">${pboLabel}</span></td>
+      <td style="text-align:right">${s.totalWindows}</td>
+    </tr>`;
+  }).join('');
+
+  el.innerHTML = `<div class="cotw"><table class="cott" aria-label="Strategisammenligning">
+    <thead><tr>
+      <th>Strategi</th><th style="text-align:center">Instrumenter</th>
+      <th style="text-align:right">Snitt OOS</th><th style="text-align:center">Snitt PBO</th>
+      <th style="text-align:right">Vinduer</th>
+    </tr></thead>
+    <tbody>${rows}</tbody>
+  </table></div>`;
+}
+
 /**
  * Fetch and display backtest stats + WFO results.
  */
@@ -178,6 +341,7 @@ export async function refreshAll() {
     ]);
     update(statsData);
     updateWfo(wfoData);
+    updateStrategyComparison(wfoData);
   } catch (e) {
     console.error('[BacktestDashboard]', e);
   }

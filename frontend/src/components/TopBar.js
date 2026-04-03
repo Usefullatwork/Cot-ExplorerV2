@@ -27,6 +27,7 @@ const TABS = [
   { key: 'risk', label: 'Risiko' },
   { key: 'intelligence', label: 'Intelligence' },
   { key: 'attribution', label: 'Attribusjon' },
+  { key: 'pipeline', label: 'Pipeline' },
 ];
 
 // ── Ticker display names ────────────────────────────────────

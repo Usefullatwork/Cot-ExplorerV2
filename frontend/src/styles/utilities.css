@@ -121,6 +121,19 @@
 .setup-val.bear { color: var(--bear); }
 .setup-val.warn { color: var(--warn); }
 
+/* Tag badges (PBO, status, etc.) */
+.tag {
+  display: inline-block;
+  font-family: 'DM Mono', monospace;
+  font-size: 10px;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: var(--radius-sm);
+}
+.tag.bull { background: var(--bbg); color: var(--bull); }
+.tag.bear { background: var(--rbg); color: var(--bear); }
+.tag.warn { background: var(--wbg); color: var(--warn); }
+
 /* Loading / spinner */
 .loading {
   padding: 40px;
@@ -339,6 +352,9 @@
 
 /* Mobile (max-width: 768px): single column, stacked cards */
 @media (max-width: 768px) {
+  .g22 {
+    grid-template-columns: 1fr;
+  }
   .cot-bar-detail-grid {
     grid-template-columns: 1fr 1fr;
   }
