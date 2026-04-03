@@ -20,6 +20,7 @@ from src.pipeline.runner import run_full_pipeline  # noqa: E402
 def mock_stage_functions():
     """Patch all stage functions so no real fetching occurs."""
     with (
+        patch("src.pipeline.runner._stage_quality") as quality,
         patch("src.pipeline.runner._stage_calendar") as cal,
         patch("src.pipeline.runner._stage_cot") as cot,
         patch("src.pipeline.runner._stage_combine") as combine,
@@ -28,8 +29,10 @@ def mock_stage_functions():
         patch("src.pipeline.runner._stage_scoring") as scoring,
         patch("src.pipeline.runner._stage_output") as output,
         patch("src.pipeline.runner._stage_push") as push,
+        patch("src.pipeline.runner._stage_rebalance") as rebalance,
     ):
         yield {
+            "quality": quality,
             "calendar": cal,
             "cot": cot,
             "combine": combine,
@@ -38,6 +41,7 @@ def mock_stage_functions():
             "scoring": scoring,
             "output": output,
             "push": push,
+            "rebalance": rebalance,
         }
 
 
@@ -56,7 +60,7 @@ def test_run_full_pipeline_returns_all_stages():
     """Pipeline returns results for all 8 stages."""
     results = run_full_pipeline()
 
-    expected_stages = {"calendar", "cot", "combine", "fundamentals", "prices", "scoring", "output", "push"}
+    expected_stages = {"quality", "calendar", "cot", "combine", "fundamentals", "prices", "scoring", "output", "push", "rebalance"}
     assert set(results.keys()) == expected_stages
 
 
@@ -139,7 +143,7 @@ def test_all_stages_fail(mock_stage_functions):
 
     results = run_full_pipeline()
 
-    assert len(results) == 8
+    assert len(results) == 10
     for stage, outcome in results.items():
         assert "error" in outcome
 
@@ -195,5 +199,5 @@ def test_pipeline_order_preserved(mock_stage_functions):
     """Results dict should have stages in pipeline order."""
     results = run_full_pipeline()
 
-    expected_order = ["calendar", "cot", "combine", "fundamentals", "prices", "scoring", "output", "push"]
+    expected_order = ["quality", "calendar", "cot", "combine", "fundamentals", "prices", "scoring", "output", "push", "rebalance"]
     assert list(results.keys()) == expected_order
