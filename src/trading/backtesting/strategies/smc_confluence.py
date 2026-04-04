@@ -40,7 +40,7 @@ class SMCConfluenceStrategy(Strategy):
 
     def __init__(
         self,
-        min_confluence: int = 6,
+        min_confluence: int = 4,
         sma_period: int = 200,
         atr_period: int = 14,
         pivot_length: int = 10,
