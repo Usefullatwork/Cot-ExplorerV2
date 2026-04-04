@@ -9,7 +9,7 @@ from fastapi import APIRouter, HTTPException, Query
 from pydantic import BaseModel, Field
 from sqlalchemy import func, select
 
-from src.db.engine import session_scope
+from src.db.engine import session_ctx
 from src.db.models import BacktestResult, WfoRun, WfoWindowResult
 from src.security.input_validator import validate_symbol
 
@@ -60,18 +60,11 @@ class BacktestTradeResponse(BaseModel):
 )
 def backtest_summary() -> dict:
     """Aggregate backtest statistics."""
-    gen = session_scope()
-    session = next(gen)
-    try:
+    with session_ctx() as session:
         total = session.execute(select(func.count(BacktestResult.id))).scalar() or 0
 
         if total == 0:
-            result = {"total_trades": 0, "message": "No backtest data yet"}
-            try:
-                gen.send(None)
-            except StopIteration:
-                pass
-            return result
+            return {"total_trades": 0, "message": "No backtest data yet"}
 
         wins = (
             session.execute(
@@ -82,7 +75,7 @@ def backtest_summary() -> dict:
         avg_pnl_rr = session.execute(select(func.avg(BacktestResult.pnl_rr))).scalar() or 0.0
         avg_duration = session.execute(select(func.avg(BacktestResult.duration_hours))).scalar() or 0.0
 
-        result = {
+        return {
             "total_trades": total,
             "wins": wins,
             "losses": total - wins,
@@ -90,18 +83,6 @@ def backtest_summary() -> dict:
             "avg_pnl_rr": round(float(avg_pnl_rr), 2),
             "avg_duration_hours": round(float(avg_duration), 1),
         }
-
-        try:
-            gen.send(None)
-        except StopIteration:
-            pass
-        return result
-    except Exception:
-        try:
-            gen.throw(Exception)
-        except StopIteration:
-            pass
-        raise
 
 
 @router.get(
@@ -121,16 +102,14 @@ def backtest_trades(
         except ValueError as exc:
             raise HTTPException(status_code=400, detail=str(exc))
 
-    gen = session_scope()
-    session = next(gen)
-    try:
+    with session_ctx() as session:
         stmt = select(BacktestResult).order_by(BacktestResult.entry_date.desc())
         if instrument:
             stmt = stmt.where(BacktestResult.instrument == instrument)
         stmt = stmt.limit(limit)
         rows = session.execute(stmt).scalars().all()
 
-        trades = [
+        return [
             {
                 "id": r.id,
                 "instrument": r.instrument,
@@ -148,18 +127,6 @@ def backtest_trades(
             }
             for r in rows
         ]
-
-        try:
-            gen.send(None)
-        except StopIteration:
-            pass
-        return trades
-    except Exception:
-        try:
-            gen.throw(Exception)
-        except StopIteration:
-            pass
-        raise
 
 
 # ── Enhanced stats endpoint ──────────────────────────────────────────────
@@ -213,26 +180,19 @@ class BacktestStatsResponse(BaseModel):
 )
 def backtest_stats() -> dict:
     """Full backtest stats with equity curve and breakdowns."""
-    gen = session_scope()
-    session = next(gen)
-    try:
+    with session_ctx() as session:
         rows = session.execute(
             select(BacktestResult).order_by(BacktestResult.entry_date.asc())
         ).scalars().all()
 
         if not rows:
-            result = {
+            return {
                 "total_trades": 0, "wins": 0, "losses": 0, "win_rate": 0.0,
                 "avg_win_rr": 0.0, "avg_loss_rr": 0.0, "profit_factor": 0.0,
                 "max_drawdown_rr": 0.0, "avg_rr": 0.0, "best_trade_rr": 0.0,
                 "worst_trade_rr": 0.0, "avg_duration_hours": 0.0,
                 "equity_curve": [], "by_instrument": [], "by_grade": [],
             }
-            try:
-                gen.send(None)
-            except StopIteration:
-                pass
-            return result
 
         # Core stats
         pnls = [r.pnl_rr or 0.0 for r in rows]
@@ -298,7 +258,7 @@ def backtest_stats() -> dict:
 
         durations = [r.duration_hours or 0.0 for r in rows if r.duration_hours]
 
-        result = {
+        return {
             "total_trades": total,
             "wins": wins,
             "losses": losses,
@@ -315,18 +275,6 @@ def backtest_stats() -> dict:
             "by_instrument": by_instrument,
             "by_grade": by_grade,
         }
-
-        try:
-            gen.send(None)
-        except StopIteration:
-            pass
-        return result
-    except Exception:
-        try:
-            gen.throw(Exception)
-        except StopIteration:
-            pass
-        raise
 
 
 # ── WFO (Walk-Forward Optimization) endpoints ─────────────────────────
@@ -417,31 +365,22 @@ def wfo_run(req: WfoRunRequest) -> dict:
     if req.window_mode not in ("sliding", "anchored", "expanding"):
         raise HTTPException(status_code=400, detail="Invalid window_mode")
 
-    gen = session_scope()
-    session = next(gen)
     try:
-        from src.trading.backtesting.runner_service import WfoRunnerService
+        with session_ctx() as session:
+            from src.trading.backtesting.runner_service import WfoRunnerService
 
-        service = WfoRunnerService(session)
-        run = service.run_wfo(
-            instrument=instrument,
-            train_months=req.train_months,
-            test_months=req.test_months,
-            window_mode=req.window_mode,
-        )
-        result = _wfo_run_to_dict(run)
-        try:
-            gen.send(None)
-        except StopIteration:
-            pass
-        return result
+            service = WfoRunnerService(session)
+            run = service.run_wfo(
+                instrument=instrument,
+                train_months=req.train_months,
+                test_months=req.test_months,
+                window_mode=req.window_mode,
+            )
+            result = _wfo_run_to_dict(run)
+            return result
     except HTTPException:
         raise
     except Exception as exc:
-        try:
-            gen.throw(exc)
-        except StopIteration:
-            pass
         raise HTTPException(status_code=500, detail=str(exc))
 
 
@@ -455,31 +394,21 @@ def wfo_list_runs(
     limit: int = Query(20, ge=1, le=100),
 ) -> list[dict]:
     """List WFO optimization runs."""
-    gen = session_scope()
-    session = next(gen)
     try:
-        stmt = select(WfoRun).order_by(WfoRun.started_at.desc())
-        if instrument:
-            try:
-                instrument = validate_symbol(instrument)
-            except ValueError as exc:
-                raise HTTPException(status_code=400, detail=str(exc))
-            stmt = stmt.where(WfoRun.instrument == instrument)
-        stmt = stmt.limit(limit)
-        rows = session.execute(stmt).scalars().all()
-        result = [_wfo_run_to_dict(r) for r in rows]
-        try:
-            gen.send(None)
-        except StopIteration:
-            pass
-        return result
+        with session_ctx() as session:
+            stmt = select(WfoRun).order_by(WfoRun.started_at.desc())
+            if instrument:
+                try:
+                    instrument = validate_symbol(instrument)
+                except ValueError as exc:
+                    raise HTTPException(status_code=400, detail=str(exc))
+                stmt = stmt.where(WfoRun.instrument == instrument)
+            stmt = stmt.limit(limit)
+            rows = session.execute(stmt).scalars().all()
+            return [_wfo_run_to_dict(r) for r in rows]
     except HTTPException:
         raise
     except Exception:
-        try:
-            gen.throw(Exception)
-        except StopIteration:
-            pass
         raise
 
 
@@ -490,27 +419,17 @@ def wfo_list_runs(
 )
 def wfo_get_run(run_id: int) -> dict:
     """Get details for a specific WFO run."""
-    gen = session_scope()
-    session = next(gen)
     try:
-        run = session.execute(
-            select(WfoRun).where(WfoRun.id == run_id)
-        ).scalar_one_or_none()
-        if run is None:
-            raise HTTPException(status_code=404, detail="WFO run not found")
-        result = _wfo_run_to_dict(run)
-        try:
-            gen.send(None)
-        except StopIteration:
-            pass
-        return result
+        with session_ctx() as session:
+            run = session.execute(
+                select(WfoRun).where(WfoRun.id == run_id)
+            ).scalar_one_or_none()
+            if run is None:
+                raise HTTPException(status_code=404, detail="WFO run not found")
+            return _wfo_run_to_dict(run)
     except HTTPException:
         raise
     except Exception:
-        try:
-            gen.throw(Exception)
-        except StopIteration:
-            pass
         raise
 
 
@@ -544,53 +463,43 @@ def wfo_get_windows(
     is_train: Optional[bool] = Query(None, description="Filter train/test"),
 ) -> list[dict]:
     """Get per-window results for a WFO run."""
-    gen = session_scope()
-    session = next(gen)
     try:
-        stmt = (
-            select(WfoWindowResult)
-            .where(WfoWindowResult.run_id == run_id)
-            .order_by(WfoWindowResult.composite_score.desc())
-        )
-        if is_train is not None:
-            stmt = stmt.where(WfoWindowResult.is_train == is_train)
-        rows = session.execute(stmt).scalars().all()
-        if not rows:
-            run_exists = session.execute(
-                select(WfoRun.id).where(WfoRun.id == run_id)
-            ).scalar_one_or_none()
-            if run_exists is None:
-                raise HTTPException(status_code=404, detail="WFO run not found")
-        result = [
-            {
-                "id": r.id,
-                "run_id": r.run_id,
-                "window_start": r.window_start,
-                "window_end": r.window_end,
-                "is_train": r.is_train,
-                "strategy": r.strategy,
-                "timeframe": r.timeframe,
-                "params": json.loads(r.params_json) if r.params_json else None,
-                "sharpe": r.sharpe,
-                "win_rate": r.win_rate,
-                "max_drawdown": r.max_drawdown,
-                "profit_factor": r.profit_factor,
-                "total_trades": r.total_trades or 0,
-                "total_return_pct": r.total_return_pct,
-                "composite_score": r.composite_score,
-            }
-            for r in rows
-        ]
-        try:
-            gen.send(None)
-        except StopIteration:
-            pass
-        return result
+        with session_ctx() as session:
+            stmt = (
+                select(WfoWindowResult)
+                .where(WfoWindowResult.run_id == run_id)
+                .order_by(WfoWindowResult.composite_score.desc())
+            )
+            if is_train is not None:
+                stmt = stmt.where(WfoWindowResult.is_train == is_train)
+            rows = session.execute(stmt).scalars().all()
+            if not rows:
+                run_exists = session.execute(
+                    select(WfoRun.id).where(WfoRun.id == run_id)
+                ).scalar_one_or_none()
+                if run_exists is None:
+                    raise HTTPException(status_code=404, detail="WFO run not found")
+            return [
+                {
+                    "id": r.id,
+                    "run_id": r.run_id,
+                    "window_start": r.window_start,
+                    "window_end": r.window_end,
+                    "is_train": r.is_train,
+                    "strategy": r.strategy,
+                    "timeframe": r.timeframe,
+                    "params": json.loads(r.params_json) if r.params_json else None,
+                    "sharpe": r.sharpe,
+                    "win_rate": r.win_rate,
+                    "max_drawdown": r.max_drawdown,
+                    "profit_factor": r.profit_factor,
+                    "total_trades": r.total_trades or 0,
+                    "total_return_pct": r.total_return_pct,
+                    "composite_score": r.composite_score,
+                }
+                for r in rows
+            ]
     except HTTPException:
         raise
     except Exception:
-        try:
-            gen.throw(Exception)
-        except StopIteration:
-            pass
         raise

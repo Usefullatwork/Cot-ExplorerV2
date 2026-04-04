@@ -51,7 +51,7 @@ def export_signal_log(output_dir: str | Path | None = None) -> Path:
     Path
         Full path to the written file.
     """
-    from src.db.engine import session_scope
+    from src.db.engine import session_ctx
     from src.db.models import SignalPerformance
     from sqlalchemy import select
 
@@ -59,9 +59,7 @@ def export_signal_log(output_dir: str | Path | None = None) -> Path:
     out.mkdir(parents=True, exist_ok=True)
     target = out / "signal_log.json"
 
-    gen = session_scope()
-    session = next(gen)
-    try:
+    with session_ctx() as session:
         rows = session.execute(
             select(SignalPerformance).order_by(SignalPerformance.created_at.desc()).limit(500)
         ).scalars().all()
@@ -77,21 +75,11 @@ def export_signal_log(output_dir: str | Path | None = None) -> Path:
                 "created_at": r.created_at.isoformat() if r.created_at else None,
             })
 
-        with open(target, "w", encoding="utf-8") as f:
-            json.dump({"signals": records, "count": len(records)}, f, ensure_ascii=False, indent=2)
+    with open(target, "w", encoding="utf-8") as f:
+        json.dump({"signals": records, "count": len(records)}, f, ensure_ascii=False, indent=2)
 
-        logger.info("Exported signal log: %s (%d records)", target, len(records))
-        try:
-            gen.send(None)
-        except StopIteration:
-            pass
-        return target
-    except Exception:
-        try:
-            gen.throw(Exception)
-        except StopIteration:
-            pass
-        raise
+    logger.info("Exported signal log: %s (%d records)", target, len(records))
+    return target
 
 
 if __name__ == "__main__":

@@ -1,7 +1,7 @@
 """Signal performance tracking — record outcomes and compute hit-rate stats.
 
 All functions follow the repository pattern established in ``src.db.repository``:
-accept an optional ``db`` session, falling back to ``session_scope()`` when None.
+accept an optional ``db`` session, falling back to ``session_ctx()`` when None.
 """
 
 from __future__ import annotations
@@ -12,7 +12,7 @@ from typing import Any, Optional
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
-from src.db.engine import session_scope
+from src.db.engine import session_ctx
 from src.db.models import SignalPerformance
 
 _VALID_RESULTS = {"HIT", "MISS", "NEUTRAL", "PENDING"}
@@ -49,21 +49,8 @@ def record_signal(
 
     if db is not None:
         return _do(db)
-    gen = session_scope()
-    session = next(gen)
-    try:
-        result = _do(session)
-        try:
-            gen.send(None)
-        except StopIteration:
-            pass
-    except Exception:
-        try:
-            gen.throw(Exception)
-        except StopIteration:
-            pass
-        raise
-    return result
+    with session_ctx() as session:
+        return _do(session)
 
 
 def update_result(
@@ -95,21 +82,8 @@ def update_result(
 
     if db is not None:
         return _do(db)
-    gen = session_scope()
-    session = next(gen)
-    try:
-        out = _do(session)
-        try:
-            gen.send(None)
-        except StopIteration:
-            pass
-    except Exception:
-        try:
-            gen.throw(Exception)
-        except StopIteration:
-            pass
-        raise
-    return out
+    with session_ctx() as session:
+        return _do(session)
 
 
 def get_stats(db: Session | None = None) -> dict[str, Any]:
@@ -165,21 +139,8 @@ def get_stats(db: Session | None = None) -> dict[str, Any]:
 
     if db is not None:
         return _do(db)
-    gen = session_scope()
-    session = next(gen)
-    try:
-        out = _do(session)
-        try:
-            gen.send(None)
-        except StopIteration:
-            pass
-    except Exception:
-        try:
-            gen.throw(Exception)
-        except StopIteration:
-            pass
-        raise
-    return out
+    with session_ctx() as session:
+        return _do(session)
 
 
 # ---------------------------------------------------------------------------
