@@ -44,7 +44,7 @@ class SMCConfluenceStrategy(Strategy):
         sma_period: int = 200,
         atr_period: int = 14,
         pivot_length: int = 10,
-        zone_atr_buffer: float = 0.25,
+        zone_atr_buffer: float = 0.75,
         sl_buffer_atr: float = 0.15,
         tp_rr: float = 2.0,
         risk_pct: float = 0.01,

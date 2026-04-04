@@ -29,7 +29,7 @@ class COTMomentumStrategy(Strategy):
 
     def __init__(
         self,
-        trend_weeks: int = 2,
+        trend_weeks: int = 3,
         sma_period: int = 200,
         atr_period: int = 14,
         sl_atr_mult: float = 2.0,
