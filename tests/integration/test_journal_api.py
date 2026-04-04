@@ -7,7 +7,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 from src.api.app import create_app
-from src.db.engine import get_engine, session_scope
+from src.db.engine import get_engine, session_ctx
 from src.db.models import Base, TradeJournal
 
 
@@ -24,14 +24,10 @@ def client():
 @pytest.fixture(autouse=True)
 def seed_journal():
     """Seed journal entries for tests."""
-    gen = session_scope()
-    session = next(gen)
-    try:
-        # Clear existing
+    with session_ctx() as session:
         session.query(TradeJournal).delete()
         session.flush()
 
-        # Add test entries
         entries = [
             TradeJournal(
                 instrument="EURUSD", direction="bull", grade="A+", score=17,
@@ -64,34 +60,11 @@ def seed_journal():
         ]
         for e in entries:
             session.add(e)
-        session.flush()
-        try:
-            gen.send(None)
-        except StopIteration:
-            pass
-    except Exception:
-        try:
-            gen.throw(Exception)
-        except StopIteration:
-            pass
-        raise
 
     yield
 
-    # Cleanup
-    gen2 = session_scope()
-    session2 = next(gen2)
-    try:
-        session2.query(TradeJournal).delete()
-        try:
-            gen2.send(None)
-        except StopIteration:
-            pass
-    except Exception:
-        try:
-            gen2.throw(Exception)
-        except StopIteration:
-            pass
+    with session_ctx() as session:
+        session.query(TradeJournal).delete()
 
 
 class TestJournalAPI:
