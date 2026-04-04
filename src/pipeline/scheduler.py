@@ -28,14 +28,14 @@ SCHEDULER_ENABLED = os.environ.get("SCHEDULER_ENABLED", "0") == "1"
 
 def _run_layer1() -> None:
     """Execute the full 13-stage pipeline and log result."""
-    from src.db.engine import session_scope
+    from src.db.engine import session_ctx
     from src.db.models import PipelineRun, PipelineState
     from src.pipeline.runner import run_full_pipeline
 
     t0 = time.time()
     try:
         results = run_full_pipeline()
-        with session_scope() as session:
+        with session_ctx() as session:
             run = PipelineRun(
                 started_at=datetime.now(timezone.utc),
                 finished_at=datetime.now(timezone.utc),
@@ -57,13 +57,13 @@ def _run_layer1() -> None:
 
 def _run_layer2() -> None:
     """Execute Layer 2 + gate orchestrator + execution bridge."""
-    from src.db.engine import session_scope
+    from src.db.engine import session_ctx
     from src.pipeline.execution_bridge import execute_decisions
     from src.pipeline.gate_orchestrator import process_pending_signals
     from src.pipeline.layer2_runner import run_layer2
 
     try:
-        with session_scope() as session:
+        with session_ctx() as session:
             run_layer2(session)
             decisions = process_pending_signals(session)
             if decisions:
@@ -75,14 +75,14 @@ def _run_layer2() -> None:
 
 def _run_retrain() -> None:
     """Run Friday weekly retrain."""
-    from src.db.engine import session_scope
+    from src.db.engine import session_ctx
     from src.db.models import PipelineRun, PipelineState
     from src.pipeline.weekly_retrain import run_weekly_retrain
 
     t0 = time.time()
     try:
         result = run_weekly_retrain()
-        with session_scope() as session:
+        with session_ctx() as session:
             run = PipelineRun(
                 started_at=datetime.now(timezone.utc),
                 finished_at=datetime.now(timezone.utc),
@@ -107,11 +107,11 @@ def _run_retrain() -> None:
 
 def _monitor_positions() -> None:
     """Check open positions for SL/TP hits and update current_price."""
-    from src.db.engine import session_scope
+    from src.db.engine import session_ctx
     from src.db.models import BotPosition, PriceDaily
 
     try:
-        with session_scope() as session:
+        with session_ctx() as session:
             positions = (
                 session.query(BotPosition)
                 .filter(BotPosition.status.in_(["open", "partial"]))
@@ -132,12 +132,12 @@ def _monitor_positions() -> None:
 
 def _expire_stale_signals() -> None:
     """Expire pending BotSignals older than 4 hours."""
-    from src.db.engine import session_scope
+    from src.db.engine import session_ctx
     from src.db.models import BotSignal
 
     cutoff = datetime.now(timezone.utc) - timedelta(hours=4)
     try:
-        with session_scope() as session:
+        with session_ctx() as session:
             stale = (
                 session.query(BotSignal)
                 .filter(
@@ -157,11 +157,11 @@ def _expire_stale_signals() -> None:
 
 def _heartbeat() -> None:
     """Update heartbeat timestamp in pipeline_state."""
-    from src.db.engine import session_scope
+    from src.db.engine import session_ctx
     from src.db.models import PipelineState
 
     try:
-        with session_scope() as session:
+        with session_ctx() as session:
             state = session.query(PipelineState).first()
             if state:
                 state.heartbeat_at = datetime.now(timezone.utc)
