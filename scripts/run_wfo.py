@@ -32,6 +32,7 @@ def main() -> None:
     parser.add_argument("--instrument", type=str, help="Single instrument to run")
     parser.add_argument("--train", type=int, default=6, help="Train window months")
     parser.add_argument("--test", type=int, default=2, help="Test window months")
+    parser.add_argument("--min-trades", type=int, default=3, help="Min trades per window")
     args = parser.parse_args()
 
     init_db()
@@ -48,6 +49,7 @@ def main() -> None:
                     instrument=inst,
                     train_months=args.train,
                     test_months=args.test,
+                    min_trades=args.min_trades,
                 )
                 log.info(
                     "  %s: status=%s windows=%d PBO=%.3f best=%s/%s",
