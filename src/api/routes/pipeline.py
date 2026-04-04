@@ -10,7 +10,7 @@ import json
 
 from fastapi import APIRouter, HTTPException, Query
 
-from src.db.engine import session_scope
+from src.db.engine import session_ctx
 from src.db.models import BotSignal, PipelineRun, PipelineState
 
 router = APIRouter(prefix="/api/v1/pipeline", tags=["pipeline"])
@@ -19,7 +19,7 @@ router = APIRouter(prefix="/api/v1/pipeline", tags=["pipeline"])
 @router.get("/status")
 async def get_pipeline_status() -> dict:
     """Current pipeline state (Layer 2 cache)."""
-    with session_scope() as session:
+    with session_ctx() as session:
         state = session.query(PipelineState).first()
         if state is None:
             return {
@@ -58,7 +58,7 @@ async def get_pipeline_runs(
     limit: int = Query(20, ge=1, le=100),
 ) -> dict:
     """Recent pipeline run history with optional layer filter."""
-    with session_scope() as session:
+    with session_ctx() as session:
         query = session.query(PipelineRun).order_by(PipelineRun.started_at.desc())
         if layer:
             query = query.filter(PipelineRun.layer == layer)
@@ -84,7 +84,7 @@ async def get_pipeline_runs(
 @router.get("/gate-log/{signal_id}")
 async def get_gate_log(signal_id: int) -> dict:
     """Gate evaluation log for a specific signal."""
-    with session_scope() as session:
+    with session_ctx() as session:
         signal = session.get(BotSignal, signal_id)
         if signal is None:
             raise HTTPException(404, f"Signal {signal_id} not found")
@@ -108,7 +108,7 @@ async def approve_signal(signal_id: int) -> dict:
     """Manually approve a B-tier signal for execution."""
     from src.pipeline.execution_bridge import approve_signal as do_approve
 
-    with session_scope() as session:
+    with session_ctx() as session:
         result = do_approve(signal_id, session)
         return {
             "signal_id": result.signal_id,
@@ -126,7 +126,7 @@ async def force_layer2() -> dict:
     from src.pipeline.gate_orchestrator import process_pending_signals
     from src.pipeline.layer2_runner import run_layer2
 
-    with session_scope() as session:
+    with session_ctx() as session:
         layer2_result = run_layer2(session)
         decisions = process_pending_signals(session)
         exec_results = execute_decisions(decisions, session) if decisions else []
