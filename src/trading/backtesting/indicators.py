@@ -95,17 +95,38 @@ class Indicators:
         return (macd_line[-1], sig_line[-1], hist)
 
     @staticmethod
+    def _dedup_cot(bars: List[Bar]) -> List[Bar]:
+        """Collapse consecutive bars with identical spec_net (forward-fill artifacts).
+
+        COT data is weekly but forward-filled onto daily bars by DbDataLoader.
+        This deduplicates so each unique spec_net reading appears once.
+        """
+        result: List[Bar] = []
+        prev_val = None
+        for b in bars:
+            if b.spec_net is None:
+                continue
+            if b.spec_net != prev_val:
+                result.append(b)
+                prev_val = b.spec_net
+        return result
+
+    @staticmethod
     def spec_net_change(bars: List[Bar], weeks: int = 3) -> Optional[int]:
         """Change in speculator net position over N weeks."""
-        relevant = [b for b in bars if b.spec_net is not None]
+        relevant = Indicators._dedup_cot(bars)
         if len(relevant) < weeks + 1:
             return None
         return relevant[-1].spec_net - relevant[-(weeks + 1)].spec_net
 
     @staticmethod
     def spec_net_trend(bars: List[Bar], weeks: int = 3) -> Optional[str]:
-        """Direction of spec_net over last N weeks: 'increasing', 'decreasing', or 'flat'."""
-        relevant = [b for b in bars if b.spec_net is not None]
+        """Direction of spec_net over last N weeks: 'increasing', 'decreasing', or 'flat'.
+
+        Deduplicates forward-filled daily bars so comparisons happen between
+        actual weekly COT data releases, not between identical forward-filled values.
+        """
+        relevant = Indicators._dedup_cot(bars)
         if len(relevant) < weeks + 1:
             return None
         values = [b.spec_net for b in relevant[-(weeks + 1) :]]

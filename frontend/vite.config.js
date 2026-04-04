@@ -7,6 +7,7 @@ export default defineConfig({
     globals: true,
     pool: 'forks',
     poolOptions: { forks: { singleFork: true } },
+    exclude: ['tests/e2e/**', 'node_modules/**'],
   },
   server: {
     port: 3000,

@@ -36,6 +36,7 @@ from src.db.models import (
     PriceDaily,
     SeismicEvent,
 )
+from src.analysis import signal_tracker
 from src.db import repository as repo
 
 logging.basicConfig(
@@ -178,7 +179,7 @@ def populate_prices() -> dict[str, dict]:
 
     for yahoo_sym, inst_keys in YAHOO_FETCHES:
         log.info("Fetching %s (keys: %s)...", yahoo_sym, ", ".join(inst_keys))
-        bars = fetch_yahoo_ohlcv(yahoo_sym, range_="1y")
+        bars = fetch_yahoo_ohlcv(yahoo_sym, range_="5y")
 
         if not bars:
             log.warning("  No data returned for %s", yahoo_sym)
@@ -423,6 +424,92 @@ def populate_geointel() -> dict[str, int]:
     return results
 
 
+def populate_signals() -> int:
+    """Parse data/macro/latest.json and persist scored signals to DB.
+
+    Reads the pipeline's trading_levels output, filters instruments with
+    score >= 6 (grade B or higher), and creates Signal + SignalPerformance
+    records via the existing repo and signal_tracker functions.
+
+    Returns the number of signals persisted.
+    """
+    macro_path = PROJECT_ROOT / "data" / "macro" / "latest.json"
+    if not macro_path.exists():
+        log.warning("No macro data at %s. Run fetch_all.py first.", macro_path)
+        return 0
+
+    with open(macro_path, encoding="utf-8") as f:
+        data = json.load(f)
+
+    instruments = data.get("trading_levels", {})
+    if not instruments:
+        log.warning("No trading_levels in macro JSON.")
+        return 0
+
+    log.info("=== Populating signals from macro JSON (%d instruments) ===", len(instruments))
+    count = 0
+
+    with session_ctx() as session:
+        for inst_key, inst_data in instruments.items():
+            score = inst_data.get("score", 0)
+            if score < 6:
+                continue
+
+            grade = inst_data.get("grade", "C")
+            dir_color = inst_data.get("dir_color", "neutral")
+            direction = "bull" if dir_color == "bull" else "bear"
+            timeframe_bias = inst_data.get("timeframe_bias", "SWING")
+
+            # Pick the active setup (long or short)
+            setup = inst_data.get("setup_long") or inst_data.get("setup_short")
+            entry_price = setup.get("entry", 0) if setup else 0
+            stop_loss = setup.get("sl") if setup else None
+            target_1 = setup.get("t1") if setup else None
+            target_2 = setup.get("t2") if setup else None
+            rr_t1 = setup.get("rr_t1") if setup else None
+            rr_t2 = setup.get("rr_t2") if setup else None
+            entry_weight = setup.get("entry_weight") if setup else None
+            t1_weight = setup.get("t1_weight") if setup else None
+            sl_type = setup.get("sl_type") if setup else None
+
+            signal_data = {
+                "instrument": inst_key,
+                "direction": direction,
+                "grade": grade,
+                "score": score,
+                "timeframe_bias": timeframe_bias,
+                "entry_price": entry_price,
+                "stop_loss": stop_loss,
+                "target_1": target_1,
+                "target_2": target_2,
+                "rr_t1": rr_t1,
+                "rr_t2": rr_t2,
+                "entry_weight": entry_weight,
+                "t1_weight": t1_weight,
+                "sl_type": sl_type,
+                "at_level_now": inst_data.get("at_level_now"),
+                "vix_regime": data.get("vix_regime", {}).get("regime"),
+                "pos_size": inst_data.get("pos_size"),
+                "score_details": inst_data.get("score_details"),
+            }
+
+            sig = repo.save_signal(signal_data, db=session)
+            signal_tracker.record_signal(
+                signal_id=sig.id,
+                instrument=inst_key,
+                direction=direction,
+                grade=grade,
+                score=score,
+                entry_price=entry_price,
+                db=session,
+            )
+            count += 1
+            log.info("  Signal: %s %s grade=%s score=%d entry=%.4f", inst_key, direction, grade, score, entry_price)
+
+    log.info("Signals total: %d persisted (from %d instruments)", count, len(instruments))
+    return count
+
+
 def verify_data() -> None:
     """Print row counts for all populated tables."""
     log.info("=== Data Verification ===")
@@ -455,13 +542,14 @@ def main() -> None:
     parser.add_argument("--prices", action="store_true", help="Populate PriceDaily only")
     parser.add_argument("--cot", action="store_true", help="Populate CotPosition only")
     parser.add_argument("--geointel", action="store_true", help="Populate geointel tables only")
+    parser.add_argument("--signals", action="store_true", help="Populate signals from macro JSON only")
     args = parser.parse_args()
 
     # Ensure DB tables exist and instruments are seeded
     init_db()
     ensure_instruments()
 
-    run_all = not (args.prices or args.cot or args.geointel)
+    run_all = not (args.prices or args.cot or args.geointel or args.signals)
 
     if run_all or args.prices:
         populate_prices()
@@ -471,6 +559,9 @@ def main() -> None:
 
     if run_all or args.geointel:
         populate_geointel()
+
+    if run_all or args.signals:
+        populate_signals()
 
     verify_data()
     log.info("Done.")

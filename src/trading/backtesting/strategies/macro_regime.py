@@ -162,17 +162,20 @@ class MacroRegimeStrategy(Strategy):
         if not self._should_rebalance(date):
             return actions
 
+        # Normalize keys to lowercase for constant lookups
+        bars_lower = {k.lower(): v for k, v in bars_by_instrument.items()}
+
         # Estimate VIX from the most volatile equity instrument
         vix_est = 20.0
         for vix_proxy in ["spx", "nas100"]:
-            if vix_proxy in bars_by_instrument:
-                vix_est = self._estimate_vix(bars_by_instrument[vix_proxy], 20)
+            if vix_proxy in bars_lower:
+                vix_est = self._estimate_vix(bars_lower[vix_proxy], 20)
                 break
 
         # DXY trend
         dxy_trend = "flat"
-        if self.dxy_instrument in bars_by_instrument:
-            dxy_bars = bars_by_instrument[self.dxy_instrument]
+        if self.dxy_instrument in bars_lower:
+            dxy_bars = bars_lower[self.dxy_instrument]
             if len(dxy_bars) > self.dxy_lookback:
                 dxy_trend = self._dxy_trend(dxy_bars, self.dxy_lookback)
 
@@ -198,7 +201,7 @@ class MacroRegimeStrategy(Strategy):
 
         # Score instruments by COT strength and select best
         scored = []
-        for instrument, bars in bars_by_instrument.items():
+        for instrument, bars in bars_lower.items():
             if len(bars) < max(self.atr_period + 1, 21):
                 continue
 
