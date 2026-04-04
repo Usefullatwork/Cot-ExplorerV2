@@ -9,7 +9,7 @@ from typing import Any, Optional, Sequence
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from src.db.engine import session_scope
+from src.db.engine import session_ctx
 from src.db.models import (
     AuditLog,
     BotConfig,
@@ -44,14 +44,8 @@ def save_signal(signal_data: dict[str, Any], db: Session | None = None) -> Signa
 
     if db is not None:
         return _do(db)
-    gen = session_scope()
-    session = next(gen)
-    try:
-        result = _do(session)
-        gen.send(None)  # trigger commit
-    except StopIteration:
-        pass
-    return result
+    with session_ctx() as session:
+        return _do(session)
 
 
 def get_signals(
@@ -82,21 +76,8 @@ def get_signals(
 
     if db is not None:
         return _do(db)
-    gen = session_scope()
-    session = next(gen)
-    try:
-        result = _do(session)
-        try:
-            gen.send(None)
-        except StopIteration:
-            pass
-    except Exception:
-        try:
-            gen.throw(Exception)
-        except StopIteration:
-            pass
-        raise
-    return result
+    with session_ctx() as session:
+        return _do(session)
 
 
 # ---------------------------------------------------------------------------
@@ -142,21 +123,8 @@ def save_price_daily(
 
     if db is not None:
         return _do(db)
-    gen = session_scope()
-    session = next(gen)
-    try:
-        result = _do(session)
-        try:
-            gen.send(None)
-        except StopIteration:
-            pass
-    except Exception:
-        try:
-            gen.throw(Exception)
-        except StopIteration:
-            pass
-        raise
-    return result
+    with session_ctx() as session:
+        return _do(session)
 
 
 def get_price_history(
@@ -177,21 +145,8 @@ def get_price_history(
 
     if db is not None:
         return _do(db)
-    gen = session_scope()
-    session = next(gen)
-    try:
-        result = _do(session)
-        try:
-            gen.send(None)
-        except StopIteration:
-            pass
-    except Exception:
-        try:
-            gen.throw(Exception)
-        except StopIteration:
-            pass
-        raise
-    return result
+    with session_ctx() as session:
+        return _do(session)
 
 
 # ---------------------------------------------------------------------------
@@ -236,21 +191,8 @@ def save_cot_position(data: dict[str, Any], db: Session | None = None) -> CotPos
 
     if db is not None:
         return _do(db)
-    gen = session_scope()
-    session = next(gen)
-    try:
-        result = _do(session)
-        try:
-            gen.send(None)
-        except StopIteration:
-            pass
-    except Exception:
-        try:
-            gen.throw(Exception)
-        except StopIteration:
-            pass
-        raise
-    return result
+    with session_ctx() as session:
+        return _do(session)
 
 
 def get_cot_history(
@@ -274,21 +216,8 @@ def get_cot_history(
 
     if db is not None:
         return _do(db)
-    gen = session_scope()
-    session = next(gen)
-    try:
-        result = _do(session)
-        try:
-            gen.send(None)
-        except StopIteration:
-            pass
-    except Exception:
-        try:
-            gen.throw(Exception)
-        except StopIteration:
-            pass
-        raise
-    return result
+    with session_ctx() as session:
+        return _do(session)
 
 
 # ---------------------------------------------------------------------------
@@ -313,21 +242,8 @@ def save_macro_snapshot(data: dict[str, Any], db: Session | None = None) -> Macr
 
     if db is not None:
         return _do(db)
-    gen = session_scope()
-    session = next(gen)
-    try:
-        result = _do(session)
-        try:
-            gen.send(None)
-        except StopIteration:
-            pass
-    except Exception:
-        try:
-            gen.throw(Exception)
-        except StopIteration:
-            pass
-        raise
-    return result
+    with session_ctx() as session:
+        return _do(session)
 
 
 def get_latest_macro(db: Session | None = None) -> Optional[MacroSnapshot]:
@@ -339,21 +255,8 @@ def get_latest_macro(db: Session | None = None) -> Optional[MacroSnapshot]:
 
     if db is not None:
         return _do(db)
-    gen = session_scope()
-    session = next(gen)
-    try:
-        result = _do(session)
-        try:
-            gen.send(None)
-        except StopIteration:
-            pass
-    except Exception:
-        try:
-            gen.throw(Exception)
-        except StopIteration:
-            pass
-        raise
-    return result
+    with session_ctx() as session:
+        return _do(session)
 
 
 # ---------------------------------------------------------------------------
@@ -377,21 +280,8 @@ def save_audit_log(
 
     if db is not None:
         return _do(db)
-    gen = session_scope()
-    session = next(gen)
-    try:
-        result = _do(session)
-        try:
-            gen.send(None)
-        except StopIteration:
-            pass
-    except Exception:
-        try:
-            gen.throw(Exception)
-        except StopIteration:
-            pass
-        raise
-    return result
+    with session_ctx() as session:
+        return _do(session)
 
 
 # ---------------------------------------------------------------------------
@@ -411,21 +301,8 @@ def get_bot_config(db: Session | None = None) -> BotConfig:
 
     if db is not None:
         return _do(db)
-    gen = session_scope()
-    session = next(gen)
-    try:
-        result = _do(session)
-        try:
-            gen.send(None)
-        except StopIteration:
-            pass
-    except Exception:
-        try:
-            gen.throw(Exception)
-        except StopIteration:
-            pass
-        raise
-    return result
+    with session_ctx() as session:
+        return _do(session)
 
 
 def update_bot_config(db: Session | None = None, **kwargs: Any) -> BotConfig:
@@ -445,21 +322,8 @@ def update_bot_config(db: Session | None = None, **kwargs: Any) -> BotConfig:
 
     if db is not None:
         return _do(db)
-    gen = session_scope()
-    session = next(gen)
-    try:
-        result = _do(session)
-        try:
-            gen.send(None)
-        except StopIteration:
-            pass
-    except Exception:
-        try:
-            gen.throw(Exception)
-        except StopIteration:
-            pass
-        raise
-    return result
+    with session_ctx() as session:
+        return _do(session)
 
 
 # ---------------------------------------------------------------------------
@@ -480,21 +344,8 @@ def save_bot_signal(db: Session | None = None, **kwargs: Any) -> BotSignal:
 
     if db is not None:
         return _do(db)
-    gen = session_scope()
-    session = next(gen)
-    try:
-        result = _do(session)
-        try:
-            gen.send(None)
-        except StopIteration:
-            pass
-    except Exception:
-        try:
-            gen.throw(Exception)
-        except StopIteration:
-            pass
-        raise
-    return result
+    with session_ctx() as session:
+        return _do(session)
 
 
 def get_bot_signals(
@@ -516,21 +367,8 @@ def get_bot_signals(
 
     if db is not None:
         return _do(db)
-    gen = session_scope()
-    session = next(gen)
-    try:
-        result = _do(session)
-        try:
-            gen.send(None)
-        except StopIteration:
-            pass
-    except Exception:
-        try:
-            gen.throw(Exception)
-        except StopIteration:
-            pass
-        raise
-    return result
+    with session_ctx() as session:
+        return _do(session)
 
 
 def update_bot_signal(
@@ -553,21 +391,8 @@ def update_bot_signal(
 
     if db is not None:
         return _do(db)
-    gen = session_scope()
-    session = next(gen)
-    try:
-        result = _do(session)
-        try:
-            gen.send(None)
-        except StopIteration:
-            pass
-    except Exception:
-        try:
-            gen.throw(Exception)
-        except StopIteration:
-            pass
-        raise
-    return result
+    with session_ctx() as session:
+        return _do(session)
 
 
 # ---------------------------------------------------------------------------
@@ -584,21 +409,8 @@ def save_bot_position(db: Session | None = None, **kwargs: Any) -> BotPosition:
 
     if db is not None:
         return _do(db)
-    gen = session_scope()
-    session = next(gen)
-    try:
-        result = _do(session)
-        try:
-            gen.send(None)
-        except StopIteration:
-            pass
-    except Exception:
-        try:
-            gen.throw(Exception)
-        except StopIteration:
-            pass
-        raise
-    return result
+    with session_ctx() as session:
+        return _do(session)
 
 
 def get_bot_positions(
@@ -618,21 +430,8 @@ def get_bot_positions(
 
     if db is not None:
         return _do(db)
-    gen = session_scope()
-    session = next(gen)
-    try:
-        result = _do(session)
-        try:
-            gen.send(None)
-        except StopIteration:
-            pass
-    except Exception:
-        try:
-            gen.throw(Exception)
-        except StopIteration:
-            pass
-        raise
-    return result
+    with session_ctx() as session:
+        return _do(session)
 
 
 def get_bot_position(
@@ -647,21 +446,8 @@ def get_bot_position(
 
     if db is not None:
         return _do(db)
-    gen = session_scope()
-    session = next(gen)
-    try:
-        result = _do(session)
-        try:
-            gen.send(None)
-        except StopIteration:
-            pass
-    except Exception:
-        try:
-            gen.throw(Exception)
-        except StopIteration:
-            pass
-        raise
-    return result
+    with session_ctx() as session:
+        return _do(session)
 
 
 def update_bot_position(
@@ -684,21 +470,8 @@ def update_bot_position(
 
     if db is not None:
         return _do(db)
-    gen = session_scope()
-    session = next(gen)
-    try:
-        result = _do(session)
-        try:
-            gen.send(None)
-        except StopIteration:
-            pass
-    except Exception:
-        try:
-            gen.throw(Exception)
-        except StopIteration:
-            pass
-        raise
-    return result
+    with session_ctx() as session:
+        return _do(session)
 
 
 # ---------------------------------------------------------------------------
@@ -724,21 +497,8 @@ def save_bot_trade_log(
 
     if db is not None:
         return _do(db)
-    gen = session_scope()
-    session = next(gen)
-    try:
-        result = _do(session)
-        try:
-            gen.send(None)
-        except StopIteration:
-            pass
-    except Exception:
-        try:
-            gen.throw(Exception)
-        except StopIteration:
-            pass
-        raise
-    return result
+    with session_ctx() as session:
+        return _do(session)
 
 
 def get_bot_trade_log(
@@ -760,21 +520,8 @@ def get_bot_trade_log(
 
     if db is not None:
         return _do(db)
-    gen = session_scope()
-    session = next(gen)
-    try:
-        result = _do(session)
-        try:
-            gen.send(None)
-        except StopIteration:
-            pass
-    except Exception:
-        try:
-            gen.throw(Exception)
-        except StopIteration:
-            pass
-        raise
-    return result
+    with session_ctx() as session:
+        return _do(session)
 
 
 # ---------------------------------------------------------------------------
@@ -791,21 +538,8 @@ def save_journal_entry(db: Session | None = None, **kwargs: Any) -> TradeJournal
 
     if db is not None:
         return _do(db)
-    gen = session_scope()
-    session = next(gen)
-    try:
-        result = _do(session)
-        try:
-            gen.send(None)
-        except StopIteration:
-            pass
-    except Exception:
-        try:
-            gen.throw(Exception)
-        except StopIteration:
-            pass
-        raise
-    return result
+    with session_ctx() as session:
+        return _do(session)
 
 
 def get_journal_entries(
@@ -827,18 +561,5 @@ def get_journal_entries(
 
     if db is not None:
         return _do(db)
-    gen = session_scope()
-    session = next(gen)
-    try:
-        result = _do(session)
-        try:
-            gen.send(None)
-        except StopIteration:
-            pass
-    except Exception:
-        try:
-            gen.throw(Exception)
-        except StopIteration:
-            pass
-        raise
-    return result
+    with session_ctx() as session:
+        return _do(session)
