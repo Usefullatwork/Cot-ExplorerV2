@@ -9,7 +9,7 @@ from fastapi import APIRouter, Query
 from pydantic import BaseModel
 from sqlalchemy import func, select
 
-from src.db.engine import session_scope
+from src.db.engine import session_ctx
 from src.db.models import TradeJournal
 
 router = APIRouter(prefix="/api/v1/journal", tags=["journal"])
@@ -91,9 +91,7 @@ def list_journal(
     limit: int = Query(50, ge=1, le=200, description="Max entries"),
 ) -> dict:
     """Return trade journal entries with reasoning and stats."""
-    gen = session_scope()
-    session = next(gen)
-    try:
+    with session_ctx() as session:
         total = session.execute(
             select(func.count(TradeJournal.id))
         ).scalar() or 0
@@ -131,15 +129,4 @@ def list_journal(
             stmt = stmt.where(TradeJournal.outcome == outcome.lower())
         rows = session.execute(stmt.limit(limit)).scalars().all()
 
-        response = {"stats": stats, "entries": [_entry_to_dict(r) for r in rows]}
-        try:
-            gen.send(None)
-        except StopIteration:
-            pass
-        return response
-    except Exception:
-        try:
-            gen.throw(Exception)
-        except StopIteration:
-            pass
-        raise
+        return {"stats": stats, "entries": [_entry_to_dict(r) for r in rows]}

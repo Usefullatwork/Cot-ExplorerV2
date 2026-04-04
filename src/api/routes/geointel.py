@@ -21,7 +21,7 @@ from src.analysis.regime_detector import (
     detect_regime,
     get_regime_adjustments,
 )
-from src.db.engine import session_scope
+from src.db.engine import session_ctx
 from src.db.models import ComexInventory, GeoIntelArticle, SeismicEvent
 from src.trading.scrapers import chokepoints, comex, energy_infra, intel_feed, seismic
 
@@ -32,21 +32,8 @@ _COLOR = {"gold": "#FFD700", "silver": "#C0C0C0", "copper": "#B87333", "geopolit
 
 def _run_query(fn: Any) -> Any:
     """Execute *fn(session)* inside a transactional scope and return the result."""
-    gen = session_scope()
-    session = next(gen)
-    try:
-        result = fn(session)
-        try:
-            gen.send(None)
-        except StopIteration:
-            pass
-        return result
-    except Exception:
-        try:
-            gen.throw(Exception)
-        except StopIteration:
-            pass
-        raise
+    with session_ctx() as session:
+        return fn(session)
 
 
 # ── Response models ──────────────────────────────────────────────────────────

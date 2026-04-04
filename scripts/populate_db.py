@@ -255,6 +255,20 @@ def populate_cot() -> dict[str, int]:
             if isinstance(data, list):
                 all_records.extend(data)
 
+    # Also read historical year-files from data/cot/history/{report_id}/{year}.json
+    history_dir = cot_dir / "history"
+    if history_dir.exists():
+        for report_id in report_dirs:
+            report_hist_dir = history_dir / report_id
+            if not report_hist_dir.exists():
+                continue
+            for year_file in sorted(report_hist_dir.glob("*.json")):
+                log.info("Reading historical %s from %s", report_id, year_file.name)
+                with open(year_file, encoding="utf-8") as f:
+                    data = json.load(f)
+                if isinstance(data, list):
+                    all_records.extend(data)
+
     if not all_records:
         log.warning("No COT data found. Run 'python fetch_cot.py --history' first.")
         return {}

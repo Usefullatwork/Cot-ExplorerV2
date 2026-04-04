@@ -10,7 +10,7 @@ from fastapi import APIRouter, HTTPException, Query
 from pydantic import BaseModel, Field
 from sqlalchemy import func, select
 
-from src.db.engine import session_scope
+from src.db.engine import session_ctx
 from src.db.models import BotSignal, SignalPerformance
 
 router = APIRouter(prefix="/api/v1/signal-log", tags=["signal-log"])
@@ -63,9 +63,7 @@ def list_signal_log(
     limit: int = Query(100, ge=1, le=500, description="Max records"),
 ) -> dict:
     """Return signal performance history with stats."""
-    gen = session_scope()
-    session = next(gen)
-    try:
+    with session_ctx() as session:
         total = session.execute(select(func.count(SignalPerformance.id))).scalar() or 0
         hits = session.execute(select(func.count(SignalPerformance.id)).where(
             SignalPerformance.result == "HIT")).scalar() or 0
@@ -105,18 +103,7 @@ def list_signal_log(
                 if sig_id is not None and rj:
                     reasoning_map[sig_id] = rj
 
-        response = {"stats": stats, "history": [_perf_to_dict(r, reasoning_map) for r in rows]}
-        try:
-            gen.send(None)
-        except StopIteration:
-            pass
-        return response
-    except Exception:
-        try:
-            gen.throw(Exception)
-        except StopIteration:
-            pass
-        raise
+        return {"stats": stats, "history": [_perf_to_dict(r, reasoning_map) for r in rows]}
 
 
 @router.post("/{signal_id}/result", response_model=SignalPerfResponse, summary="Update signal result")
@@ -125,36 +112,17 @@ def update_signal_result(signal_id: int, body: ResultUpdateRequest) -> dict:
     if body.result.upper() not in ("HIT", "MISS", "NEUTRAL"):
         raise HTTPException(status_code=400, detail="Result must be HIT, MISS, or NEUTRAL")
 
-    gen = session_scope()
-    session = next(gen)
-    try:
+    with session_ctx() as session:
         row = session.execute(
             select(SignalPerformance).where(SignalPerformance.signal_id == signal_id)
         ).scalar()
         if not row:
-            try:
-                gen.throw(Exception)
-            except StopIteration:
-                pass
             raise HTTPException(status_code=404, detail=f"No performance record for signal {signal_id}")
 
         row.result = body.result.upper()
         row.pnl_pips = body.pnl_pips
         row.closed_at = datetime.now(timezone.utc)
-        result = _perf_to_dict(row)
-        try:
-            gen.send(None)
-        except StopIteration:
-            pass
-        return result
-    except HTTPException:
-        raise
-    except Exception:
-        try:
-            gen.throw(Exception)
-        except StopIteration:
-            pass
-        raise
+        return _perf_to_dict(row)
 
 
 # ── Signal Analytics ─────────────────────────────────────────────────────────
@@ -198,9 +166,7 @@ class SignalAnalyticsResponse(BaseModel):
 )
 def signal_analytics() -> dict:
     """Performance breakdown by instrument, grade, and streaks."""
-    gen = session_scope()
-    session = next(gen)
-    try:
+    with session_ctx() as session:
         rows = session.execute(
             select(SignalPerformance).order_by(SignalPerformance.created_at.asc())
         ).scalars().all()
@@ -259,7 +225,7 @@ def signal_analytics() -> dict:
                     current_type = "loss"
                 longest_loss = max(longest_loss, current)
 
-        result = {
+        return {
             "by_instrument": by_instrument,
             "by_grade": by_grade,
             "streak": {
@@ -271,15 +237,3 @@ def signal_analytics() -> dict:
             "total_signals": total,
             "total_closed": len(closed),
         }
-
-        try:
-            gen.send(None)
-        except StopIteration:
-            pass
-        return result
-    except Exception:
-        try:
-            gen.throw(Exception)
-        except StopIteration:
-            pass
-        raise

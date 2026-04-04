@@ -8,7 +8,7 @@ from fastapi import APIRouter, Query
 from pydantic import BaseModel, Field
 from sqlalchemy import select
 
-from src.db.engine import session_scope
+from src.db.engine import session_ctx
 from src.db.models import CorrelationSnapshot
 
 router = APIRouter(prefix="/api/v1/correlations", tags=["correlations"])
@@ -41,16 +41,14 @@ def get_correlations(
     limit: int = Query(100, ge=1, le=500, description="Maximum pairs to return"),
 ) -> list[dict]:
     """Return latest correlation snapshots."""
-    gen = session_scope()
-    session = next(gen)
-    try:
+    with session_ctx() as session:
         stmt = select(CorrelationSnapshot).order_by(CorrelationSnapshot.calculated_at.desc())
         if window:
             stmt = stmt.where(CorrelationSnapshot.window_days == window)
         stmt = stmt.limit(limit)
         rows = session.execute(stmt).scalars().all()
 
-        result = [
+        return [
             {
                 "instrument_a": r.instrument_a,
                 "instrument_b": r.instrument_b,
@@ -60,15 +58,3 @@ def get_correlations(
             }
             for r in rows
         ]
-
-        try:
-            gen.send(None)
-        except StopIteration:
-            pass
-        return result
-    except Exception:
-        try:
-            gen.throw(Exception)
-        except StopIteration:
-            pass
-        raise

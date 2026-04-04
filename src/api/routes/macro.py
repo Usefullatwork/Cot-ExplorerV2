@@ -238,12 +238,10 @@ def regime_history(days: int = 30) -> dict:
     import json as json_mod
 
     from sqlalchemy import select
-    from src.db.engine import session_scope
+    from src.db.engine import session_ctx
     from src.db.models import MacroSnapshot
 
-    gen = session_scope()
-    session = next(gen)
-    try:
+    with session_ctx() as session:
         stmt = (
             select(MacroSnapshot)
             .order_by(MacroSnapshot.timestamp.desc())
@@ -254,10 +252,6 @@ def regime_history(days: int = 30) -> dict:
         if not snapshots:
             from datetime import datetime as _dt, timedelta
 
-            try:
-                gen.send(None)
-            except StopIteration:
-                pass
             result = {"days": [{
                 "date": (_dt.now() - timedelta(days=i)).strftime("%Y-%m-%d"),
                 "regime": "normal",
@@ -285,15 +279,4 @@ def regime_history(days: int = 30) -> dict:
 
         result = {"days": result_days}
         macro_cache.set(f"regime_history_{days}", result, ttl=600)
-
-        try:
-            gen.send(None)
-        except StopIteration:
-            pass
         return result
-    except Exception:
-        try:
-            gen.throw(Exception)
-        except StopIteration:
-            pass
-        raise
